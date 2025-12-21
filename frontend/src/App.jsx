@@ -58,104 +58,101 @@ export default function App() {
   const backendOk = status === "ok";
 
   return (
-    <div
-      style={{
-        width: "100%",
-        minHeight: "100vh",
-        margin: 0,
-        padding: "2.5rem 3rem",
-        boxSizing: "border-box",
-        fontFamily: "system-ui, -apple-system, BlinkMacSystemFont",
-      }}
-    >
-      {/* Title */}
-      <h1 style={{ marginBottom: 4 }}>NoteEnglish</h1>
+    <div className="min-h-screen w-full px-6 py-10 sm:px-10">
+        <div className="rounded-[30px] bg-[#f3fafa] shadow-md ring-1 ring-white/60">
+          <div className="w-full m-0 px-12 py-10 box-border font-sans">
+            {/* Title */}
+            <h1 className="mb-1 text-3xl font-semibold">NoteEnglish</h1>
 
-      {/* Backend status */}
-      <div style={{ marginBottom: 16 }}>
-        <Text>
-          Backend status:{" "}
-          <Text strong type={backendOk ? "success" : "danger"}>
-            {status}
-          </Text>
-        </Text>
-      </div>
+            {/* Backend status */}
+            <div className="mb-4">
+              <Text>
+                Backend status:{" "}
+                <Text strong type={backendOk ? "success" : "danger"}>
+                  {status}
+                </Text>
+              </Text>
+            </div>
 
-      {/* Backend warning */}
-      {!backendOk && (
-        <Alert
-          type="warning"
-          showIcon
-          message="Backend is not ready"
-          description="Please start FastAPI first."
-          style={{ marginBottom: 16 }}
-        />
-      )}
+            {/* Backend warning */}
+            {!backendOk && (
+              <Alert
+                type="warning"
+                showIcon
+                message="Backend is not ready"
+                description="Please start FastAPI first."
+                className="mb-4"
+              />
+            )}
 
-      {/* Textarea */}
-      <div style={{ marginBottom: 12 }}>
-        <Text strong>Paste a passage:</Text>
-        <TextArea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={8}
-          placeholder="Paste a passage here..."
-          style={{ marginTop: 8 }}
-        />
-      </div>
+            {/* Textarea */}
+            <div className="mb-3">
+              <Text strong>Paste a passage:</Text>
+              <TextArea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                rows={8}
+                placeholder="Paste a passage here..."
+                className="mt-2"
+              />
+            </div>
 
-      {/* Buttons */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-        <Button
-          type="primary"
-          onClick={handleTranslate}
-          loading={loading}
-          disabled={!backendOk}
-        >
-          Translate (fake)
-        </Button>
+            {/* Buttons */}
+            <div className="flex gap-3 mb-4">
+              <Button
+                type="primary"
+                onClick={handleTranslate}
+                loading={loading}
+                disabled={!backendOk}
+              >
+                Translate (fake)
+              </Button>
 
-        <Button onClick={handleClear} disabled={loading}>
-          Clear
-        </Button>
-      </div>
+              <Button onClick={handleClear} disabled={loading}>
+                Clear
+              </Button>
+            </div>
 
-      {/* Error */}
-      {error && (
-        <Alert
-          type="error"
-          showIcon
-          message="Request failed"
-          description={<pre style={{ margin: 0 }}>{error}</pre>}
-          style={{ marginBottom: 16 }}
-        />
-      )}
+            {/* Error */}
+            {error && (
+              <Alert
+                type="error"
+                showIcon
+                message="Request failed"
+                description={
+                  <pre className="m-0 whitespace-pre-wrap">{error}</pre>
+                }
+                className="mb-4"
+              />
+            )}
 
-      {/* Results */}
-      <div>
-        <h2>Results</h2>
+            {/* Results */}
+            <div>
+              <h2 className="text-xl font-semibold mb-2">Results</h2>
 
-        {sentences.length === 0 ? (
-          <Text type="secondary">
-            No results yet. Paste text and click “Translate (fake)”.
-          </Text>
-        ) : (
-          <ol style={{ paddingLeft: 20 }}>
-            {sentences.map((s, idx) => (
-              <li key={idx} style={{ marginBottom: 12 }}>
-                <div>
-                  <Text strong>Original:</Text>{" "}
-                  <Text>{s.original}</Text>
-                </div>
-                <div>
-                  <Text strong>Translation:</Text>{" "}
-                  <Text>{s.translation}</Text>
-                </div>
-              </li>
-            ))}
-          </ol>
-        )}
-      </div>
+              {sentences.length === 0 ? (
+                <Text type="secondary">
+                  No results yet. Paste text and click “Translate (fake)”.
+                </Text>
+              ) : (
+                <ol className="list-decimal pl-5 space-y-3">
+                  {sentences.map((s, idx) => (
+                    <li key={idx}>
+                      <div>
+                        <Text strong>Original:</Text> <Text>{s.original}</Text>
+                      </div>
+                      <div>
+                        <Text strong>Translation:</Text>{" "}
+                        <Text>{s.translation}</Text>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          </div>
+        </div>
+      {/* </div> */}
     </div>
   );
 }
