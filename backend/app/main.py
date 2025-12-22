@@ -1,16 +1,20 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from pydantic import BaseModel
 import os
 import spacy
+import json
+from google import genai
+import re
 
 load_dotenv()
 nlp = spacy.load("en_core_web_sm")
-if "sentencizer" not in nlp.pipe_names:
-    nlp.add_pipe("sentencizer")
 
 frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+api_key = os.getenv("GEMINI_API_KEY", "")
+model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+client = genai.Client(api_key=api_key)
 
 app = FastAPI(title="NoteEnglish API", version="0.1.0")
 
@@ -24,6 +28,7 @@ app.add_middleware(
 
 class TranslateRequest(BaseModel):
     text: str
+    target_lang: str = "zh-TW"
 
 class SentencePair(BaseModel):
     original: str
@@ -32,8 +37,20 @@ class SentencePair(BaseModel):
 class TranslateResponse(BaseModel):
     sentences: list[SentencePair]
 
+# --------------------------------
+# Routes
+# --------------------------------
+def normalize_text(text:str) -> str:
+    text = text.replace("\u00a0", " ")
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+
+    text = re.sub(r"\s+", " ", text)
+
+    return text.strip()
+
+
 def split_sentences(text: str) -> list[str]:
-    text = text.strip()
+    text = normalize_text(text)
     if not text:
         return []
     
@@ -47,6 +64,56 @@ def split_sentences(text: str) -> list[str]:
             sentences.append(sentence)
     return sentences
 
+
+def ai_translate_list(sentences: list[str], target_lang: str = "zh-TW") -> list[str]:
+    if not sentences:
+        return []
+    
+    prompt = (
+        f"Translate each sentence into {target_lang}. "
+        "Return ONLY a JSON array of strings. "
+        "The array length and order MUST match the input. "
+        "No explanation, no markdown.\n\n"
+        )
+    
+    for i, s in enumerate(sentences):
+        prompt += f"{i}. {s}\n"
+
+    try:
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config={
+                "response_mime_type": "application/json"
+            }
+        )
+        text = response.text.strip()
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Gemini API request failed: {e}"
+        )
+    
+    try:
+        translations = json.loads(text)
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to parse Gemini output as JSON.  Error: {e}.  Output preview: {text[:300]}"
+        )
+
+    if not isinstance(translations, list):
+        raise HTTPException(
+            status_code=502,
+            detail="Gemini output is not a JSON array."
+        )
+    
+    fixed = []
+    for i in range(len(sentences)):
+        fixed.append(translations[i] if i < len(translations) else "")
+    return fixed
+    
+
 # --------------------------------
 # Routes
 # --------------------------------
@@ -58,16 +125,18 @@ def health_check():
 def translate(req: TranslateRequest):
     raw = req.text.strip()
     if not raw:
-        return {"sentences": []}
+        return TranslateResponse(sentences=[])
     
     parts = split_sentences(raw)
 
-    sentences: list[SentencePair] = []
-    for original in parts:
-        translation = f"[fake] {original}"
-        sentences.append(SentencePair(original=original, translation=translation))
-    
-    return TranslateResponse(sentences=sentences)
+    translations = ai_translate_list(parts, req.target_lang)
+
+    results: list[SentencePair] = []
+
+    for i in range(len(parts)):
+        results.append(SentencePair(original=parts[i], translation=translations[i]))
+
+    return TranslateResponse(sentences=results)
 
 @app.post("/debug/split")
 def debug_split(req: TranslateRequest):
