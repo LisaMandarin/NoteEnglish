@@ -1,11 +1,14 @@
-from pydantic import BaseModel
-from pydantic import Field
+from pydantic import BaseModel, Field
 from app.models.vocab import VocabItem
 
 class TranslateRequest(BaseModel):
-    text: str
-    target_lang: str = "zh-TW"
-    mode: str = "normal"
+    text: str = Field(description="Original sentence before translation")
+    target_lang: str = Field(default="zh-TW", description="Target language for translation") 
+    mode: str = Field(
+        default="normal", 
+        description="Translation mode: 'normal' for natural translation, 'learner' for explicit, learner-friendly output", 
+        examples=["normal", "learner"]
+    )
 
 class SentencePair(BaseModel):
     id: int = Field(description="Sentence index")
@@ -14,4 +17,6 @@ class SentencePair(BaseModel):
     vocab: list[VocabItem] = Field(default_factory=list, description="Vocabulary items related to this sentence")
 
 class TranslateResponse(BaseModel):
-    sentences: list[SentencePair]
+    sentences: list[SentencePair] = Field(
+        description="List of sentence-level translation results in original order"
+    )

@@ -1,14 +1,24 @@
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import HTTPException
 import json
 from app.models.vocab import VocabOptions
+from app.core.config import settings
 
-load_dotenv()
-api_key = os.getenv("GEMINI_API_KEY", "")
-model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-client = genai.Client(api_key=api_key)
+client = genai.Client(api_key=settings.gemini_api_key)
+
+VOCAB_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "translation": {"type": "string"},
+        "definition": {"type": "string"},
+        "example": {"type": "string"},
+        "level": {"type": "string"}
+    },
+    "required": ["translation", "definition", "example", "level"]
+}
 
 def ai_translate_list(sentences: list[str], target_lang: str = "zh-TW", mode: str = "normal") -> list[str]:
     if not sentences:
@@ -35,7 +45,7 @@ def ai_translate_list(sentences: list[str], target_lang: str = "zh-TW", mode: st
 
     try:
         response = client.models.generate_content(
-            model=model,
+            model=settings.gemini_model,
             contents=prompt,
             config={
                 "response_mime_type": "application/json"
@@ -68,37 +78,49 @@ def ai_translate_list(sentences: list[str], target_lang: str = "zh-TW", mode: st
     return fixed
 
 def ai_fill_vocab_fields(lemma:str, pos:str, options:VocabOptions) -> dict:
-    keys = []
+    tasks = []
+    
     if options.translation:
-        keys.append("translation")
+        tasks.append("translation: Chinese meaning of the word.")
     if options.definition:
-        keys.append("definition")
+        tasks.append("definition: ONE clear English definition")
     if options.example:
-        keys.append("example")
-    if options.level:
-        keys.append("level")
+        tasks.append("example: One natural example sentence.")
+    if options.example:
+        tasks.append("level: CEFR level (A2-C1).")
+    task_list = "\n".join(f"- {t}" for t in tasks) if tasks else "- None"
     prompt = f"""
 You are an English dictionary for intermediate to advanced learners.
     
 Word: "{lemma}"
 Part of speech: {pos}
 
-Return ONLY valid JSON object.
-Allowed keys: {keys}
-Do NOT include keys other than the allowed keys.
-Do NOT include "word" or "pos".
+You MUST return a JSON object with EXACTLY these keys:
+- translation
+- definition
+- example
+- level
 
-Requirements:
-- translation: concise Traditional Chinese meaning
-- definition: ONE clear English definition
-- example: ONE natural example sentence
-- level: CEFR level A2-C1 (string)
+Tasks to fill:
+{task_list}
+
+Rules:
+- Use ONLY the given part of speech.
+- If a field is NOT listed in "Tasks to fill", return an empty string "" for that field.
+- Definition must be English onlyl.
+- Translation must be Traditional Chinese (zh-TW).
+- Example must be ONE sentence.
+- Level must be one of :A2, B1, B2, C1.
+- Do NOT add extra text.
+- Return ONLY valid JSON.
 """
     
     response = client.models.generate_content(
-        model=model,
+        model=settings.gemini_model,
         contents=prompt,
-        config={"response_mime_type": "application/json"}
+        config={
+            "response_mime_type": "application/json",
+            "temperature": 0.2
+        }
     )
-    
     return json.loads(response.text)
