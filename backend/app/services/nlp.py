@@ -3,8 +3,10 @@ import spacy
 
 from app.models.vocab import VocabItem
 
+# Load spaCy English model once at module import.
 nlp = spacy.load("en_core_web_sm")
 
+# Clean up whitespace and normalize newlines.
 def normalize_text(text:str) -> str:
     text = text.replace("\u00a0", " ")
     text = text.replace("\r\n", "\n").replace("\r", "\n")
@@ -14,6 +16,7 @@ def normalize_text(text:str) -> str:
     return text.strip()
 
 
+# Split a block of text into sentences using spaCy.
 def split_sentences(text: str) -> list[str]:
     text = normalize_text(text)
     if not text:
@@ -29,8 +32,10 @@ def split_sentences(text: str) -> list[str]:
             sentences.append(sentence)
     return sentences
 
+# Parts of speech we consider for vocab extraction.
 ALLOWED_POS = {"NOUN", "VERB", "ADJ", "ADV", "ADP", "SCONJ"}
 
+# Extract unique vocab items from a sentence, filtered by allowed POS.
 def extract_vocab(sentence: str) -> list[VocabItem]:
     doc = nlp(sentence)
 

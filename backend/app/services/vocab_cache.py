@@ -1,8 +1,10 @@
 from app.models.vocab import CachedVocab, VocabDetailRequest, VocabDetailResponse
 from app.services.gemini import ai_fill_vocab_fields
 
+# In-memory cache keyed by lemma|pos to avoid repeated AI calls.
 VOCAB_CACHE: dict[str, CachedVocab] = {}
 
+# Fetch vocab details; fill missing fields via Gemini and cache results.
 def get_vocab_detail(req: VocabDetailRequest) -> VocabDetailResponse:
     key = f"{req.lemma.lower()}|{req.pos}"
     cached = VOCAB_CACHE.get(key, CachedVocab(lemma=req.lemma, pos=req.pos))
