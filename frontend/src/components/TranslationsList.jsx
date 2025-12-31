@@ -26,13 +26,14 @@ export default function TranslationsList() {
     vocab.reset();
   }
 
-  function getSentenceIdxFromSelection(sel) {
-    const anchorEl = 
-      sel.anchorNode?.nodeType === 1 
-        ? sel.anchorNode 
-        : sel.anchorNode?.parentElement;
+  function getSentenceIdxFromRange(range) {
+    const containerNode = range.commonAncestorContainer;
+    const el = 
+      containerNode.nodeType === 1 
+        ? containerNode 
+        : containerNode?.parentElement;
 
-    const li = anchorEl?.closest("li[data-idx]");
+    const li = el?.closest("li[data-idx]");
     return li ? Number(li.dataset.idx) : null;
   }
 
@@ -79,8 +80,12 @@ export default function TranslationsList() {
 
     if (!node || !container.contains(node)) return closeMenu();
 
+    const sentenceIdx = getSentenceIdxFromRange(range);
+    if (sentenceIdx === null) return closeMenu();
+
     vocab.setSelectedText(text);
-    vocab.setSelectedSentenceIdx(getSentenceIdxFromSelection(sel));
+    vocab.setSelectedSentenceIdx(sentenceIdx);
+
     setMenuPos(getMenuPosition(range));
     setMenuOpen(true);
   }
