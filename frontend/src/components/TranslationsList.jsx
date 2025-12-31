@@ -9,6 +9,11 @@ export default function TranslationsList() {
   const {
     state: { sentences },
   } = useTranslation();
+  const fake_sentences = [
+      {original: "I like apples.", translation: "我喜歡蘋果。"},
+      {original: "I like bananas.", translation: "我喜歡香蕉。"},
+      {original: "This is a new sentence", translation: "這是一個新句子。"}
+    ]
   const containerRef = useRef(null);
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -33,10 +38,26 @@ export default function TranslationsList() {
 
   function getMenuPosition(range) {
     const rect = range.getBoundingClientRect();
-    return {
-      x: Math.min(rect.left, window.innerWidth -280),
-      y: rect.bottom + 8
-    };
+    
+    const MENU_W = 280;
+    const MENU_H = 170;
+    const GAP = 8;
+
+    // ideal position(below the selected text) for hovering menu after selecting text
+    let x = rect.left;
+    let y = rect.bottom + GAP;
+
+    // prevent right margin from exceeding the screen
+    x = Math.min(x, window.innerWidth - MENU_W - GAP);
+    x = Math.max(x, GAP);
+    
+    // if exceeding the screen, put the hovering menu above the selected text
+    if (y + MENU_H > window.innerHeight) {
+      y = rect.top - GAP - MENU_H;
+    }
+
+    y = Math.max(y, GAP);
+    return { x, y};
   }
 
   function handleMouseUp() {
