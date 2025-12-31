@@ -1,6 +1,6 @@
 import { Button } from "antd";
 
-export default function SelectionMenu({ open, x, y, options, setOptions, onLookUp, onCancel }) {
+export default function SelectionMenu({ open, x, y, options, setOptions, onLookUp, onCancel, loading }) {
   if (!open) return null;
 
   function toggle(value) {
@@ -50,12 +50,15 @@ export default function SelectionMenu({ open, x, y, options, setOptions, onLookU
             <Button 
                 type="primary" 
                 onClick={onLookUp}
+                loading={loading}
+                disabled={loading}
                 className="flex-1 rounded-xl !bg-[var(--card-border)] !border-[var(--card-border)] !text-white"
             >
                 查單字
             </Button>
             <Button
                 onClick={onCancel}
+                disabled={loading}
                 className="flex-1 rounded-xl !border-[var(--card-border)] !text-[var(--text-main)]"
             >
                 取消
