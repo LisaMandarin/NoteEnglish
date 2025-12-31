@@ -8,11 +8,16 @@ authors = [
     {name = "Lisa",email = "122068169+LisaMandarin@users.noreply.github.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.10"
+# spaCy wheels (and their numpy stack) don't yet ship for Python 3.13, so we pin to 3.12 or below.
+requires-python = ">=3.10,<3.13"
 dependencies = [
     "fastapi (>=0.126.0,<0.127.0)",
     "uvicorn[standard] (>=0.38.0,<0.39.0)",
-    "python-dotenv (>=1.2.1,<2.0.0)"
+    "python-dotenv (>=1.2.1,<2.0.0)",
+    "spacy (>=3.7.4,<3.8.0)",
+    # Model wheel published by spaCy; keeps deployments deterministic without runtime downloads.
+    "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl",
+    "google-genai (>=1.56.0,<2.0.0)"
 ]
 
 

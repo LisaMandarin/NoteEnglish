@@ -3,16 +3,14 @@
 FastAPI service for translations and vocabulary enrichment.
 
 ## Prerequisites
-- Python 3.10+
+- Python 3.10–3.12 (spaCy wheels don't support 3.13 yet)
 - Poetry
 - Gemini API key (for translation/vocab endpoints)
 
 ## Setup
-1) Install dependencies:
+1) Install dependencies (includes spaCy model + Google GenAI client):
 ```
 poetry install
-poetry run pip install spacy google-genai
-poetry run python -m spacy download en_core_web_sm
 ```
 2) Create `.env` in `backend/`:
 ```
