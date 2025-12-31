@@ -46,7 +46,7 @@ export function useVocabLookup(sentences) {
         },
       };
 
-      const res = await fetch(`${API_BASE}/api/vocab/detail`, {
+      await fetch(`${API_BASE}/api/vocab/detail`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
