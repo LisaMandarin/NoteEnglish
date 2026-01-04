@@ -29,14 +29,19 @@ export function useVocabLookup(sentences) {
       const sentence = sentences[selectedSentenceIdx];
       const vocabList = sentence?.vocab ?? [];
 
-      const hit = vocabList.find(
-        (v) => v.lemma?.toLowerCase() === selectedText.toLowerCase()
-      );
+      const normalized = selectedText.trim().toLowerCase();
+
+      // Prefer an exact text match, otherwise fall back to lemma match.
+      const hit = vocabList.find((v) => {
+        const textMatch = v.text?.toLowerCase() === normalized;
+        const lemmaMatch = v.lemma?.toLowerCase() === normalized;
+        return textMatch || lemmaMatch;
+      });
 
       const opt = new Set(options);
 
       const payload = {
-        lemma: selectedText,
+        lemma: hit?.lemma ?? normalized,
         pos: hit?.pos ?? "unknown",
         options: {
           translation: opt.has("zh"),

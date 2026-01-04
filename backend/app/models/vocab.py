@@ -11,7 +11,7 @@ class VocabOptions(BaseModel):
     translation: bool = Field(default=False, description="Include Chinese translation of the word")
     definition: bool = Field(default=False, description="Include English definition")
     example: bool= Field(default=False, description="Include one natural example sentence")
-    level: bool= Field(default=False, description="Include approximate CEFR level A2-C1")
+    level: bool= Field(default=False, description="Include approximate CEFR level A1-C2")
 
 # Request body for vocab detail lookup.
 class VocabDetailRequest(BaseModel):

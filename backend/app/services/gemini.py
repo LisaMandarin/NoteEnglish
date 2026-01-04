@@ -95,7 +95,7 @@ def ai_fill_vocab_fields(lemma:str, pos:str, options:VocabOptions) -> dict:
     if options.example:
         tasks.append("example: One natural example sentence.")
     if options.example:
-        tasks.append("level: CEFR level (A2-C1).")
+        tasks.append("level: CEFR level (A1-C2).")
     task_list = "\n".join(f"- {t}" for t in tasks) if tasks else "- None"
     prompt = f"""
 You are an English dictionary for intermediate to advanced learners.
@@ -118,7 +118,7 @@ Rules:
 - Definition must be English onlyl.
 - Translation must be Traditional Chinese (zh-TW).
 - Example must be ONE sentence.
-- Level must be one of :A2, B1, B2, C1.
+- Level must be one of :A1, A2, B1, B2, C1, C2.
 - Do NOT add extra text.
 - Return ONLY valid JSON.
 """
