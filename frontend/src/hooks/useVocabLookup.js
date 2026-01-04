@@ -79,6 +79,7 @@ export function useVocabLookup(sentences, updateSentenceVocab) {
         text,
         lemma,
         pos,
+        queried: true,
         ...detail,
       }
 

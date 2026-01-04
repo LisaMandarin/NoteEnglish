@@ -3,12 +3,13 @@ import { Typography, Divider } from "antd";
 import { useTranslation } from "../context/translationContext";
 import SelectionMenu from "./SelectionMenu";
 import { useVocabLookup } from "../hooks/useVocabLookup";
+import VocabCards from "./VocabCards";
 const { Text } = Typography;
 
 export default function TranslationsList() {
   const {
     state: { sentences },
-    actions: { updateSentenceVocab }
+    actions: { updateSentenceVocab },
   } = useTranslation();
 
   const vocab = useVocabLookup(sentences, updateSentenceVocab);
@@ -17,76 +18,95 @@ export default function TranslationsList() {
   //     {original: "I like bananas.", translation: "我喜歡香蕉。"},
   //     {original: "This is a new sentence", translation: "這是一個新句子。"}
   //   ]
-//   const translateResponse = {
-//     "sentences": [
-//         {
-//             "id": 0,
-//             "original": "I like apples.",
-//             "translation": "我喜歡蘋果。",
-//             "vocab": [
-//                 {
-//                     "text": "like",
-//                     "lemma": "like",
-//                     "pos": "VERB"
-//                 },
-//                 {
-//                     "text": "apples",
-//                     "lemma": "apple",
-//                     "pos": "NOUN"
-//                 }
-//             ]
-//         },
-//         {
-//             "id": 1,
-//             "original": "I like bananas.",
-//             "translation": "我喜歡香蕉。",
-//             "vocab": [
-//                 {
-//                     "text": "like",
-//                     "lemma": "like",
-//                     "pos": "VERB"
-//                 },
-//                 {
-//                     "text": "bananas",
-//                     "lemma": "banana",
-//                     "pos": "NOUN"
-//                 }
-//             ]
-//         },
-//         {
-//             "id": 2,
-//             "original": "This is a new sentence.",
-//             "translation": "這是一個新句子。",
-//             "vocab": [
-//                 {
-//                     "text": "new",
-//                     "lemma": "new",
-//                     "pos": "ADJ"
-//                 },
-//                 {
-//                     "text": "sentence",
-//                     "lemma": "sentence",
-//                     "pos": "NOUN"
-//                 }
-//             ]
-//         }
-//     ]
-// }
+  //   const fake_translateResponse = {
+  //     "sentences": [
+  //         {
+  //             "id": 0,
+  //             "original": "I like apples.",
+  //             "translation": "我喜歡蘋果。",
+  //             "vocab": [
+  //                 {
+  //                     "text": "like",
+  //                     "lemma": "like",
+  //                     "pos": "VERB"
+  //                 },
+  //                 {
+  //                     "text": "apples",
+  //                     "lemma": "apple",
+  //                     "pos": "NOUN"
+  //                 }
+  //             ]
+  //         },
+  //         {
+  //             "id": 1,
+  //             "original": "I like bananas.",
+  //             "translation": "我喜歡香蕉。",
+  //             "vocab": [
+  //                 {
+  //                     "text": "like",
+  //                     "lemma": "like",
+  //                     "pos": "VERB"
+  //                 },
+  //                 {
+  //                     "text": "bananas",
+  //                     "lemma": "banana",
+  //                     "pos": "NOUN"
+  //                 }
+  //             ]
+  //         },
+  //         {
+  //             "id": 2,
+  //             "original": "This is a new sentence.",
+  //             "translation": "這是一個新句子。",
+  //             "vocab": [
+  //                 {
+  //                     "text": "new",
+  //                     "lemma": "new",
+  //                     "pos": "ADJ"
+  //                 },
+  //                 {
+  //                     "text": "sentence",
+  //                     "lemma": "sentence",
+  //                     "pos": "NOUN"
+  //                 }
+  //             ]
+  //         }
+  //     ]
+  // }
+
+  // const fake_vocab = {
+  //     "lemma": "banana",
+  //     "pos": "NOUN",
+  //     "translation": "香蕉",
+  //     "definition": "A long curved fruit which grows in clusters and has a soft pulpy flesh and yellow skin when ripe.",
+  //     "example": "She peeled a banana and ate it for a quick snack.",
+  //     "level": "A1"
+  // }
   const containerRef = useRef(null);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
 
+  function clearSelection() {
+    const sel = window.getSelection?.();
+    if (!sel) return;
+
+    if (sel.removeAllRanges) sel.removeAllRanges();
+
+    if (sel.collapseToEnd) sel.collapseToEnd();
+  }
+
   function closeMenu() {
     setMenuOpen(false);
     vocab.reset();
+    clearSelection();
   }
 
   function getSentenceIdxFromRange(range) {
     const containerNode = range.commonAncestorContainer;
-    const el = 
-      containerNode.nodeType === 1 
-        ? containerNode 
+    const el =
+      containerNode.nodeType === 1
+        ? containerNode
         : containerNode?.parentElement;
 
     const li = el?.closest("li[data-idx]");
@@ -95,7 +115,7 @@ export default function TranslationsList() {
 
   function getMenuPosition(range) {
     const rect = range.getBoundingClientRect();
-    
+
     const MENU_W = 280;
     const MENU_H = 170;
     const GAP = 8;
@@ -107,14 +127,14 @@ export default function TranslationsList() {
     // prevent right margin from exceeding the screen
     x = Math.min(x, window.innerWidth - MENU_W - GAP);
     x = Math.max(x, GAP);
-    
+
     // if exceeding the screen, put the hovering menu above the selected text
     if (y + MENU_H > window.innerHeight) {
       y = rect.top - GAP - MENU_H;
     }
 
     y = Math.max(y, GAP);
-    return { x, y};
+    return { x, y };
   }
 
   function handleMouseUp() {
@@ -123,15 +143,15 @@ export default function TranslationsList() {
 
     const text = sel.toString().trim();
     if (!text) return closeMenu();
-    
+
     const container = containerRef.current;
     if (!container) return;
 
     const range = sel.getRangeAt(0);
     const commonAncestor = range.commonAncestorContainer;
-    const node = 
-      commonAncestor.nodeType === 1 
-        ? commonAncestor 
+    const node =
+      commonAncestor.nodeType === 1
+        ? commonAncestor
         : commonAncestor.parentElement;
 
     if (!node || !container.contains(node)) return closeMenu();
@@ -148,9 +168,12 @@ export default function TranslationsList() {
 
   async function onLookUp() {
     const ok = await vocab.lookup();
-    if (ok) setMenuOpen(false);
+    if (ok) {
+      setMenuOpen(false);
+      clearSelection();
+    }
   }
- 
+
   useEffect(() => {
     function onDocMouseDown(e) {
       if (!menuOpen) return;
@@ -178,18 +201,20 @@ export default function TranslationsList() {
             <div className="select-none">
               <Text strong>Translation:</Text> <Text>{s.translation}</Text>
             </div>
-            <Divider />
+
+            <VocabCards vocab={s.vocab} />
+            <Divider className="!my-4" />
           </li>
         ))}
       </ol>
 
-      <SelectionMenu 
+      <SelectionMenu
         open={menuOpen}
         x={menuPos.x}
         y={menuPos.y}
         options={vocab.options}
-        setOptions={vocab.setOptions} 
-        onLookUp={onLookUp} 
+        setOptions={vocab.setOptions}
+        onLookUp={onLookUp}
         onCancel={closeMenu}
         loading={vocab.loading}
       />
