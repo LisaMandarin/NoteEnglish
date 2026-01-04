@@ -8,18 +8,74 @@ const { Text } = Typography;
 export default function TranslationsList() {
   const {
     state: { sentences },
+    actions: { updateSentenceVocab }
   } = useTranslation();
-  const fake_sentences = [
-      {original: "I like apples.", translation: "我喜歡蘋果。"},
-      {original: "I like bananas.", translation: "我喜歡香蕉。"},
-      {original: "This is a new sentence", translation: "這是一個新句子。"}
-    ]
+
+  const vocab = useVocabLookup(sentences, updateSentenceVocab);
+  // const fake_sentences = [
+  //     {original: "I like apples.", translation: "我喜歡蘋果。"},
+  //     {original: "I like bananas.", translation: "我喜歡香蕉。"},
+  //     {original: "This is a new sentence", translation: "這是一個新句子。"}
+  //   ]
+//   const translateResponse = {
+//     "sentences": [
+//         {
+//             "id": 0,
+//             "original": "I like apples.",
+//             "translation": "我喜歡蘋果。",
+//             "vocab": [
+//                 {
+//                     "text": "like",
+//                     "lemma": "like",
+//                     "pos": "VERB"
+//                 },
+//                 {
+//                     "text": "apples",
+//                     "lemma": "apple",
+//                     "pos": "NOUN"
+//                 }
+//             ]
+//         },
+//         {
+//             "id": 1,
+//             "original": "I like bananas.",
+//             "translation": "我喜歡香蕉。",
+//             "vocab": [
+//                 {
+//                     "text": "like",
+//                     "lemma": "like",
+//                     "pos": "VERB"
+//                 },
+//                 {
+//                     "text": "bananas",
+//                     "lemma": "banana",
+//                     "pos": "NOUN"
+//                 }
+//             ]
+//         },
+//         {
+//             "id": 2,
+//             "original": "This is a new sentence.",
+//             "translation": "這是一個新句子。",
+//             "vocab": [
+//                 {
+//                     "text": "new",
+//                     "lemma": "new",
+//                     "pos": "ADJ"
+//                 },
+//                 {
+//                     "text": "sentence",
+//                     "lemma": "sentence",
+//                     "pos": "NOUN"
+//                 }
+//             ]
+//         }
+//     ]
+// }
   const containerRef = useRef(null);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
-  
-  const vocab = useVocabLookup(sentences);
 
   function closeMenu() {
     setMenuOpen(false);

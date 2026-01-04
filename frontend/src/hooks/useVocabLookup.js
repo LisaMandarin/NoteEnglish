@@ -2,7 +2,12 @@ import { useState } from "react";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 
-export function useVocabLookup(sentences) {
+
+/**
+ * @param {Array} sentences 
+ * @param {Function} updateSentenceVocab - from translationContext actions
+ */
+export function useVocabLookup(sentences, updateSentenceVocab) {
   const [selectedText, setSelectedText] = useState("");
   const [selectedSentenceIdx, setSelectedSentenceIdx] = useState(null);
   const [options, setOptions] = useState([]);
@@ -12,24 +17,27 @@ export function useVocabLookup(sentences) {
     setSelectedText("");
     setSelectedSentenceIdx(null);
     setOptions([]);
-    setLoading(false);
   }
 
   async function lookup() {
-    if (!selectedText) return;
+    const text = selectedText.trim();
+    if (!text) return false;
 
     if (options.length === 0) {
       alert("請至少選一個查詢選項");
       return false;
     }
 
+    const sentenceIdx = selectedSentenceIdx;
+    if (sentenceIdx === null) return false;
+
     setLoading(true);
 
     try {
-      const sentence = sentences[selectedSentenceIdx];
+      const sentence = sentences?.[sentenceIdx];
       const vocabList = sentence?.vocab ?? [];
 
-      const normalized = selectedText.trim().toLowerCase();
+      const normalized = text.toLowerCase();
 
       // Prefer an exact text match, otherwise fall back to lemma match.
       const hit = vocabList.find((v) => {
@@ -40,9 +48,12 @@ export function useVocabLookup(sentences) {
 
       const opt = new Set(options);
 
+      const lemma = hit?.lemma ?? normalized;
+      const pos = hit?.pos ?? "unknown";
+
       const payload = {
-        lemma: hit?.lemma ?? normalized,
-        pos: hit?.pos ?? "unknown",
+        lemma,
+        pos,
         options: {
           translation: opt.has("zh"),
           definition: opt.has("en"),
@@ -51,11 +62,31 @@ export function useVocabLookup(sentences) {
         },
       };
 
-      await fetch(`${API_BASE}/api/vocab/detail`, {
+      const res = await fetch(`${API_BASE}/api/vocab/detail`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        throw new Error(`Vocab detail failed: ${res.status} ${errText}`);
+      }
+
+      const detail = await res.json();
+
+      const vocabItem = {
+        text,
+        lemma,
+        pos,
+        ...detail,
+      }
+
+      if (typeof updateSentenceVocab === "function") {
+        updateSentenceVocab(sentenceIdx, vocabItem);
+      } else {
+        console.warn("updateSentenceVocab is missing; cannot write back vocab.");
+      }
 
       reset();
       return true;
