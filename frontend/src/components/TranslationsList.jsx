@@ -9,7 +9,7 @@ const { Text } = Typography;
 export default function TranslationsList() {
   const {
     state: { sentences },
-    actions: { updateSentenceVocab },
+    actions: { updateSentenceVocab, removeSentenceVocab },
   } = useTranslation();
 
   const vocab = useVocabLookup(sentences, updateSentenceVocab);
@@ -202,22 +202,27 @@ export default function TranslationsList() {
               <Text strong>Translation:</Text> <Text>{s.translation}</Text>
             </div>
 
-            <VocabCards vocab={s.vocab} />
+            <VocabCards vocab={s.vocab} sentenceIdx={idx} onDelete={removeSentenceVocab} />
             <Divider className="!my-4" />
           </li>
         ))}
       </ol>
 
-      <SelectionMenu
-        open={menuOpen}
-        x={menuPos.x}
-        y={menuPos.y}
-        options={vocab.options}
-        setOptions={vocab.setOptions}
-        onLookUp={onLookUp}
-        onCancel={closeMenu}
-        loading={vocab.loading}
-      />
+      <div
+        onMouseUp={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <SelectionMenu
+          open={menuOpen}
+          x={menuPos.x}
+          y={menuPos.y}
+          options={vocab.options}
+          setOptions={vocab.setOptions}
+          onLookUp={onLookUp}
+          onCancel={closeMenu}
+          loading={vocab.loading}
+        />
+      </div>
     </div>
   );
 }

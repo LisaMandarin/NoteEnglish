@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { DeleteTwoTone } from '@ant-design/icons';
 
 /**
  * props:
@@ -9,7 +10,7 @@ import { useMemo, useState } from "react";
  *  text, lemma, pos, translation?, definition?, example? level?
  * }
  */
-export default function VocabCards({ vocab }) {
+export default function VocabCards({ vocab, sentenceIdx, onDelete }) {
   const items = useMemo(() => {
     const list = Array.isArray(vocab) ? vocab : [];
     return list.filter((v) => v?.queried === true);
@@ -27,7 +28,7 @@ export default function VocabCards({ vocab }) {
       >
         <span className="font-semibold">單字筆記</span>
         <span className="text-xs opacity-70">({items.length})</span>
-        <span className="ml-1 text-xs opacity-70">
+        <span className="ml-1 text-xs opacity-70 cursor-pointer">
           {open ? "收合" : "展開"}
         </span>
       </button>
@@ -38,6 +39,7 @@ export default function VocabCards({ vocab }) {
             <VocabCard
               key={`${v.lemma ?? v.text}-${v.pos ?? "unknown"}-${i}`}
               v={v}
+              onDelete={() => onDelete?.(sentenceIdx, v.lemma, v.pos)}
             />
           ))}
         </div>
@@ -46,8 +48,8 @@ export default function VocabCards({ vocab }) {
   );
 }
 
-function VocabCard({ v }) {
-  const head = `${v.lemma ?? v.text ?? ""}${v.pos ? ` • ${v.pos}` : ""}`.trim();
+function VocabCard({ v, onDelete }) {
+  const head = `${v.lemma ?? v.text ?? ""}`.trim();
 
   const rows = [
     ["中文", v.translation],
@@ -58,11 +60,19 @@ function VocabCard({ v }) {
 
   return (
     <div className="rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-3 shadow-sm">
+      {/* Header row */}
       <div className="flex items-start justify-between gap-3">
+        {/* Left: head + pos inline */}
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-[var(--text-main)]">
-            {head || "vocab"}
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="text-sm font-semibold text-[var(--text-main)] truncate">
+              {head || "vocab"}
+            </div>
+            <span className="shrink-0 rounded-full border border-[var(--card-border)] px-2 py-0.5 text-xs opacity-70">
+              {v.pos ?? "unknown"}
+            </span>
           </div>
+
           {v.text &&
             v.lemma &&
             v.text.toLowerCase() !== v.lemma.toLowerCase() && (
@@ -72,9 +82,22 @@ function VocabCard({ v }) {
             )}
         </div>
 
-        <span className="shrink-0 rounded-full border border-[var(--card-border)] px-2 py-0.5 text-xs opacity-70">
-          {v.pos ?? "unknown"}
-        </span>
+        <div className="flex items-center gap-2 shrink-0">
+          {v.queried === true && (
+            <button
+              type="button"
+              onMouseDown={(e) => e.stopPropagation()}
+              onMouseUp={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete?.();
+              }}
+              className="cursor-pointer"
+            >
+              <DeleteTwoTone twoToneColor="#eb2f96" />
+            </button>
+          )}
+        </div>
       </div>
 
       {rows.length > 0 ? (

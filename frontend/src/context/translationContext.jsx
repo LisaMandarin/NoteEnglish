@@ -18,6 +18,7 @@ const ACTIONS = {
   TRANSLATE_SUCCESS: "translate_success",
   TRANLSATE_ERROR: "translate_error",
   UPDATE_SENTENCE_VOCAB: "update_sentence_vocab",
+  REMOVE_SENTENCE_VOCAB: "remove_sentence_vocab",
 };
 function reducer(state, action) {
   switch (action.type) {
@@ -68,6 +69,29 @@ function reducer(state, action) {
       return { ...state, sentences: nextSentences };
     }
 
+    case ACTIONS.REMOVE_SENTENCE_VOCAB: {
+      const { sentenceIdx, lemma, pos} = action.payload || {};
+      if (sentenceIdx == null) return state;
+
+      const nextSentences = [...state.sentences];
+      const s = nextSentences[sentenceIdx];
+      if (!s) return state;
+
+      const prevVocab = Array.isArray(s.vocab) ? s.vocab : [];
+      const keyLemma = (lemma ?? "").toLowerCase();
+      const keyPos = (pos ?? "").toLowerCase();
+
+      const nextVocab = prevVocab.filter((v) => {
+        const same = 
+          (v.lemma ?? "").toLowerCase() === keyLemma &&
+          (v.pos ?? "").toLowerCase() === keyPos;
+        return !same;
+      });
+
+      nextSentences[sentenceIdx] = {...s, vocab: nextVocab};
+      return {...state, sentences: nextSentences}
+    }
+
     default:
       return state;
   }
@@ -114,7 +138,14 @@ export function TranslationProvider({ children }) {
       });
     }
 
-    return { translate, setText, clear, updateSentenceVocab };
+    function removeSentenceVocab(sentenceIdx, lemma, pos) {
+      dispatch({
+        type: ACTIONS.REMOVE_SENTENCE_VOCAB,
+        payload: {sentenceIdx, lemma, pos},
+      });
+    }
+
+    return { translate, setText, clear, updateSentenceVocab, removeSentenceVocab };
   }, [state.text]);
 
   const value = useMemo(() => ({ state, actions }), [state, actions]);
