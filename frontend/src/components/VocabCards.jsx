@@ -24,7 +24,7 @@ export default function VocabCards({ vocab, sentenceIdx, onDelete }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-2 rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] px-3 py-2 text-sm text-[var(--text-main)] shadow-sm hover:shadow"
+        className="inline-flex items-center gap-2 rounded-xl border border-(--card-border) bg-(--card-bg) px-3 py-2 text-sm text-(--text-main) shadow-sm hover:shadow"
       >
         <span className="font-semibold">單字筆記</span>
         <span className="text-xs opacity-70">({items.length})</span>
@@ -59,16 +59,16 @@ function VocabCard({ v, onDelete }) {
   ].filter(([, val]) => val != null && String(val).trim() !== "");
 
   return (
-    <div className="rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-3 shadow-sm">
+    <div className="rounded-2xl border border-(--card-border) bg-(--card-bg) p-3 shadow-sm">
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         {/* Left: head + pos inline */}
         <div className="min-w-0">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="text-sm font-semibold text-[var(--text-main)] truncate">
+            <div className="text-sm font-semibold text-(--text-main) truncate">
               {head || "vocab"}
             </div>
-            <span className="shrink-0 rounded-full border border-[var(--card-border)] px-2 py-0.5 text-xs opacity-70">
+            <span className="shrink-0 rounded-full border border-(--card-border) px-2 py-0.5 text-xs opacity-70">
               {v.pos ?? "unknown"}
             </span>
           </div>
@@ -107,7 +107,7 @@ function VocabCard({ v, onDelete }) {
               <span className="mr-2 inline-block w-10 shrink-0 text-xs font-semibold opacity-70">
                 {label}
               </span>
-              <span className="text-[var(--text-main)]">{val}</span>
+              <span className="text-(--text-main)">{val}</span>
             </div>
           ))}
         </div>

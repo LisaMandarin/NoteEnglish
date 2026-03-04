@@ -2,8 +2,9 @@ import { TranslationProvider } from "./context/translationContext";
 import AppTitle from "./components/AppTitle";
 import AppTextarea from "./components/AppTextarea";
 import TranslationsList from "./components/TranslationsList";
+import SummaryWindow from "./components/SummaryWindow";
 
-export default function App() {
+function MainPage() {
   return (
     <TranslationProvider>
       <div className="min-h-screen w-full px-6 py-10 sm:px-10">
@@ -21,4 +22,15 @@ export default function App() {
       </div>
     </TranslationProvider>
   );
+}
+
+export default function App() {
+  const params = new URLSearchParams(window.location.search);
+  const isSummaryView = params.get("view") === "summary";
+
+  if (isSummaryView) {
+    return <SummaryWindow />;
+  }
+
+  return <MainPage />;
 }

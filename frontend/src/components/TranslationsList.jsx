@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Typography, Divider } from "antd";
+import { Typography, Divider, Button, Checkbox } from "antd";
 import { useTranslation } from "../context/translationContext";
 import SelectionMenu from "./SelectionMenu";
 import { useVocabLookup } from "../hooks/useVocabLookup";
@@ -18,60 +18,60 @@ export default function TranslationsList() {
   //     {original: "I like bananas.", translation: "我喜歡香蕉。"},
   //     {original: "This is a new sentence", translation: "這是一個新句子。"}
   //   ]
-  //   const fake_translateResponse = {
-  //     "sentences": [
-  //         {
-  //             "id": 0,
-  //             "original": "I like apples.",
-  //             "translation": "我喜歡蘋果。",
-  //             "vocab": [
-  //                 {
-  //                     "text": "like",
-  //                     "lemma": "like",
-  //                     "pos": "VERB"
-  //                 },
-  //                 {
-  //                     "text": "apples",
-  //                     "lemma": "apple",
-  //                     "pos": "NOUN"
-  //                 }
-  //             ]
-  //         },
-  //         {
-  //             "id": 1,
-  //             "original": "I like bananas.",
-  //             "translation": "我喜歡香蕉。",
-  //             "vocab": [
-  //                 {
-  //                     "text": "like",
-  //                     "lemma": "like",
-  //                     "pos": "VERB"
-  //                 },
-  //                 {
-  //                     "text": "bananas",
-  //                     "lemma": "banana",
-  //                     "pos": "NOUN"
-  //                 }
-  //             ]
-  //         },
-  //         {
-  //             "id": 2,
-  //             "original": "This is a new sentence.",
-  //             "translation": "這是一個新句子。",
-  //             "vocab": [
-  //                 {
-  //                     "text": "new",
-  //                     "lemma": "new",
-  //                     "pos": "ADJ"
-  //                 },
-  //                 {
-  //                     "text": "sentence",
-  //                     "lemma": "sentence",
-  //                     "pos": "NOUN"
-  //                 }
-  //             ]
-  //         }
-  //     ]
+  // const fake_translateResponse = {
+  //   "sentences": [
+  //       {
+  //           "id": 0,
+  //           "original": "I like apples.",
+  //           "translation": "我喜歡蘋果。",
+  //           "vocab": [
+  //               {
+  //                   "text": "like",
+  //                   "lemma": "like",
+  //                   "pos": "VERB"
+  //               },
+  //               {
+  //                   "text": "apples",
+  //                   "lemma": "apple",
+  //                   "pos": "NOUN"
+  //               }
+  //           ]
+  //       },
+  //       {
+  //           "id": 1,
+  //           "original": "I like bananas.",
+  //           "translation": "我喜歡香蕉。",
+  //           "vocab": [
+  //               {
+  //                   "text": "like",
+  //                   "lemma": "like",
+  //                   "pos": "VERB"
+  //               },
+  //               {
+  //                   "text": "bananas",
+  //                   "lemma": "banana",
+  //                   "pos": "NOUN"
+  //               }
+  //           ]
+  //       },
+  //       {
+  //           "id": 2,
+  //           "original": "This is a new sentence.",
+  //           "translation": "這是一個新句子。",
+  //           "vocab": [
+  //               {
+  //                   "text": "new",
+  //                   "lemma": "new",
+  //                   "pos": "ADJ"
+  //               },
+  //               {
+  //                   "text": "sentence",
+  //                   "lemma": "sentence",
+  //                   "pos": "NOUN"
+  //               }
+  //           ]
+  //       }
+  //   ]
   // }
 
   // const fake_vocab = {
@@ -86,14 +86,16 @@ export default function TranslationsList() {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
+  const [includeTranslation, setIncludeTranslation] = useState(true);
+  const [includeVocab, setIncludeVocab] = useState(true);
 
   function clearSelection() {
     const sel = window.getSelection?.();
     if (!sel) return;
 
-    if (sel.removeAllRanges) sel.removeAllRanges();
-
-    if (sel.collapseToEnd) sel.collapseToEnd();
+    if (sel.rangeCount > 0 && sel.removeAllRanges) {
+      sel.removeAllRanges();
+    }
   }
 
   function closeMenu() {
@@ -174,6 +176,30 @@ export default function TranslationsList() {
     }
   }
 
+  function openSummaryWindow() {
+    if (!includeTranslation && !includeVocab) return;
+
+    const payload = {
+      createdAt: Date.now(),
+      includeTranslation,
+      includeVocab,
+      rows: sentences.map((s, idx) => ({
+        idx,
+        original: s.original ?? "",
+        translation: s.translation ?? "",
+        vocab: (s.vocab ?? []).filter((v) => v?.queried === true),
+      })),
+    };
+
+    const key = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    localStorage.setItem(`summary:${key}`, JSON.stringify(payload));
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("view", "summary");
+    url.searchParams.set("summaryKey", key);
+    window.open(url.toString(), "_blank");
+  }
+
   useEffect(() => {
     function onDocMouseDown(e) {
       if (!menuOpen) return;
@@ -193,20 +219,66 @@ export default function TranslationsList() {
         {sentences.map((s, idx) => (
           <li key={idx} data-idx={idx}>
             <div>
-              <Text type="secondary" strong>
-                Original:
+              <Text strong>
+                原文:
               </Text>{" "}
-              <Text type="secondary">{s.original}</Text>
+              <Text>{s.original}</Text>
             </div>
             <div className="select-none">
-              <Text strong>Translation:</Text> <Text>{s.translation}</Text>
+              <Text type="secondary" strong>翻譯:</Text> <Text type="secondary">{s.translation}</Text>
             </div>
 
             <VocabCards vocab={s.vocab} sentenceIdx={idx} onDelete={removeSentenceVocab} />
-            <Divider className="!my-4" />
+            <Divider className="my-4!" />
           </li>
         ))}
       </ol>
+      <div className="mt-2 bg-(--bg-main) rounded-2xl p-4 shadow-lg">
+        <Text strong>
+          How to look up怎麼查詢:
+        </Text>
+        <ol className="list-decimal pl-5 mt-1">
+          <li>
+            <Text>Select text in the Original sentence.選英文字</Text>
+          </li>
+          <li>
+            <Text>Wait for the menu to pop up.等選單出現</Text>
+          </li>
+          <li>
+            <Text>Tick the boxes you want.勾選要的項目</Text>
+          </li>
+          <li>
+            <Text>Click Look Up.按「查詢」</Text>
+          </li>
+        </ol>
+      </div>
+      <div className="flex gap-3 mt-4">
+        <div className="flex items-center">
+          <Checkbox
+            checked={includeTranslation}
+            onChange={(e) => setIncludeTranslation(e.target.checked)}
+          >
+            翻譯
+          </Checkbox>
+        </div>
+        <div className="flex items-center">
+          <Checkbox
+            checked={includeVocab}
+            onChange={(e) => setIncludeVocab(e.target.checked)}
+          >
+            單字筆記
+          </Checkbox>
+        </div>
+        <div>
+          <Button
+            type="primary"
+            disabled={!includeTranslation && !includeVocab}
+            onClick={openSummaryWindow}
+          >
+            彙整
+          </Button>
+        </div>
+      </div>
 
       <div
         onMouseUp={(e) => e.stopPropagation()}
