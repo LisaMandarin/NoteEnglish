@@ -40,3 +40,23 @@ body {
 h1, h2, h3 {
     font-family: var(--font-heading);
   }
+
+.summary-page {
+  font-family: "PingFang TC", "Heiti TC", "Microsoft JhengHei", "Noto Sans TC",
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+  @media print {
+    body {
+      background: white !important;
+    }
+
+    .summary-page {
+      background: white !important;
+    }
+
+    .summary-page .bg-\(--card-bg\) {
+      background: white !important;
+    }
+
+  }

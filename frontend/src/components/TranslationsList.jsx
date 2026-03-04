@@ -191,12 +191,9 @@ export default function TranslationsList() {
       })),
     };
 
-    const key = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    localStorage.setItem(`summary:${key}`, JSON.stringify(payload));
-
+    localStorage.setItem("latestSummary", JSON.stringify(payload));
     const url = new URL(window.location.href);
     url.searchParams.set("view", "summary");
-    url.searchParams.set("summaryKey", key);
     window.open(url.toString(), "_blank");
   }
 

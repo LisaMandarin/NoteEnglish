@@ -8,7 +8,7 @@ function MainPage() {
   return (
     <TranslationProvider>
       <div className="min-h-screen w-full px-6 py-10 sm:px-10">
-        <div className="rounded-[30px] bg-[var(--card-bg)] shadow-md border-4 border-[var(--card-border)]">
+        <div className="rounded-[30px] bg-(--card-bg) shadow-md border-4 border-(--card-border)">
           <div className="w-full m-0 px-12 py-10 box-border">
             <AppTitle title="NoteEnglish" />
             <AppTextarea />

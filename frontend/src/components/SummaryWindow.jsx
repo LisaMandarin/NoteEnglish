@@ -1,14 +1,10 @@
 import { useEffect, useMemo } from "react";
-import { Typography } from "antd";
+import { Button, Typography } from "antd";
 
 const { Text } = Typography;
 
 function readSummaryData() {
-  const params = new URLSearchParams(window.location.search);
-  const key = params.get("summaryKey");
-  if (!key) return null;
-
-  const raw = localStorage.getItem(`summary:${key}`);
+  const raw = localStorage.getItem("latestSummary");
   if (!raw) return null;
 
   try {
@@ -52,10 +48,20 @@ export default function SummaryWindow() {
   }
 
   return (
-    <div className="min-h-screen w-full px-6 py-10 sm:px-10">
+    <div className="summary-page min-h-screen w-full px-6 py-10 sm:px-10">
       <div className="rounded-[30px] bg-(--card-bg) shadow-md border-4 border-(--card-border)">
         <div className="w-full m-0 px-12 py-10 box-border">
           <h1 className="text-2xl font-bold mb-2">彙整結果</h1>
+          <Button
+            type="primary"
+            onClick={() => {
+              setTimeout(() => {
+                window.print();
+              }, 500);
+            }}
+          >
+            Print 列印
+          </Button>
           <div className="mb-6 text-sm opacity-80">{subtitle}</div>
 
           {data.rows?.length ? (
@@ -84,7 +90,7 @@ export default function SummaryWindow() {
                           {row.vocab.map((v, i) => (
                             <article
                               key={`${row.idx}-${v.lemma ?? v.text ?? "vocab"}-${v.pos ?? "unknown"}-${i}`}
-                              className="rounded-xl border border-(--card-border) bg-(--card-bg) p-3"
+                              className="rounded-xl bg-(--card-bg) p-3 border-[0.5px] border-(--card-border) "
                             >
                               <div>
                                 <span className="font-semibold">{v.lemma ?? v.text ?? "vocab"}</span> ({v.pos ?? "unknown"})
