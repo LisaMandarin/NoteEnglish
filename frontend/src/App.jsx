@@ -1,25 +1,36 @@
 import { useState } from "react";
 import { TranslationProvider } from "./context/translationContext";
-import AppTitle from "./components/AppTitle";
-import AppTextarea from "./components/AppTextarea";
-import TranslationsList from "./components/TranslationsList";
+import AppMainSection from "./components/AppMainSection";
+import AppSidebar from "./components/AppSidebar";
 import SummaryWindow from "./components/SummaryWindow";
 import LoginPage from "./components/LoginPage";
 
 function MainPage({ username }) {
+  const [activePanel, setActivePanel] = useState(null);
+  const isSidebarOpen = activePanel !== null;
+
+  function togglePanel(panelName) {
+    setActivePanel((currentPanel) =>
+      currentPanel === panelName ? null : panelName
+    );
+  }
+
   return (
     <TranslationProvider>
       <div className="min-h-screen w-full px-6 py-10 sm:px-10">
-        <div className="rounded-[30px] bg-(--card-bg) shadow-md border-4 border-(--card-border)">
-          <div className="w-full m-0 px-12 py-10 box-border">
-            <AppTitle title="NoteEnglish" username={username} />
-            <AppTextarea />
-
-            <div className="mt-6">
-              <h2 className="text-xl font-semibold mb-2">Translations</h2>
-              <TranslationsList />
-            </div>
-          </div>
+        <div
+          className="mx-auto grid max-w-7xl gap-5 transition-[grid-template-columns] duration-300 lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)]"
+          style={{
+            "--sidebar-width": isSidebarOpen ? "408px" : "88px",
+          }}
+        >
+          <AppSidebar
+            activePanel={activePanel}
+            isSidebarOpen={isSidebarOpen}
+            onTogglePanel={togglePanel}
+            username={username}
+          />
+          <AppMainSection />
         </div>
       </div>
     </TranslationProvider>

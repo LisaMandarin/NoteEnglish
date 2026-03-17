@@ -31,7 +31,7 @@ export default function LoginPage({ onLoginSuccess }) {
               Sign in to continue. Use the demo account below to access the app.
             </p>
 
-            <div className="mb-8 rounded-[20px] border-2 border-[color-mix(in_srgb,var(--card-border)_20%,transparent)] bg-[color:color-mix(in_srgb,white_50%,var(--card-bg))] px-5 py-4">
+            <div className="mb-8 rounded-[20px] border-2 border-[color-mix(in_srgb,var(--card-border)_20%,transparent)] bg-[color-mix(in_srgb,white_50%,var(--card-bg))] px-5 py-4">
               <p className="m-0 text-sm font-semibold">Demo Login</p>
               <p className="mt-3 mb-1 text-sm">Email: {DUMMY_EMAIL}</p>
               <p className="m-0 text-sm">Password: {DUMMY_PASSWORD}</p>
