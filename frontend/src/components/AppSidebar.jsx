@@ -1,5 +1,6 @@
 import {
   FolderOpenOutlined,
+  LogoutOutlined,
   SettingOutlined,
   UserOutlined,
 } from "@ant-design/icons";
@@ -23,7 +24,7 @@ const SIDEBAR_BUTTONS = [
   },
 ];
 
-function SidebarPanelContent({ activePanel, username }) {
+function SidebarPanelContent({ activePanel, username, email, onSignOut }) {
   if (activePanel === "profile") {
     return (
       <>
@@ -35,6 +36,14 @@ function SidebarPanelContent({ activePanel, username }) {
           Use this space for quick account details, shortcuts, or status notes
           while you work through your session history.
         </p>
+        <p className="mt-4 text-sm text-black/65">{email}</p>
+        <Button
+          icon={<LogoutOutlined aria-hidden="true" />}
+          onClick={onSignOut}
+          className="mt-5"
+        >
+          Sign out
+        </Button>
       </>
     );
   }
@@ -77,6 +86,8 @@ export default function AppSidebar({
   isSidebarOpen,
   onTogglePanel,
   username,
+  email,
+  onSignOut,
 }) {
   return (
     <aside className="flex min-h-[calc(100vh-5rem)] overflow-hidden rounded-[28px] bg-[color-mix(in_srgb,var(--accent)_16%,white)] shadow-sm">
@@ -122,7 +133,12 @@ export default function AppSidebar({
             isSidebarOpen ? "translate-x-0" : "-translate-x-8"
           }`}
         >
-          <SidebarPanelContent activePanel={activePanel} username={username} />
+          <SidebarPanelContent
+            activePanel={activePanel}
+            username={username}
+            email={email}
+            onSignOut={onSignOut}
+          />
         </div>
       </section>
     </aside>

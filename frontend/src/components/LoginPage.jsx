@@ -1,24 +1,104 @@
 import { useState } from "react";
 import { Button, Input } from "antd";
+import { supabase } from "../lib/supabase";
 
-const DUMMY_EMAIL = "testuser@example.com";
-const DUMMY_PASSWORD = "test1234";
+const PASSWORD_RULES_TEXT =
+  "Use only letters and numbers, with at least 5 characters.";
 
-export default function LoginPage({ onLoginSuccess }) {
+function validatePassword(password) {
+  return /^[A-Za-z0-9]{5,}$/.test(password);
+}
+
+function getValidationError({ mode, displayName, email, password, confirmPassword }) {
+  if (mode === "sign_up" && !displayName.trim()) {
+    return "Display name is required.";
+  }
+
+  if (!email.trim()) {
+    return "Email is required.";
+  }
+
+  if (!password.trim()) {
+    return "Password is required.";
+  }
+
+  if (mode === "sign_up" && !confirmPassword.trim()) {
+    return "Confirm password is required.";
+  }
+
+  if (mode === "sign_up" && !validatePassword(password)) {
+    return PASSWORD_RULES_TEXT;
+  }
+
+  if (mode === "sign_up" && password !== confirmPassword) {
+    return "Passwords do not match.";
+  }
+
+  return "";
+}
+
+export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState("sign_in");
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
+    setLoading(true);
+    setError("");
+    setMessage("");
 
-    if (email === DUMMY_EMAIL && password === DUMMY_PASSWORD) {
-      setError("");
-      onLoginSuccess(DUMMY_EMAIL.split("@")[0]);
-      return;
+    try {
+      const validationError = getValidationError({
+        mode,
+        displayName,
+        email,
+        password,
+        confirmPassword,
+      });
+
+      if (validationError) {
+        throw new Error(validationError);
+      }
+
+      if (mode === "sign_up") {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              display_name: displayName.trim(),
+            },
+          },
+        });
+
+        if (signUpError) throw signUpError;
+
+        setPassword("");
+        setConfirmPassword("");
+        setMode("sign_in");
+        setMessage(
+          "Account created. Check your email for the confirmation link before signing in."
+        );
+        return;
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) throw signInError;
+    } catch (authError) {
+      setError(authError?.message || "Authentication failed.");
+    } finally {
+      setLoading(false);
     }
-
-    setError("Invalid email or password.");
   }
 
   return (
@@ -28,16 +108,27 @@ export default function LoginPage({ onLoginSuccess }) {
           <div className="w-full m-0 px-8 py-10 box-border sm:px-12">
             <h1 className="mb-2 text-4xl">NoteEnglish</h1>
             <p className="mb-8 text-base text-black/70">
-              Sign in to continue. Use the demo account below to access the app.
+              {mode === "sign_in"
+                ? "Sign in to continue your saved sessions."
+                : "Create an account to save translations and vocabulary notes."}
             </p>
 
-            <div className="mb-8 rounded-[20px] border-2 border-[color-mix(in_srgb,var(--card-border)_20%,transparent)] bg-[color-mix(in_srgb,white_50%,var(--card-bg))] px-5 py-4">
-              <p className="m-0 text-sm font-semibold">Demo Login</p>
-              <p className="mt-3 mb-1 text-sm">Email: {DUMMY_EMAIL}</p>
-              <p className="m-0 text-sm">Password: {DUMMY_PASSWORD}</p>
-            </div>
-
             <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+              {mode === "sign_up" ? (
+                <label className="flex flex-col gap-2 text-[0.95rem] font-semibold">
+                  <span>Display Name</span>
+                  <Input
+                    allowClear
+                    className="rounded-2xl border border-black/15 bg-white text-inherit transition"
+                    value={displayName}
+                    onChange={(event) => setDisplayName(event.target.value)}
+                    placeholder="How should your name appear?"
+                    autoComplete="name"
+                    size="large"
+                  />
+                </label>
+              ) : null}
+
               <label className="flex flex-col gap-2 text-[0.95rem] font-semibold">
                 <span>Email</span>
                 <Input
@@ -60,17 +151,45 @@ export default function LoginPage({ onLoginSuccess }) {
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder="Enter your password"
-                  autoComplete="current-password"
+                  autoComplete={
+                    mode === "sign_in" ? "current-password" : "new-password"
+                  }
                   size="large"
                 />
               </label>
 
+              {mode === "sign_up" ? (
+                <>
+                  <label className="flex flex-col gap-2 text-[0.95rem] font-semibold">
+                    <span>Confirm Password</span>
+                    <Input.Password
+                      allowClear
+                      className="rounded-2xl border border-black/15 bg-white text-inherit transition"
+                      value={confirmPassword}
+                      onChange={(event) =>
+                        setConfirmPassword(event.target.value)
+                      }
+                      placeholder="Re-enter your password"
+                      autoComplete="new-password"
+                      size="large"
+                    />
+                  </label>
+                  <p className="m-0 text-sm text-black/65">
+                    {PASSWORD_RULES_TEXT}
+                  </p>
+                </>
+              ) : null}
+
               {error ? <p className="m-0 text-sm text-red-600">{error}</p> : null}
+              {message ? (
+                <p className="m-0 text-sm text-emerald-700">{message}</p>
+              ) : null}
 
               <Button
                 block
                 htmlType="submit"
                 size="large"
+                loading={loading}
                 style={{
                   backgroundColor: "var(--accent)",
                   color: "#ffffff",
@@ -78,7 +197,27 @@ export default function LoginPage({ onLoginSuccess }) {
                   height: "3.5rem",
                 }}
               >
-                Sign in
+                {mode === "sign_in" ? "Sign in" : "Create account"}
+              </Button>
+
+              <Button
+                block
+                type="default"
+                size="large"
+                disabled={loading}
+                onClick={() => {
+                  setError("");
+                  setMessage("");
+                  setPassword("");
+                  setConfirmPassword("");
+                  setMode((currentMode) =>
+                    currentMode === "sign_in" ? "sign_up" : "sign_in"
+                  );
+                }}
+              >
+                {mode === "sign_in"
+                  ? "Need an account? Sign up"
+                  : "Already registered? Sign in"}
               </Button>
             </form>
           </div>
