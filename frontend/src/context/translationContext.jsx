@@ -7,7 +7,8 @@ const TranslationContext = createContext(null);
 
 const initialState = {
   text: "I like apples.  I like bananas.\nThis is a new sentence.",
-  loading: false,
+  translating: false,
+  sessionLoading: false,
   saving: false,
   error: "",
   saveError: "",
@@ -19,6 +20,9 @@ const initialState = {
 const ACTIONS = {
   SET_TEXT: "set_text",
   CLEAR: "clear",
+  LOAD_SESSION_START: "load_session_start",
+  LOAD_SESSION_SUCCESS: "load_session_success",
+  LOAD_SESSION_ERROR: "load_session_error",
   TRANSLATE_START: "translate_start",
   TRANSLATE_SUCCESS: "translate_success",
   TRANLSATE_ERROR: "translate_error",
@@ -36,7 +40,12 @@ function reducer(state, action) {
         text: action.payload,
         saveError: "",
         lastSavedAt: null,
-        currentSession: null,
+        currentSession: state.currentSession
+          ? {
+              ...state.currentSession,
+              title: buildSessionTitle(action.payload),
+            }
+          : null,
       };
     case ACTIONS.CLEAR:
       return {
@@ -46,22 +55,47 @@ function reducer(state, action) {
         saveError: "",
         lastSavedAt: null,
         currentSession: null,
+        translating: false,
+        sessionLoading: false,
         sentences: [],
+      };
+    case ACTIONS.LOAD_SESSION_START:
+      return {
+        ...state,
+        sessionLoading: true,
+        error: "",
+        saveError: "",
+      };
+    case ACTIONS.LOAD_SESSION_SUCCESS:
+      return {
+        ...state,
+        sessionLoading: false,
+        error: "",
+        saveError: "",
+        text: action.payload?.text ?? "",
+        sentences: action.payload?.sentences ?? [],
+        currentSession: action.payload?.session ?? null,
+        lastSavedAt: action.payload?.lastSavedAt ?? null,
+      };
+    case ACTIONS.LOAD_SESSION_ERROR:
+      return {
+        ...state,
+        sessionLoading: false,
+        error: action.payload || "Could not load the saved session.",
       };
     case ACTIONS.TRANSLATE_START:
       return {
         ...state,
-        loading: true,
+        translating: true,
         error: "",
         saveError: "",
         lastSavedAt: null,
-        currentSession: null,
         sentences: [],
       };
     case ACTIONS.TRANSLATE_SUCCESS:
       return {
         ...state,
-        loading: false,
+        translating: false,
         error: "",
         saveError: "",
         sentences: action.payload ?? [],
@@ -69,7 +103,7 @@ function reducer(state, action) {
     case ACTIONS.TRANLSATE_ERROR:
       return {
         ...state,
-        loading: false,
+        translating: false,
         error: action.payload || "Request failed",
       };
     case ACTIONS.SAVE_START:
@@ -123,7 +157,6 @@ function reducer(state, action) {
         sentences: nextSentences,
         saveError: "",
         lastSavedAt: null,
-        currentSession: null,
       };
     }
 
@@ -152,7 +185,6 @@ function reducer(state, action) {
         sentences: nextSentences,
         saveError: "",
         lastSavedAt: null,
-        currentSession: null,
       };
     }
 
@@ -191,42 +223,34 @@ async function removeSessionArtifacts(sessionId) {
   await supabase.from("study_sessions").delete().eq("id", sessionId);
 }
 
-async function saveGeneratedProgress({ userId, text, sentences, dispatch }) {
-  if (!userId) {
+async function replaceSessionArtifacts({ sessionId, userId, sentences, dispatch }) {
+  const { error: deleteVocabError } = await supabase
+    .from("vocab_notes")
+    .delete()
+    .eq("session_id", sessionId)
+    .eq("user_id", userId);
+
+  if (deleteVocabError) {
     dispatch({
       type: ACTIONS.SAVE_ERROR,
-      payload: "You must be signed in to save progress.",
+      payload: deleteVocabError.message || "Could not replace vocabulary notes.",
     });
     return false;
   }
 
-  if (!text.trim() || !hasGeneratedTranslations(sentences)) {
-    return false;
-  }
+  const { error: deleteSentenceError } = await supabase
+    .from("session_sentences")
+    .delete()
+    .eq("session_id", sessionId)
+    .eq("user_id", userId);
 
-  dispatch({ type: ACTIONS.SAVE_START });
-
-  const sessionPayload = {
-    user_id: userId,
-    title: buildSessionTitle(text),
-    source_text: text,
-  };
-
-  const { data: sessionRow, error: sessionError } = await supabase
-    .from("study_sessions")
-    .insert(sessionPayload)
-    .select("id")
-    .single();
-
-  if (sessionError || !sessionRow?.id) {
+  if (deleteSentenceError) {
     dispatch({
       type: ACTIONS.SAVE_ERROR,
-      payload: sessionError?.message || "Could not create the study session.",
+      payload: deleteSentenceError.message || "Could not replace translated sentences.",
     });
     return false;
   }
-
-  const sessionId = sessionRow.id;
 
   const sentenceRows = sentences.map((sentence, index) => ({
     session_id: sessionId,
@@ -241,7 +265,6 @@ async function saveGeneratedProgress({ userId, text, sentences, dispatch }) {
     .insert(sentenceRows);
 
   if (sentenceError) {
-    await removeSessionArtifacts(sessionId);
     dispatch({
       type: ACTIONS.SAVE_ERROR,
       payload: sentenceError.message || "Could not save translated sentences.",
@@ -267,19 +290,105 @@ async function saveGeneratedProgress({ userId, text, sentences, dispatch }) {
       }))
   );
 
-  if (vocabRows.length > 0) {
-    const { error: vocabError } = await supabase
-      .from("vocab_notes")
-      .insert(vocabRows);
+  if (vocabRows.length === 0) return true;
 
-    if (vocabError) {
-      await removeSessionArtifacts(sessionId);
+  const { error: vocabError } = await supabase
+    .from("vocab_notes")
+    .insert(vocabRows);
+
+  if (vocabError) {
+    dispatch({
+      type: ACTIONS.SAVE_ERROR,
+      payload: vocabError.message || "Could not save vocabulary notes.",
+    });
+    return false;
+  }
+
+  return true;
+}
+
+async function saveGeneratedProgress({
+  userId,
+  text,
+  sentences,
+  dispatch,
+  existingSession,
+}) {
+  if (!userId) {
+    dispatch({
+      type: ACTIONS.SAVE_ERROR,
+      payload: "You must be signed in to save progress.",
+    });
+    return false;
+  }
+
+  if (!text.trim() || !hasGeneratedTranslations(sentences)) {
+    return false;
+  }
+
+  dispatch({ type: ACTIONS.SAVE_START });
+
+  const sessionPayload = {
+    user_id: userId,
+    title: buildSessionTitle(text),
+    source_text: text,
+  };
+
+  let sessionId = existingSession?.id ?? null;
+  let sessionCreatedAt = existingSession?.createdAt ?? null;
+
+  if (sessionId) {
+    const { data: updatedSessionRow, error: updateError } = await supabase
+      .from("study_sessions")
+      .update({
+        title: sessionPayload.title,
+        source_text: sessionPayload.source_text,
+      })
+      .eq("id", sessionId)
+      .eq("user_id", userId)
+      .select("id, created_at, updated_at")
+      .single();
+
+    if (updateError || !updatedSessionRow?.id) {
       dispatch({
         type: ACTIONS.SAVE_ERROR,
-        payload: vocabError.message || "Could not save vocabulary notes.",
+        payload: updateError?.message || "Could not update the study session.",
       });
       return false;
     }
+
+    sessionCreatedAt = updatedSessionRow.created_at ?? sessionCreatedAt;
+  } else {
+    const { data: sessionRow, error: sessionError } = await supabase
+      .from("study_sessions")
+      .insert(sessionPayload)
+      .select("id, created_at, updated_at")
+      .single();
+
+    if (sessionError || !sessionRow?.id) {
+      dispatch({
+        type: ACTIONS.SAVE_ERROR,
+        payload: sessionError?.message || "Could not create the study session.",
+      });
+      return false;
+    }
+
+    sessionId = sessionRow.id;
+    sessionCreatedAt = sessionRow.created_at ?? null;
+  }
+
+  const didReplace = await replaceSessionArtifacts({
+    sessionId,
+    userId,
+    sentences,
+    dispatch,
+  });
+
+  if (!didReplace) {
+    if (!existingSession?.id) {
+      await removeSessionArtifacts(sessionId);
+    }
+    return false;
   }
 
   dispatch({
@@ -289,12 +398,91 @@ async function saveGeneratedProgress({ userId, text, sentences, dispatch }) {
       session: {
         id: sessionId,
         title: sessionPayload.title,
-        createdAt: new Date().toISOString(),
+        createdAt: sessionCreatedAt ?? new Date().toISOString(),
         sentenceCount: sentences.length,
       },
     },
   });
   return true;
+}
+
+async function fetchSessionPayload({ userId, sessionId }) {
+  const { data: sessionRow, error: sessionError } = await supabase
+    .from("study_sessions")
+    .select("id, title, source_text, created_at, updated_at")
+    .eq("id", sessionId)
+    .eq("user_id", userId)
+    .single();
+
+  if (sessionError || !sessionRow) {
+    throw new Error(sessionError?.message || "Could not load the study session.");
+  }
+
+  const { data: sentenceRows, error: sentenceError } = await supabase
+    .from("session_sentences")
+    .select("sentence_index, original_text, translated_text")
+    .eq("session_id", sessionId)
+    .eq("user_id", userId)
+    .order("sentence_index", { ascending: true });
+
+  if (sentenceError) {
+    throw new Error(sentenceError.message || "Could not load saved translations.");
+  }
+
+  const { data: vocabRows, error: vocabError } = await supabase
+    .from("vocab_notes")
+    .select(
+      "sentence_index, selected_text, lemma, pos, translation, definition, example, level, queried"
+    )
+    .eq("session_id", sessionId)
+    .eq("user_id", userId)
+    .order("sentence_index", { ascending: true });
+
+  if (vocabError) {
+    throw new Error(vocabError.message || "Could not load saved vocabulary notes.");
+  }
+
+  const vocabBySentence = new Map();
+
+  for (const vocab of vocabRows ?? []) {
+    const sentenceIndex = vocab.sentence_index ?? 0;
+    const bucket = vocabBySentence.get(sentenceIndex) ?? [];
+
+    bucket.push({
+      text: vocab.selected_text ?? "",
+      lemma: vocab.lemma,
+      pos: vocab.pos,
+      translation: vocab.translation,
+      definition: vocab.definition,
+      example: vocab.example,
+      level: vocab.level,
+      queried: vocab.queried ?? true,
+    });
+
+    vocabBySentence.set(sentenceIndex, bucket);
+  }
+
+  const sentences = (sentenceRows ?? []).map((sentence) => ({
+    id: sentence.sentence_index,
+    original: sentence.original_text,
+    translation: sentence.translated_text,
+    vocab: vocabBySentence.get(sentence.sentence_index) ?? [],
+  }));
+
+  return {
+    text: sessionRow.source_text ?? "",
+    sentences,
+    session: {
+      id: sessionRow.id,
+      title:
+        sessionRow.title?.trim() ||
+        sessionRow.source_text?.trim()?.slice(0, 80) ||
+        "Untitled session",
+      createdAt: sessionRow.created_at,
+      sentenceCount: sentences.length,
+    },
+    lastSavedAt: sessionRow.updated_at ?? sessionRow.created_at ?? null,
+  };
 }
 
 export function TranslationProvider({ children, user }) {
@@ -325,6 +513,7 @@ export function TranslationProvider({ children, user }) {
           text: state.text,
           sentences: nextSentences,
           dispatch,
+          existingSession: state.currentSession,
         });
       } catch (e) {
         dispatch({ type: ACTIONS.TRANLSATE_ERROR, payload: e?.message });
@@ -337,6 +526,31 @@ export function TranslationProvider({ children, user }) {
 
     function clear() {
       dispatch({ type: ACTIONS.CLEAR });
+    }
+
+    async function loadSession(sessionId) {
+      if (!user?.id || !sessionId) {
+        dispatch({
+          type: ACTIONS.LOAD_SESSION_ERROR,
+          payload: "Could not load the saved session.",
+        });
+        return false;
+      }
+
+      dispatch({ type: ACTIONS.LOAD_SESSION_START });
+
+      try {
+        const payload = await fetchSessionPayload({
+          userId: user.id,
+          sessionId,
+        });
+
+        dispatch({ type: ACTIONS.LOAD_SESSION_SUCCESS, payload });
+        return true;
+      } catch (e) {
+        dispatch({ type: ACTIONS.LOAD_SESSION_ERROR, payload: e?.message });
+        return false;
+      }
     }
 
     function updateSentenceVocab(sentenceIdx, vocabItem) {
@@ -357,6 +571,7 @@ export function TranslationProvider({ children, user }) {
       translate,
       setText,
       clear,
+      loadSession,
       updateSentenceVocab,
       removeSentenceVocab,
     };

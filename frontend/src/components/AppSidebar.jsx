@@ -29,7 +29,8 @@ const SIDEBAR_BUTTONS = [
 
 function SidebarPanelContent({ activePanel, username, email, onSignOut, userId }) {
   const {
-    state: { currentSession, saving },
+    state: { currentSession, sessionLoading, saving },
+    actions: { loadSession },
   } = useTranslation();
   const [historyItems, setHistoryItems] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -68,7 +69,7 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut, userId }
     return () => {
       cancelled = true;
     };
-  }, [activePanel, currentSession?.id, userId]);
+  }, [activePanel, currentSession?.id, currentSession?.title, userId]);
 
   if (activePanel === "profile") {
     return (
@@ -126,6 +127,9 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut, userId }
           {saving ? (
             <p className="mt-3 m-0 text-sm text-black/70">Saving current session...</p>
           ) : null}
+          {sessionLoading ? (
+            <p className="mt-3 m-0 text-sm text-black/70">Opening saved session...</p>
+          ) : null}
           {historyLoading ? (
             <p className="mt-3 m-0 text-sm text-black/70">Loading session history...</p>
           ) : null}
@@ -147,9 +151,12 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut, userId }
                   "Untitled session";
 
                 return (
-                  <div
+                  <button
                     key={session.id}
-                    className="rounded-2xl border p-3"
+                    type="button"
+                    onClick={() => loadSession(session.id)}
+                    disabled={sessionLoading || saving}
+                    className="w-full rounded-2xl border p-3 text-left transition"
                     style={{
                       borderColor: isCurrent ? "var(--accent)" : "rgb(0 0 0 / 0.08)",
                       backgroundColor: isCurrent
@@ -169,7 +176,7 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut, userId }
                     <p className="mt-1 mb-0 text-sm text-black/55">
                       Updated {new Date(session.updated_at).toLocaleString()}
                     </p>
-                  </div>
+                  </button>
                 );
               })}
             </div>
