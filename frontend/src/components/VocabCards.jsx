@@ -13,7 +13,13 @@ import { DeleteTwoTone } from '@ant-design/icons';
 export default function VocabCards({ vocab, sentenceIdx, onDelete }) {
   const items = useMemo(() => {
     const list = Array.isArray(vocab) ? vocab : [];
-    return list.filter((v) => v?.queried === true);
+    return list.filter((v) => {
+      if (v?.queried !== true) return false;
+
+      return [v.translation, v.definition, v.example, v.level].some(
+        (value) => value != null && String(value).trim() !== ""
+      );
+    });
   }, [vocab]);
   const [open, setOpen] = useState(true);
 

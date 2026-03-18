@@ -5,6 +5,7 @@ import AppSidebar from "./components/AppSidebar";
 import SummaryWindow from "./components/SummaryWindow";
 import LoginPage from "./components/LoginPage";
 import { supabase } from "./lib/supabase";
+import { ensureProfile as ensureProfileApi } from "./lib/api";
 
 function getDisplayName(user) {
   const metadataName = user?.user_metadata?.display_name?.trim();
@@ -20,12 +21,7 @@ async function ensureProfile(user) {
   if (!user?.id) return;
 
   const displayName = getDisplayName(user);
-
-  await supabase.from("profiles").upsert({
-    id: user.id,
-    email: user.email ?? null,
-    display_name: displayName,
-  });
+  await ensureProfileApi(displayName);
 }
 
 function MainPage({ user, onSignOut }) {
@@ -40,7 +36,7 @@ function MainPage({ user, onSignOut }) {
   }
 
   return (
-    <TranslationProvider user={user}>
+    <TranslationProvider>
       <div className="min-h-screen w-full px-6 py-10 sm:px-10">
         <div
           className="mx-auto grid max-w-7xl gap-5 transition-[grid-template-columns] duration-300 lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)]"
@@ -52,7 +48,6 @@ function MainPage({ user, onSignOut }) {
             activePanel={activePanel}
             isSidebarOpen={isSidebarOpen}
             onTogglePanel={togglePanel}
-            userId={user?.id ?? ""}
             username={username}
             email={user?.email ?? ""}
             onSignOut={onSignOut}

@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from app.routes.test import router as test_router
 from app.routes.translate import router as translate_router
 from app.routes.vocab import router as vocab_router
+from app.routes.session import router as session_router
+from app.routes.profile import router as profile_router
 from app.core.config import settings
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -21,3 +23,5 @@ app.add_middleware(
 app.include_router(test_router, prefix="/api")
 app.include_router(translate_router, prefix="/api")
 app.include_router(vocab_router, prefix="/api")
+app.include_router(session_router, prefix="/api")
+app.include_router(profile_router, prefix="/api")

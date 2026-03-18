@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, useReducer } from "react";
-import { supabase } from "../lib/supabase";
+import { getSessionDetail, saveSession } from "../lib/api";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 
@@ -215,277 +215,50 @@ function buildSessionTitle(text) {
   return firstLine.slice(0, 80);
 }
 
-async function removeSessionArtifacts(sessionId) {
-  if (!sessionId) return;
-
-  await supabase.from("vocab_notes").delete().eq("session_id", sessionId);
-  await supabase.from("session_sentences").delete().eq("session_id", sessionId);
-  await supabase.from("study_sessions").delete().eq("id", sessionId);
-}
-
-async function replaceSessionArtifacts({ sessionId, userId, sentences, dispatch }) {
-  const { error: deleteVocabError } = await supabase
-    .from("vocab_notes")
-    .delete()
-    .eq("session_id", sessionId)
-    .eq("user_id", userId);
-
-  if (deleteVocabError) {
-    dispatch({
-      type: ACTIONS.SAVE_ERROR,
-      payload: deleteVocabError.message || "Could not replace vocabulary notes.",
-    });
-    return false;
-  }
-
-  const { error: deleteSentenceError } = await supabase
-    .from("session_sentences")
-    .delete()
-    .eq("session_id", sessionId)
-    .eq("user_id", userId);
-
-  if (deleteSentenceError) {
-    dispatch({
-      type: ACTIONS.SAVE_ERROR,
-      payload: deleteSentenceError.message || "Could not replace translated sentences.",
-    });
-    return false;
-  }
-
-  const sentenceRows = sentences.map((sentence, index) => ({
-    session_id: sessionId,
-    user_id: userId,
-    sentence_index: index,
-    original_text: sentence.original ?? "",
-    translated_text: sentence.translation ?? "",
-  }));
-
-  const { error: sentenceError } = await supabase
-    .from("session_sentences")
-    .insert(sentenceRows);
-
-  if (sentenceError) {
-    dispatch({
-      type: ACTIONS.SAVE_ERROR,
-      payload: sentenceError.message || "Could not save translated sentences.",
-    });
-    return false;
-  }
-
-  const vocabRows = sentences.flatMap((sentence, sentenceIndex) =>
-    (sentence.vocab ?? [])
-      .filter((vocab) => vocab?.queried === true && vocab?.lemma)
-      .map((vocab) => ({
-        session_id: sessionId,
-        user_id: userId,
-        sentence_index: sentenceIndex,
-        selected_text: vocab.text ?? null,
-        lemma: vocab.lemma,
-        pos: vocab.pos ?? null,
-        translation: vocab.translation ?? null,
-        definition: vocab.definition ?? null,
-        example: vocab.example ?? null,
-        level: vocab.level ?? null,
-        queried: vocab.queried ?? true,
-      }))
-  );
-
-  if (vocabRows.length === 0) return true;
-
-  const { error: vocabError } = await supabase
-    .from("vocab_notes")
-    .insert(vocabRows);
-
-  if (vocabError) {
-    dispatch({
-      type: ACTIONS.SAVE_ERROR,
-      payload: vocabError.message || "Could not save vocabulary notes.",
-    });
-    return false;
-  }
-
-  return true;
-}
-
 async function saveGeneratedProgress({
-  userId,
   text,
   sentences,
   dispatch,
   existingSession,
 }) {
-  if (!userId) {
-    dispatch({
-      type: ACTIONS.SAVE_ERROR,
-      payload: "You must be signed in to save progress.",
-    });
-    return false;
-  }
-
   if (!text.trim() || !hasGeneratedTranslations(sentences)) {
     return false;
   }
 
   dispatch({ type: ACTIONS.SAVE_START });
-
-  const sessionPayload = {
-    user_id: userId,
-    title: buildSessionTitle(text),
-    source_text: text,
-  };
-
-  let sessionId = existingSession?.id ?? null;
-  let sessionCreatedAt = existingSession?.createdAt ?? null;
-
-  if (sessionId) {
-    const { data: updatedSessionRow, error: updateError } = await supabase
-      .from("study_sessions")
-      .update({
-        title: sessionPayload.title,
-        source_text: sessionPayload.source_text,
-      })
-      .eq("id", sessionId)
-      .eq("user_id", userId)
-      .select("id, created_at, updated_at")
-      .single();
-
-    if (updateError || !updatedSessionRow?.id) {
-      dispatch({
-        type: ACTIONS.SAVE_ERROR,
-        payload: updateError?.message || "Could not update the study session.",
-      });
-      return false;
-    }
-
-    sessionCreatedAt = updatedSessionRow.created_at ?? sessionCreatedAt;
-  } else {
-    const { data: sessionRow, error: sessionError } = await supabase
-      .from("study_sessions")
-      .insert(sessionPayload)
-      .select("id, created_at, updated_at")
-      .single();
-
-    if (sessionError || !sessionRow?.id) {
-      dispatch({
-        type: ACTIONS.SAVE_ERROR,
-        payload: sessionError?.message || "Could not create the study session.",
-      });
-      return false;
-    }
-
-    sessionId = sessionRow.id;
-    sessionCreatedAt = sessionRow.created_at ?? null;
-  }
-
-  const didReplace = await replaceSessionArtifacts({
-    sessionId,
-    userId,
-    sentences,
-    dispatch,
-  });
-
-  if (!didReplace) {
-    if (!existingSession?.id) {
-      await removeSessionArtifacts(sessionId);
-    }
-    return false;
-  }
-
-  dispatch({
-    type: ACTIONS.SAVE_SUCCESS,
-    payload: {
-      savedAt: Date.now(),
-      session: {
-        id: sessionId,
-        title: sessionPayload.title,
-        createdAt: sessionCreatedAt ?? new Date().toISOString(),
-        sentenceCount: sentences.length,
-      },
-    },
-  });
-  return true;
-}
-
-async function fetchSessionPayload({ userId, sessionId }) {
-  const { data: sessionRow, error: sessionError } = await supabase
-    .from("study_sessions")
-    .select("id, title, source_text, created_at, updated_at")
-    .eq("id", sessionId)
-    .eq("user_id", userId)
-    .single();
-
-  if (sessionError || !sessionRow) {
-    throw new Error(sessionError?.message || "Could not load the study session.");
-  }
-
-  const { data: sentenceRows, error: sentenceError } = await supabase
-    .from("session_sentences")
-    .select("sentence_index, original_text, translated_text")
-    .eq("session_id", sessionId)
-    .eq("user_id", userId)
-    .order("sentence_index", { ascending: true });
-
-  if (sentenceError) {
-    throw new Error(sentenceError.message || "Could not load saved translations.");
-  }
-
-  const { data: vocabRows, error: vocabError } = await supabase
-    .from("vocab_notes")
-    .select(
-      "sentence_index, selected_text, lemma, pos, translation, definition, example, level, queried"
-    )
-    .eq("session_id", sessionId)
-    .eq("user_id", userId)
-    .order("sentence_index", { ascending: true });
-
-  if (vocabError) {
-    throw new Error(vocabError.message || "Could not load saved vocabulary notes.");
-  }
-
-  const vocabBySentence = new Map();
-
-  for (const vocab of vocabRows ?? []) {
-    const sentenceIndex = vocab.sentence_index ?? 0;
-    const bucket = vocabBySentence.get(sentenceIndex) ?? [];
-
-    bucket.push({
-      text: vocab.selected_text ?? "",
-      lemma: vocab.lemma,
-      pos: vocab.pos,
-      translation: vocab.translation,
-      definition: vocab.definition,
-      example: vocab.example,
-      level: vocab.level,
-      queried: vocab.queried ?? true,
+  try {
+    const result = await saveSession({
+      sessionId: existingSession?.id ?? null,
+      text,
+      sentences,
     });
 
-    vocabBySentence.set(sentenceIndex, bucket);
+    dispatch({
+      type: ACTIONS.SAVE_SUCCESS,
+      payload: {
+        savedAt: result?.saved_at ? Date.parse(result.saved_at) : Date.now(),
+        session: result?.session
+          ? {
+              id: result.session.id,
+              title: result.session.title,
+              createdAt: result.session.created_at,
+              updatedAt: result.session.updated_at,
+              sentenceCount: sentences.length,
+            }
+          : null,
+      },
+    });
+    return true;
+  } catch (error) {
+    dispatch({
+      type: ACTIONS.SAVE_ERROR,
+      payload: error?.message || "Could not save progress.",
+    });
+    return false;
   }
-
-  const sentences = (sentenceRows ?? []).map((sentence) => ({
-    id: sentence.sentence_index,
-    original: sentence.original_text,
-    translation: sentence.translated_text,
-    vocab: vocabBySentence.get(sentence.sentence_index) ?? [],
-  }));
-
-  return {
-    text: sessionRow.source_text ?? "",
-    sentences,
-    session: {
-      id: sessionRow.id,
-      title:
-        sessionRow.title?.trim() ||
-        sessionRow.source_text?.trim()?.slice(0, 80) ||
-        "Untitled session",
-      createdAt: sessionRow.created_at,
-      sentenceCount: sentences.length,
-    },
-    lastSavedAt: sessionRow.updated_at ?? sessionRow.created_at ?? null,
-  };
 }
 
-export function TranslationProvider({ children, user }) {
+export function TranslationProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   const actions = useMemo(() => {
@@ -509,7 +282,6 @@ export function TranslationProvider({ children, user }) {
 
         dispatch({ type: ACTIONS.TRANSLATE_SUCCESS, payload: nextSentences });
         await saveGeneratedProgress({
-          userId: user?.id,
           text: state.text,
           sentences: nextSentences,
           dispatch,
@@ -529,7 +301,7 @@ export function TranslationProvider({ children, user }) {
     }
 
     async function loadSession(sessionId) {
-      if (!user?.id || !sessionId) {
+      if (!sessionId) {
         dispatch({
           type: ACTIONS.LOAD_SESSION_ERROR,
           payload: "Could not load the saved session.",
@@ -540,12 +312,27 @@ export function TranslationProvider({ children, user }) {
       dispatch({ type: ACTIONS.LOAD_SESSION_START });
 
       try {
-        const payload = await fetchSessionPayload({
-          userId: user.id,
-          sessionId,
-        });
+        const payload = await getSessionDetail(sessionId);
 
-        dispatch({ type: ACTIONS.LOAD_SESSION_SUCCESS, payload });
+        dispatch({
+          type: ACTIONS.LOAD_SESSION_SUCCESS,
+          payload: {
+            text: payload?.text ?? "",
+            sentences: payload?.sentences ?? [],
+            session: payload?.session
+              ? {
+                  id: payload.session.id,
+                  title: payload.session.title,
+                  createdAt: payload.session.created_at,
+                  updatedAt: payload.session.updated_at,
+                  sentenceCount: (payload.sentences ?? []).length,
+                }
+              : null,
+            lastSavedAt: payload?.last_saved_at
+              ? Date.parse(payload.last_saved_at)
+              : null,
+          },
+        });
         return true;
       } catch (e) {
         dispatch({ type: ACTIONS.LOAD_SESSION_ERROR, payload: e?.message });
@@ -575,7 +362,7 @@ export function TranslationProvider({ children, user }) {
       updateSentenceVocab,
       removeSentenceVocab,
     };
-  }, [state.sentences, state.text, user?.id]);
+  }, [state.currentSession, state.text]);
 
   const value = useMemo(() => ({ state, actions }), [state, actions]);
 

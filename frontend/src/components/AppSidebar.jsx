@@ -7,7 +7,7 @@ import {
 } from "@ant-design/icons";
 import { Button } from "antd";
 import { useTranslation } from "../context/translationContext";
-import { supabase } from "../lib/supabase";
+import { listSessions } from "../lib/api";
 
 const SIDEBAR_BUTTONS = [
   {
@@ -27,7 +27,7 @@ const SIDEBAR_BUTTONS = [
   },
 ];
 
-function SidebarPanelContent({ activePanel, username, email, onSignOut, userId }) {
+function SidebarPanelContent({ activePanel, username, email, onSignOut }) {
   const {
     state: { currentSession, sessionLoading, saving },
     actions: { loadSession },
@@ -37,7 +37,7 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut, userId }
   const [historyError, setHistoryError] = useState("");
 
   useEffect(() => {
-    if (activePanel !== "history" || !userId) return;
+    if (activePanel !== "history") return;
 
     let cancelled = false;
 
@@ -45,23 +45,19 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut, userId }
       setHistoryLoading(true);
       setHistoryError("");
 
-      const { data, error } = await supabase
-        .from("study_sessions")
-        .select("id, title, source_text, created_at, updated_at")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
-
-      if (cancelled) return;
-
-      if (error) {
-        setHistoryError(error.message || "Could not load session history.");
+      try {
+        const data = await listSessions();
+        if (cancelled) return;
+        setHistoryItems(data ?? []);
+      } catch (error) {
+        if (cancelled) return;
+        setHistoryError(error?.message || "Could not load session history.");
         setHistoryItems([]);
-        setHistoryLoading(false);
-        return;
+      } finally {
+        if (!cancelled) {
+          setHistoryLoading(false);
+        }
       }
-
-      setHistoryItems(data ?? []);
-      setHistoryLoading(false);
     }
 
     loadHistory();
@@ -69,7 +65,7 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut, userId }
     return () => {
       cancelled = true;
     };
-  }, [activePanel, currentSession?.id, currentSession?.title, userId]);
+  }, [activePanel, currentSession?.id, currentSession?.title, currentSession?.updatedAt]);
 
   if (activePanel === "profile") {
     return (
@@ -163,19 +159,16 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut, userId }
                         ? "color-mix(in srgb, var(--accent) 10%, white)"
                         : "rgb(255 255 255 / 0.78)",
                     }}
-                  >
+                    >
                     <p className="m-0 text-base font-semibold text-black/85">{title}</p>
-                    {isCurrent ? (
-                      <p className="mt-1 mb-0 text-xs font-semibold uppercase tracking-[0.18em] text-(--accent)">
-                        Current
-                      </p>
-                    ) : null}
-                    <p className="mt-2 mb-0 text-sm text-black/65">
-                      Created {new Date(session.created_at).toLocaleString()}
-                    </p>
-                    <p className="mt-1 mb-0 text-sm text-black/55">
-                      Updated {new Date(session.updated_at).toLocaleString()}
-                    </p>
+                    <div className="mt-2 space-y-0.5 text-xs leading-tight">
+                      <div className="text-black/65">
+                        Created {new Date(session.created_at).toLocaleString()}
+                      </div>
+                      <div className="text-black/55">
+                        Updated {new Date(session.updated_at).toLocaleString()}
+                      </div>
+                    </div>
                   </button>
                 );
               })}
@@ -193,7 +186,6 @@ export default function AppSidebar({
   activePanel,
   isSidebarOpen,
   onTogglePanel,
-  userId,
   username,
   email,
   onSignOut,
@@ -244,7 +236,6 @@ export default function AppSidebar({
         >
           <SidebarPanelContent
             activePanel={activePanel}
-            userId={userId}
             username={username}
             email={email}
             onSignOut={onSignOut}

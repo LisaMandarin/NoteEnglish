@@ -26,6 +26,7 @@ You can paste a passage, get sentence-by-sentence translation, look up selected 
 - Data flow:
   - `POST /api/translate` for sentence translations + base vocab list.
   - `POST /api/vocab/detail` for selected vocab enrichment (with backend in-memory cache).
+  - Authenticated backend APIs for profiles and saved study sessions.
 
 ## Project Structure
 ```text
@@ -52,6 +53,9 @@ Create `backend/.env`:
 GEMINI_API_KEY=your_key_here
 FRONTEND_ORIGIN=http://localhost:5173
 GEMINI_MODEL=gemini-2.5-flash
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ```
 
 Run:
@@ -91,6 +95,10 @@ This app expects these Supabase tables:
 - `POST /api/debug/split`: inspect sentence splitting result.
 - `POST /api/translate`: translate text and return sentence list with base vocab.
 - `POST /api/vocab/detail`: fetch selected vocab details by requested fields.
+- `POST /api/profile/ensure`: ensure the signed-in user's profile row exists.
+- `GET /api/sessions`: list the signed-in user's saved sessions.
+- `GET /api/sessions/{id}`: load one saved session.
+- `POST /api/sessions/save`: create or update one saved session.
 
 ## Usage Flow
 1. Paste a passage and click `Translate`.
@@ -132,6 +140,7 @@ NoteEnglish 句句通是給英語學習者的雙語學習工具。
 - API 流程：
   - `POST /api/translate`：回傳逐句翻譯與基礎單字
   - `POST /api/vocab/detail`：依勾選欄位補齊單字細節（後端含記憶體快取）
+  - 驗證後的後端 API：處理個人資料與已儲存的學習紀錄
 
 ### 專案結構
 ```text
@@ -158,6 +167,9 @@ poetry install
 GEMINI_API_KEY=your_key_here
 FRONTEND_ORIGIN=http://localhost:5173
 GEMINI_MODEL=gemini-2.5-flash
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ```
 
 啟動：
@@ -190,6 +202,10 @@ npm run dev
 - `POST /api/debug/split`：查看斷句結果
 - `POST /api/translate`：翻譯文字並回傳逐句資料與基礎單字
 - `POST /api/vocab/detail`：查詢指定單字欄位細節
+- `POST /api/profile/ensure`：建立或更新登入使用者的 profile
+- `GET /api/sessions`：列出登入使用者的所有學習紀錄
+- `GET /api/sessions/{id}`：載入單一學習紀錄
+- `POST /api/sessions/save`：建立或更新學習紀錄
 
 ### 使用流程
 1. 貼上一段文字，按 `Translate`。
@@ -201,3 +217,4 @@ npm run dev
 ### 備註
 - 後端單字快取為記憶體快取，重啟服務後會清空。
 - `GEMINI_API_KEY` 為翻譯與單字細節查詢必要設定。
+- 儲存學習紀錄的後端 API 也需要設定 Supabase 相關環境變數。
