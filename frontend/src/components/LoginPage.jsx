@@ -4,6 +4,10 @@ import { supabase } from "../lib/supabase";
 
 const PASSWORD_RULES_TEXT =
   "Use only letters and numbers, with at least 5 characters.";
+const DEMO_CREDENTIALS = {
+  email: "testuser@example.com",
+  password: "test1234",
+};
 
 function validatePassword(password) {
   return /^[A-Za-z0-9]{5,}$/.test(password);
@@ -46,6 +50,13 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState("sign_in");
+
+  function fillDemoCredentials() {
+    setEmail(DEMO_CREDENTIALS.email);
+    setPassword(DEMO_CREDENTIALS.password);
+    setError("");
+    setMessage("");
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -112,6 +123,41 @@ export default function LoginPage() {
                 ? "Sign in to continue your saved sessions."
                 : "Create an account to save translations and vocabulary notes."}
             </p>
+
+            {mode === "sign_in" ? (
+              <div className="mb-8 rounded-3xl border border-black/10 bg-black/[0.03] px-5 py-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="space-y-1">
+                    <p className="m-0 text-sm font-semibold uppercase tracking-[0.18em] text-black/55">
+                      Demo Access
+                    </p>
+                    <p className="m-0 text-sm text-black/75">
+                      Try the product with the demo account.
+                    </p>
+                    <p className="m-0 text-sm text-black/75">
+                      Email:{" "}
+                      <span className="font-semibold">
+                        {DEMO_CREDENTIALS.email}
+                      </span>
+                    </p>
+                    <p className="m-0 text-sm text-black/75">
+                      Password:{" "}
+                      <span className="font-semibold">
+                        {DEMO_CREDENTIALS.password}
+                      </span>
+                    </p>
+                  </div>
+
+                  <Button
+                    size="large"
+                    disabled={loading}
+                    onClick={fillDemoCredentials}
+                  >
+                    Use demo account
+                  </Button>
+                </div>
+              </div>
+            ) : null}
 
             <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
               {mode === "sign_up" ? (
