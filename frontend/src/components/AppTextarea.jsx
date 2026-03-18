@@ -5,7 +5,7 @@ const { TextArea } = Input
 
 export default function AppTextarea() {
     const {
-        state: {text, loading, error},
+        state: {text, loading, saving, error, saveError, lastSavedAt},
         actions: {translate, setText, clear}
     } = useTranslation()
 
@@ -27,12 +27,12 @@ export default function AppTextarea() {
               <Button
                 type="primary"
                 onClick={translate}
-                loading={loading}
+                loading={loading || saving}
               >
-                Translate
+                {saving ? "Saving..." : "Translate"}
               </Button>
 
-              <Button onClick={clear} disabled={loading}>
+              <Button onClick={clear} disabled={loading || saving}>
                 Clear
               </Button>
             </div>
@@ -49,6 +49,22 @@ export default function AppTextarea() {
                 className="mb-4"
               />
             )}
+
+            {saveError && (
+              <Alert
+                type="error"
+                showIcon
+                message="Save failed"
+                description={saveError}
+                className="mb-4"
+              />
+            )}
+
+            {lastSavedAt ? (
+              <Text type="secondary">
+                Translation saved at {new Date(lastSavedAt).toLocaleString()}
+              </Text>
+            ) : null}
         </>
     )
 }

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   FolderOpenOutlined,
   LogoutOutlined,
@@ -5,6 +6,8 @@ import {
   UserOutlined,
 } from "@ant-design/icons";
 import { Button } from "antd";
+import { useTranslation } from "../context/translationContext";
+import { supabase } from "../lib/supabase";
 
 const SIDEBAR_BUTTONS = [
   {
@@ -24,7 +27,49 @@ const SIDEBAR_BUTTONS = [
   },
 ];
 
-function SidebarPanelContent({ activePanel, username, email, onSignOut }) {
+function SidebarPanelContent({ activePanel, username, email, onSignOut, userId }) {
+  const {
+    state: { currentSession, saving },
+  } = useTranslation();
+  const [historyItems, setHistoryItems] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+
+  useEffect(() => {
+    if (activePanel !== "history" || !userId) return;
+
+    let cancelled = false;
+
+    async function loadHistory() {
+      setHistoryLoading(true);
+      setHistoryError("");
+
+      const { data, error } = await supabase
+        .from("study_sessions")
+        .select("id, title, source_text, created_at, updated_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+
+      if (cancelled) return;
+
+      if (error) {
+        setHistoryError(error.message || "Could not load session history.");
+        setHistoryItems([]);
+        setHistoryLoading(false);
+        return;
+      }
+
+      setHistoryItems(data ?? []);
+      setHistoryLoading(false);
+    }
+
+    loadHistory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activePanel, currentSession?.id, userId]);
+
   if (activePanel === "profile") {
     return (
       <>
@@ -74,6 +119,62 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut }) {
           Use this area to list saved sessions, organize folders, and jump back
           into earlier translation drafts.
         </p>
+        <div className="mt-6 rounded-3xl border border-black/10 bg-white/70 p-4">
+          <p className="m-0 text-xs font-semibold uppercase tracking-[0.18em] text-black/45">
+            Your Sessions
+          </p>
+          {saving ? (
+            <p className="mt-3 m-0 text-sm text-black/70">Saving current session...</p>
+          ) : null}
+          {historyLoading ? (
+            <p className="mt-3 m-0 text-sm text-black/70">Loading session history...</p>
+          ) : null}
+          {historyError ? (
+            <p className="mt-3 m-0 text-sm text-red-600">{historyError}</p>
+          ) : null}
+          {!historyLoading && !historyError && historyItems.length === 0 ? (
+            <p className="mt-3 m-0 text-sm text-black/70">
+              No saved sessions for this account yet.
+            </p>
+          ) : null}
+          {!historyLoading && !historyError && historyItems.length > 0 ? (
+            <div className="mt-3 space-y-3">
+              {historyItems.map((session) => {
+                const isCurrent = session.id === currentSession?.id;
+                const title =
+                  session.title?.trim() ||
+                  session.source_text?.trim()?.slice(0, 80) ||
+                  "Untitled session";
+
+                return (
+                  <div
+                    key={session.id}
+                    className="rounded-2xl border p-3"
+                    style={{
+                      borderColor: isCurrent ? "var(--accent)" : "rgb(0 0 0 / 0.08)",
+                      backgroundColor: isCurrent
+                        ? "color-mix(in srgb, var(--accent) 10%, white)"
+                        : "rgb(255 255 255 / 0.78)",
+                    }}
+                  >
+                    <p className="m-0 text-base font-semibold text-black/85">{title}</p>
+                    {isCurrent ? (
+                      <p className="mt-1 mb-0 text-xs font-semibold uppercase tracking-[0.18em] text-(--accent)">
+                        Current
+                      </p>
+                    ) : null}
+                    <p className="mt-2 mb-0 text-sm text-black/65">
+                      Created {new Date(session.created_at).toLocaleString()}
+                    </p>
+                    <p className="mt-1 mb-0 text-sm text-black/55">
+                      Updated {new Date(session.updated_at).toLocaleString()}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
       </>
     );
   }
@@ -85,6 +186,7 @@ export default function AppSidebar({
   activePanel,
   isSidebarOpen,
   onTogglePanel,
+  userId,
   username,
   email,
   onSignOut,
@@ -135,6 +237,7 @@ export default function AppSidebar({
         >
           <SidebarPanelContent
             activePanel={activePanel}
+            userId={userId}
             username={username}
             email={email}
             onSignOut={onSignOut}

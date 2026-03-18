@@ -79,6 +79,13 @@ Run:
 npm run dev
 ```
 
+### 3) Supabase
+This app expects these Supabase tables:
+- `profiles`
+- `study_sessions`
+- `session_sentences`
+- `vocab_notes`
+
 ## API Endpoints
 - `GET /api/health`: health check.
 - `POST /api/debug/split`: inspect sentence splitting result.

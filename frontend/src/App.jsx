@@ -40,7 +40,7 @@ function MainPage({ user, onSignOut }) {
   }
 
   return (
-    <TranslationProvider>
+    <TranslationProvider user={user}>
       <div className="min-h-screen w-full px-6 py-10 sm:px-10">
         <div
           className="mx-auto grid max-w-7xl gap-5 transition-[grid-template-columns] duration-300 lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)]"
@@ -52,6 +52,7 @@ function MainPage({ user, onSignOut }) {
             activePanel={activePanel}
             isSidebarOpen={isSidebarOpen}
             onTogglePanel={togglePanel}
+            userId={user?.id ?? ""}
             username={username}
             email={user?.email ?? ""}
             onSignOut={onSignOut}
