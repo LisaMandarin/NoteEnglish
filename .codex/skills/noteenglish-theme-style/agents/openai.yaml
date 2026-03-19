@@ -1,0 +1,4 @@
+interface:
+  display_name: "NoteEnglish Theme Style"
+  short_description: "Preserve NoteEnglish frontend theme conventions"
+  default_prompt: "Use $noteenglish-theme-style to keep this UI change aligned with the existing NoteEnglish theme."

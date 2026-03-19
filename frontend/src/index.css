@@ -1,15 +1,20 @@
 @import "tailwindcss";
 
 :root {
+  /* Primary page background color */
   --bg-main: #b8d9dc;
+  /* Background color for card surfaces */
   --card-bg: #f3fafa;
+  /* Border color used around cards */
   --card-border: #183939;
+  /* Default text color across the app */
   --text-main: #1f2933;
+  /* Accent color for highlights and emphasis */
   --accent: #0f5f5c;
+  /* Base font stack for body text */
   --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Serif font for headings */
   --font-heading: "Playfair Display", serif;
-  line-height: 1.5;
-  font-weight: 400;
   color: var(--text-main);
 
   font-synthesis: none;
@@ -42,6 +47,7 @@ h1, h2, h3 {
     font-family: var(--font-heading);
   }
 
+/* Use Traditional Chinese-friendly fonts for generated summary content */
 .summary-page {
   font-family: "PingFang TC", "Heiti TC", "Microsoft JhengHei", "Noto Sans TC",
     system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;

@@ -21,8 +21,8 @@ export default function SelectionMenu({ open, x, y, options, setOptions, onLookU
       style={{ position: "fixed", left: x, top: y, zIndex: 9999 }}
       className="select-none"
     >
-      <div className="w-65 rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] shadow-lg p-3">
-        <div className="mb-2 text-sm font-semibold text-[var(--text-main)]">
+      <div className="w-65 rounded-2xl border border-(--card-border) bg-(--card-bg) shadow-lg p-3">
+        <div className="mb-2 text-sm font-semibold text-(--text-main)">
           查單字選項
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -38,7 +38,7 @@ export default function SelectionMenu({ open, x, y, options, setOptions, onLookU
                   type="checkbox"
                   checked={checked}
                   onChange={() => toggle(item.value)}
-                  className="h-4 w-4 accent-[var(--card-border)]"
+                  className="h-4 w-4 accent-(--card-border)"
                 />
                 <span className="text-sm">{item.label}</span>
               </label>
@@ -52,14 +52,14 @@ export default function SelectionMenu({ open, x, y, options, setOptions, onLookU
                 onClick={onLookUp}
                 loading={loading}
                 disabled={loading}
-                className="flex-1 rounded-xl !bg-[var(--card-border)] !border-[var(--card-border)] !text-white"
+                className="flex-1 rounded-xl bg-(--card-border)! border-(--card-border)! text-white!"
             >
                 查單字
             </Button>
             <Button
                 onClick={onCancel}
                 disabled={loading}
-                className="flex-1 rounded-xl !border-[var(--card-border)] !text-[var(--text-main)]"
+                className="flex-1 rounded-xl border-(--card-border)! text-(--text-main)!"
             >
                 取消
             </Button>
