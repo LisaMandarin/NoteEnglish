@@ -51,7 +51,7 @@ poetry install
 Create `backend/.env`:
 ```env
 GEMINI_API_KEY=your_key_here
-FRONTEND_ORIGIN=http://localhost:5173
+FRONTEND_ORIGINS=http://localhost:5173
 GEMINI_MODEL=gemini-2.5-flash
 SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
@@ -89,6 +89,25 @@ This app expects these Supabase tables:
 - `study_sessions`
 - `session_sentences`
 - `vocab_notes`
+
+### 4) Deploy Backend to Render
+This repo includes `render.yaml` for the backend service.
+
+Recommended Render env vars:
+```env
+FRONTEND_ORIGINS=https://note-english-gbysku9hc-lisas-projects-8870c4b9.vercel.app
+GEMINI_API_KEY=your_key_here
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+```
+
+Notes:
+- Render should deploy from the repo root using `render.yaml`.
+- The backend service runs from `backend/`.
+- Health check path: `/api/health`.
+- `FRONTEND_ORIGINS` accepts multiple comma-separated origins.
+- For production, keep `FRONTEND_ORIGINS` to the deployed frontend domain only. Use `backend/.env` for local `http://localhost:5173`.
 
 ## API Endpoints
 - `GET /api/health`: health check.
@@ -165,7 +184,7 @@ poetry install
 建立 `backend/.env`：
 ```env
 GEMINI_API_KEY=your_key_here
-FRONTEND_ORIGIN=http://localhost:5173
+FRONTEND_ORIGINS=http://localhost:5173
 GEMINI_MODEL=gemini-2.5-flash
 SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
@@ -206,6 +225,25 @@ npm run dev
 - `GET /api/sessions`：列出登入使用者的所有學習紀錄
 - `GET /api/sessions/{id}`：載入單一學習紀錄
 - `POST /api/sessions/save`：建立或更新學習紀錄
+
+### Render 部署後端
+專案根目錄已加入 `render.yaml`，可直接拿來建立 Render Web Service。
+
+建議在 Render 設定以下環境變數：
+```env
+FRONTEND_ORIGINS=https://note-english-gbysku9hc-lisas-projects-8870c4b9.vercel.app
+GEMINI_API_KEY=your_key_here
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+```
+
+備註：
+- Render 會從 repo root 讀取 `render.yaml`
+- backend 服務實際執行目錄是 `backend/`
+- 健康檢查路徑請用 `/api/health`
+- `FRONTEND_ORIGINS` 可用逗號分隔多個來源
+- 正式環境建議只放正式前端網域；本機開發的 `http://localhost:5173` 請放在 `backend/.env`
 
 ### 使用流程
 1. 貼上一段文字，按 `Translate`。

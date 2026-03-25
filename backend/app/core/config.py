@@ -5,13 +5,20 @@ from dotenv import load_dotenv
 # Load backend/.env explicitly so config works regardless of the current working directory.
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
+
+def _parse_origins(value: str) -> list[str]:
+    return [origin.strip() for origin in value.split(",") if origin.strip()]
+
+
 class Settings:
     # Basic app metadata.
     app_title: str = "NoteEnglish API"
     app_version: str = "0.1.0"
 
-    # CORS: allowed frontend origin.
-    frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+    # CORS: allowed frontend origins. Accepts a comma-separated list for deployment.
+    frontend_origins = _parse_origins(
+        os.getenv("FRONTEND_ORIGINS", os.getenv("FRONTEND_ORIGIN", "http://localhost:5173"))
+    )
 
     # Gemini API configuration.
     gemini_api_key = os.getenv("GEMINI_API_KEY", "")

@@ -13,7 +13,7 @@ app = FastAPI(title=settings.app_title, version=settings.app_version)
 # CORS config to allow requests from the frontend origin during development.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_origin],
+    allow_origins=settings.frontend_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]

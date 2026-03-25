@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: noteenglish-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: poetry install
+    startCommand: poetry run uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: POETRY_VERSION
+        value: 2.2.1
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: FRONTEND_ORIGINS
+        value: https://note-english-gbysku9hc-lisas-projects-8870c4b9.vercel.app
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
