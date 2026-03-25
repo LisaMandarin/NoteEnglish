@@ -16,7 +16,7 @@ services:
       - key: GEMINI_MODEL
         value: gemini-2.5-flash
       - key: FRONTEND_ORIGINS
-        value: https://note-english-gbysku9hc-lisas-projects-8870c4b9.vercel.app
+        value: https://note-english.vercel.app
       - key: GEMINI_API_KEY
         sync: false
       - key: SUPABASE_URL
