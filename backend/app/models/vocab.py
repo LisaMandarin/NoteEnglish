@@ -16,7 +16,7 @@ class VocabOptions(BaseModel):
 # Request body for vocab detail lookup.
 class VocabDetailRequest(BaseModel):
     lemma: str = Field(description="base form of the word", examples=["founder"])   # base form of word
-    pos: str = Field(description="part of speech", examples=["創立者"])     # part of speech
+    pos: str = Field(description="part of speech", examples=["NOUN"])     # part of speech
     options: VocabOptions
 
 # Response shape for vocab detail lookup.
