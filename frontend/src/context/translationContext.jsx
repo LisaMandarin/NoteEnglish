@@ -12,7 +12,7 @@ const initialState = {
   saving: false,
   error: "",
   saveError: "",
-  lastSavedAt: null,
+  updatedAt: null,
   currentSession: null,
   sentences: [],
 };
@@ -39,7 +39,7 @@ function reducer(state, action) {
         ...state,
         text: action.payload,
         saveError: "",
-        lastSavedAt: null,
+        updatedAt: null,
         currentSession: state.currentSession
           ? {
               ...state.currentSession,
@@ -53,7 +53,7 @@ function reducer(state, action) {
         text: "",
         error: "",
         saveError: "",
-        lastSavedAt: null,
+        updatedAt: null,
         currentSession: null,
         translating: false,
         sessionLoading: false,
@@ -75,7 +75,7 @@ function reducer(state, action) {
         text: action.payload?.text ?? "",
         sentences: action.payload?.sentences ?? [],
         currentSession: action.payload?.session ?? null,
-        lastSavedAt: action.payload?.lastSavedAt ?? null,
+        updatedAt: action.payload?.updatedAt ?? null,
       };
     case ACTIONS.LOAD_SESSION_ERROR:
       return {
@@ -89,7 +89,7 @@ function reducer(state, action) {
         translating: true,
         error: "",
         saveError: "",
-        lastSavedAt: null,
+        updatedAt: null,
         sentences: [],
       };
     case ACTIONS.TRANSLATE_SUCCESS:
@@ -113,7 +113,7 @@ function reducer(state, action) {
         ...state,
         saving: false,
         saveError: "",
-        lastSavedAt: action.payload?.savedAt ?? Date.now(),
+        updatedAt: action.payload?.updatedAt ?? Date.now(),
         currentSession: action.payload?.session ?? null,
       };
     case ACTIONS.SAVE_ERROR:
@@ -156,7 +156,7 @@ function reducer(state, action) {
         ...state,
         sentences: nextSentences,
         saveError: "",
-        lastSavedAt: null,
+        updatedAt: null,
       };
     }
 
@@ -184,7 +184,7 @@ function reducer(state, action) {
         ...state,
         sentences: nextSentences,
         saveError: "",
-        lastSavedAt: null,
+        updatedAt: null,
       };
     }
 
@@ -236,7 +236,7 @@ async function saveGeneratedProgress({
     dispatch({
       type: ACTIONS.SAVE_SUCCESS,
       payload: {
-        savedAt: result?.saved_at ? Date.parse(result.saved_at) : Date.now(),
+        updatedAt: result?.saved_at ? Date.parse(result.saved_at) : Date.now(),
         session: result?.session
           ? {
               id: result.session.id,
@@ -328,7 +328,7 @@ export function TranslationProvider({ children }) {
                   sentenceCount: (payload.sentences ?? []).length,
                 }
               : null,
-            lastSavedAt: payload?.session?.updated_at
+            updatedAt: payload?.session?.updated_at
               ? Date.parse(payload.session.updated_at)
               : null,
           },

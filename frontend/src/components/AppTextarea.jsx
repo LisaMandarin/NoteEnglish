@@ -5,7 +5,7 @@ const { TextArea } = Input
 
 export default function AppTextarea() {
     const {
-        state: {text, translating, sessionLoading, saving, error, saveError, lastSavedAt},
+        state: {text, translating, sessionLoading, saving, error, saveError, updatedAt},
         actions: {translate, setText, clear}
     } = useTranslation()
 
@@ -61,9 +61,9 @@ export default function AppTextarea() {
               />
             )}
 
-            {lastSavedAt ? (
+            {updatedAt ? (
               <Text type="secondary">
-                Translation saved at {new Date(lastSavedAt).toLocaleString()}
+                Translation saved at {new Date(updatedAt).toLocaleString()}
               </Text>
             ) : null}
         </>
