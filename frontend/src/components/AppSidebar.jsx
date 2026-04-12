@@ -7,6 +7,7 @@ import {
 } from "@ant-design/icons";
 import { Button } from "antd";
 import { useTranslation } from "../context/translationContext";
+import { formatUpdatedAt } from "../lib/formatUpdatedAt";
 import { listSessions } from "../lib/api";
 
 const SIDEBAR_BUTTONS = [
@@ -161,12 +162,9 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut }) {
                     }}
                     >
                     <p className="m-0 text-base font-semibold text-black/85">{title}</p>
-                    <div className="mt-2 space-y-0.5 text-xs leading-tight">
-                      <div className="text-black/65">
-                        Created {new Date(session.created_at).toLocaleString()}
-                      </div>
+                    <div className="mt-2 text-xs leading-tight">
                       <div className="text-black/55">
-                        Updated {new Date(session.updated_at).toLocaleString()}
+                        {formatUpdatedAt(session.updated_at)}
                       </div>
                     </div>
                   </button>

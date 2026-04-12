@@ -1,5 +1,6 @@
 import { Typography, Input, Button, Alert } from "antd"
 import { useTranslation } from "../context/translationContext"
+import { formatUpdatedAt } from "../lib/formatUpdatedAt"
 const { Text } = Typography
 const { TextArea } = Input
 
@@ -63,7 +64,7 @@ export default function AppTextarea() {
 
             {updatedAt ? (
               <Text type="secondary">
-                Translation saved at {new Date(updatedAt).toLocaleString()}
+                Translation saved {formatUpdatedAt(updatedAt)}
               </Text>
             ) : null}
         </>
