@@ -328,8 +328,8 @@ export function TranslationProvider({ children }) {
                   sentenceCount: (payload.sentences ?? []).length,
                 }
               : null,
-            lastSavedAt: payload?.last_saved_at
-              ? Date.parse(payload.last_saved_at)
+            lastSavedAt: payload?.session?.updated_at
+              ? Date.parse(payload.session.updated_at)
               : null,
           },
         });

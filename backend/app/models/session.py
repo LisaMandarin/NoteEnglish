@@ -37,7 +37,6 @@ class SessionDetail(BaseModel):
     text: str
     sentences: list[SessionSentence] = Field(default_factory=list)
     session: SessionSummary
-    last_saved_at: str | None = None
 
 
 class SaveSessionResponse(BaseModel):

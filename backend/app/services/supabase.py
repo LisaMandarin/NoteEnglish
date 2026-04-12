@@ -211,7 +211,6 @@ def get_session_detail(user_id: str, session_id: str) -> dict:
             "created_at": session["created_at"],
             "updated_at": session["updated_at"],
         },
-        "last_saved_at": session.get("updated_at") or session.get("created_at"),
     }
 
 
@@ -319,6 +318,6 @@ def save_session(
 
     refreshed = get_session_detail(user_id, session_id)
     return {
-        "saved_at": refreshed["last_saved_at"] or saved_at,
+        "saved_at": refreshed["session"].get("updated_at") or saved_at,
         "session": refreshed["session"],
     }
