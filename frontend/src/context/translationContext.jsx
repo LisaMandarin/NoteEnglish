@@ -31,6 +31,7 @@ const ACTIONS = {
   SAVE_ERROR: "save_error",
   UPDATE_SENTENCE_VOCAB: "update_sentence_vocab",
   REMOVE_SENTENCE_VOCAB: "remove_sentence_vocab",
+  REORDER_SENTENCE_VOCAB: "reorder_sentence_vocab",
 };
 function reducer(state, action) {
   switch (action.type) {
@@ -186,6 +187,16 @@ function reducer(state, action) {
         saveError: "",
         updatedAt: null,
       };
+    }
+
+    case ACTIONS.REORDER_SENTENCE_VOCAB: {
+      const { sentenceIdx, newVocab } = action.payload || {};
+      if (sentenceIdx == null) return state;
+      const nextSentences = [...state.sentences];
+      const s = nextSentences[sentenceIdx];
+      if (!s) return state;
+      nextSentences[sentenceIdx] = { ...s, vocab: newVocab };
+      return { ...state, sentences: nextSentences, saveError: "", updatedAt: null };
     }
 
     default:
@@ -387,6 +398,19 @@ export function TranslationProvider({ children }) {
       });
     }
 
+    async function reorderSentenceVocab(sentenceIdx, newVocab) {
+      const nextSentences = state.sentences.map((sentence, idx) =>
+        idx === sentenceIdx ? { ...sentence, vocab: newVocab } : sentence
+      );
+
+      await saveGeneratedProgress({
+        text: state.text,
+        sentences: nextSentences,
+        dispatch,
+        existingSession: state.currentSession,
+      });
+    }
+
     return {
       translate,
       setText,
@@ -394,6 +418,7 @@ export function TranslationProvider({ children }) {
       loadSession,
       updateSentenceVocab,
       removeSentenceVocab,
+      reorderSentenceVocab,
     };
   }, [state.currentSession, state.text, state.sentences]);
 

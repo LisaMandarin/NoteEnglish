@@ -9,79 +9,10 @@ const { Text } = Typography;
 export default function TranslationsList() {
   const {
     state: { sentences },
-    actions: { updateSentenceVocab, removeSentenceVocab },
+    actions: { updateSentenceVocab, removeSentenceVocab, reorderSentenceVocab },
   } = useTranslation();
 
   const vocab = useVocabLookup(sentences, updateSentenceVocab);
-  // const fake_sentences = [
-  //     {original: "I like apples.", translation: "我喜歡蘋果。"},
-  //     {original: "I like bananas.", translation: "我喜歡香蕉。"},
-  //     {original: "This is a new sentence", translation: "這是一個新句子。"}
-  //   ]
-  // const fake_translateResponse = {
-  //   "sentences": [
-  //       {
-  //           "id": 0,
-  //           "original": "I like apples.",
-  //           "translation": "我喜歡蘋果。",
-  //           "vocab": [
-  //               {
-  //                   "text": "like",
-  //                   "lemma": "like",
-  //                   "pos": "VERB"
-  //               },
-  //               {
-  //                   "text": "apples",
-  //                   "lemma": "apple",
-  //                   "pos": "NOUN"
-  //               }
-  //           ]
-  //       },
-  //       {
-  //           "id": 1,
-  //           "original": "I like bananas.",
-  //           "translation": "我喜歡香蕉。",
-  //           "vocab": [
-  //               {
-  //                   "text": "like",
-  //                   "lemma": "like",
-  //                   "pos": "VERB"
-  //               },
-  //               {
-  //                   "text": "bananas",
-  //                   "lemma": "banana",
-  //                   "pos": "NOUN"
-  //               }
-  //           ]
-  //       },
-  //       {
-  //           "id": 2,
-  //           "original": "This is a new sentence.",
-  //           "translation": "這是一個新句子。",
-  //           "vocab": [
-  //               {
-  //                   "text": "new",
-  //                   "lemma": "new",
-  //                   "pos": "ADJ"
-  //               },
-  //               {
-  //                   "text": "sentence",
-  //                   "lemma": "sentence",
-  //                   "pos": "NOUN"
-  //               }
-  //           ]
-  //       }
-  //   ]
-  // }
-
-  // const fake_vocab = {
-  //     "lemma": "banana",
-  //     "pos": "NOUN",
-  //     "translation": "香蕉",
-  //     "definition": "A long curved fruit which grows in clusters and has a soft pulpy flesh and yellow skin when ripe.",
-  //     "example": "She peeled a banana and ate it for a quick snack.",
-  //     "level": "A1"
-  // }
   const containerRef = useRef(null);
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -225,7 +156,7 @@ export default function TranslationsList() {
               <Text type="secondary" strong>翻譯:</Text> <Text type="secondary">{s.translation}</Text>
             </div>
 
-            <VocabCards vocab={s.vocab} sentenceIdx={idx} onDelete={removeSentenceVocab} />
+            <VocabCards vocab={s.vocab} sentenceIdx={idx} onDelete={removeSentenceVocab} onReorder={reorderSentenceVocab} />
             <Divider className="my-4!" />
           </li>
         ))}
