@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   CheckOutlined,
   CloseOutlined,
+  DeleteOutlined,
   EditOutlined,
   FolderOpenOutlined,
   LogoutOutlined,
@@ -11,7 +12,7 @@ import {
 import { Button } from "antd";
 import { useTranslation } from "../context/translationContext";
 import { formatUpdatedAt } from "../lib/formatUpdatedAt";
-import { listSessions, updateSessionTitle } from "../lib/api";
+import { deleteSession, listSessions, updateSessionTitle } from "../lib/api";
 
 const SIDEBAR_BUTTONS = [
   {
@@ -34,7 +35,7 @@ const SIDEBAR_BUTTONS = [
 function SidebarPanelContent({ activePanel, username, email, onSignOut }) {
   const {
     state: { currentSession, sessionLoading, saving },
-    actions: { loadSession },
+    actions: { loadSession, clear },
   } = useTranslation();
   const [historyItems, setHistoryItems] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -42,10 +43,20 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut }) {
   const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [editSaving, setEditSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const editInputRef = useRef(null);
+  const prevDepsRef = useRef({ activePanel: undefined, sessionId: undefined });
 
   useEffect(() => {
+    const prev = prevDepsRef.current;
+    const panelJustOpened = prev.activePanel !== activePanel;
+    const idChanged = prev.sessionId !== (currentSession?.id ?? null);
+
+    prevDepsRef.current = { activePanel, sessionId: currentSession?.id ?? null };
+
     if (activePanel !== "history") return;
+    // Session switch (id changed) without the panel just opening → skip re-fetch
+    if (!panelJustOpened && idChanged) return;
 
     let cancelled = false;
 
@@ -73,7 +84,7 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut }) {
     return () => {
       cancelled = true;
     };
-  }, [activePanel, currentSession?.id, currentSession?.title, currentSession?.updatedAt]);
+  }, [activePanel, currentSession?.id, currentSession?.updatedAt]);
 
   if (activePanel === "profile") {
     return (
@@ -185,15 +196,32 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut }) {
                   }
                 }
 
+                async function confirmDelete(e) {
+                  e?.stopPropagation();
+                  setDeletingId(session.id);
+                  try {
+                    await deleteSession(session.id);
+                    setHistoryItems((prev) => prev.filter((s) => s.id !== session.id));
+                    if (isCurrent) clear();
+                  } finally {
+                    setDeletingId(null);
+                  }
+                }
+
                 return (
                   <div
                     key={session.id}
-                    className="group relative w-full rounded-2xl border p-3 text-left transition"
+                    className={`group relative w-full rounded-2xl border p-3 text-left transition-all duration-200 ${
+                      !isCurrent && !isEditing
+                        ? "hover:shadow-md hover:-translate-y-0.5 hover:border-black/20 hover:bg-white"
+                        : ""
+                    }`}
                     style={{
                       borderColor: isCurrent ? "var(--accent)" : "rgb(0 0 0 / 0.08)",
                       backgroundColor: isCurrent
                         ? "color-mix(in srgb, var(--accent) 10%, white)"
                         : "rgb(255 255 255 / 0.78)",
+                      opacity: deletingId === session.id ? 0.5 : 1,
                     }}
                   >
                     {isEditing ? (
@@ -227,29 +255,36 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut }) {
                         </button>
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => { if (!isCurrent) loadSession(session.id); }}
-                        disabled={sessionLoading || saving}
-                        className="w-full text-left"
-                      >
-                        <div className="flex items-start justify-between gap-2">
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => { if (!isCurrent) loadSession(session.id); }}
+                          disabled={sessionLoading || saving}
+                          className={`w-full pr-5 text-left ${!isCurrent && !sessionLoading && !saving ? "cursor-pointer" : "cursor-default"}`}
+                        >
                           <p className="m-0 text-base font-semibold text-black/85">{title}</p>
-                          <button
-                            type="button"
-                            onClick={startEdit}
-                            className="mt-0.5 shrink-0 text-black/30 opacity-0 transition-opacity group-hover:opacity-100 hover:text-(--accent)"
-                            aria-label="Edit session title"
-                          >
-                            <EditOutlined style={{ fontSize: 13 }} />
-                          </button>
-                        </div>
-                        <div className="mt-2 text-xs leading-tight">
-                          <div className="text-black/55">
+                          <div className="mt-2 text-xs leading-tight text-black/55">
                             {formatUpdatedAt(session.updated_at)}
                           </div>
-                        </div>
-                      </button>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={startEdit}
+                          className="absolute right-2 top-2 cursor-pointer text-black/25 opacity-0 transition-opacity group-hover:opacity-100 hover:text-blue-500"
+                          aria-label="Edit session title"
+                        >
+                          <EditOutlined style={{ fontSize: 13 }} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={confirmDelete}
+                          disabled={deletingId === session.id}
+                          className="absolute bottom-2 right-2 cursor-pointer text-black/25 opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-500"
+                          aria-label="Delete session"
+                        >
+                          <DeleteOutlined style={{ fontSize: 13 }} />
+                        </button>
+                      </>
                     )}
                   </div>
                 );

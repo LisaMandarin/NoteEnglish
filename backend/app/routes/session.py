@@ -3,6 +3,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.models.session import SaveSessionRequest, UpdateSessionTitleRequest
 from app.services.supabase import (
+    delete_session,
     get_authenticated_user,
     get_session_detail,
     list_sessions,
@@ -45,6 +46,14 @@ def update_session_title_route(
 ):
     user = get_authenticated_user(authorization)
     return update_session_title(user["id"], session_id, req.title)
+
+
+@router.delete("/sessions/{session_id}", status_code=204)
+def delete_session_route(
+    session_id: str, authorization: str | None = Depends(_authorization_header)
+):
+    user = get_authenticated_user(authorization)
+    delete_session(user["id"], session_id)
 
 
 @router.post("/sessions/save")

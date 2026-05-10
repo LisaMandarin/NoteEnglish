@@ -57,6 +57,10 @@ export async function updateSessionTitle(sessionId, title) {
   });
 }
 
+export async function deleteSession(sessionId) {
+  return apiFetch(`/api/sessions/${sessionId}`, { method: "DELETE" });
+}
+
 export async function saveSession({ sessionId, text, sentences }) {
   return apiFetch("/api/sessions/save", {
     method: "POST",

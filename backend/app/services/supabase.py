@@ -334,3 +334,13 @@ def save_session(
         "saved_at": refreshed["session"].get("updated_at") or saved_at,
         "session": refreshed["session"],
     }
+
+
+def delete_session(user_id: str, session_id: str) -> None:
+    _delete_session_children(user_id, session_id)
+    query = parse.urlencode({"id": f"eq.{session_id}", "user_id": f"eq.{user_id}"})
+    _request_json(
+        "DELETE",
+        f"{settings.supabase_url}/rest/v1/study_sessions?{query}",
+        headers=_service_headers(),
+    )
