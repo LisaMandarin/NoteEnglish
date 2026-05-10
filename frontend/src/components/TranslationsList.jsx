@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Typography, Divider, Button, Checkbox } from "antd";
+import { Typography, Button, Checkbox } from "antd";
 import { useTranslation } from "../context/translationContext";
 import SelectionMenu from "./SelectionMenu";
 import { useVocabLookup } from "../hooks/useVocabLookup";
@@ -143,21 +143,17 @@ export default function TranslationsList() {
   }
   return (
     <div ref={containerRef} onMouseUp={handleMouseUp}>
-      <ol className="list-decimal pl-5 space-y-3">
+      <ol className="list-decimal pl-5 space-y-8">
         {sentences.map((s, idx) => (
           <li key={idx} data-idx={idx}>
             <div>
-              <Text strong>
-                原文:
-              </Text>{" "}
-              <Text>{s.original}</Text>
+              <Text strong style={{ fontSize: "1.25rem" }}>{s.original}</Text>
             </div>
             <div className="select-none">
-              <Text type="secondary" strong>翻譯:</Text> <Text type="secondary">{s.translation}</Text>
+              <Text type="secondary">{s.translation}</Text>
             </div>
 
             <VocabCards vocab={s.vocab} sentenceIdx={idx} onDelete={removeSentenceVocab} onReorder={reorderSentenceVocab} />
-            <Divider className="my-4!" />
           </li>
         ))}
       </ol>
