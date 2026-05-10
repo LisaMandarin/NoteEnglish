@@ -46,3 +46,7 @@ class SaveSessionResponse(BaseModel):
 
 class EnsureProfileRequest(BaseModel):
     display_name: str
+
+
+class UpdateSessionTitleRequest(BaseModel):
+    title: str

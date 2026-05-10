@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.models.session import SaveSessionRequest
+from app.models.session import SaveSessionRequest, UpdateSessionTitleRequest
 from app.services.supabase import (
     get_authenticated_user,
     get_session_detail,
     list_sessions,
     save_session,
+    update_session_title,
 )
 
 
@@ -34,6 +35,16 @@ def session_detail(
 ):
     user = get_authenticated_user(authorization)
     return get_session_detail(user["id"], session_id)
+
+
+@router.patch("/sessions/{session_id}/title")
+def update_session_title_route(
+    session_id: str,
+    req: UpdateSessionTitleRequest,
+    authorization: str | None = Depends(_authorization_header),
+):
+    user = get_authenticated_user(authorization)
+    return update_session_title(user["id"], session_id, req.title)
 
 
 @router.post("/sessions/save")

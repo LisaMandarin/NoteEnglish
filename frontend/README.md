@@ -34,5 +34,10 @@ npm run preview   # serve the build locally
 ## Expected backend endpoints
 - `POST /api/translate`
 - `POST /api/vocab/detail`
+- `POST /api/profile/ensure`
+- `GET /api/sessions`
+- `GET /api/sessions/{id}`
+- `POST /api/sessions/save`
+- `PATCH /api/sessions/{id}/title`
 
-Ensure the backend is reachable at `VITE_API_BASE` before using the app. Also, the backend needs a valid Gemini API key; see `backend/README.md` for details.
+Ensure the backend is reachable at `VITE_API_BASE` before using the app. The backend needs a valid Gemini API key and Supabase credentials; see `backend/README.md` for details.

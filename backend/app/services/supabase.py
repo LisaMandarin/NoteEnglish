@@ -214,6 +214,19 @@ def get_session_detail(user_id: str, session_id: str) -> dict:
     }
 
 
+def update_session_title(user_id: str, session_id: str, title: str) -> dict:
+    query = parse.urlencode({"id": f"eq.{session_id}", "user_id": f"eq.{user_id}"})
+    updated_rows = _request_json(
+        "PATCH",
+        f"{settings.supabase_url}/rest/v1/study_sessions?{query}",
+        headers=_service_headers("return=representation"),
+        payload={"title": title.strip()},
+    ) or []
+    if not updated_rows:
+        raise HTTPException(status_code=404, detail="Study session not found.")
+    return updated_rows[0]
+
+
 def _delete_session_children(user_id: str, session_id: str) -> None:
     vocab_query = parse.urlencode({"session_id": f"eq.{session_id}", "user_id": f"eq.{user_id}"})
     sentence_query = parse.urlencode({"session_id": f"eq.{session_id}", "user_id": f"eq.{user_id}"})

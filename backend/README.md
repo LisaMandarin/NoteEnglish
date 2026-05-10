@@ -60,5 +60,6 @@ These endpoints expect a Supabase access token in `Authorization: Bearer <token>
 - `GET /api/sessions`
 - `GET /api/sessions/{id}`
 - `POST /api/sessions/save`
+- `PATCH /api/sessions/{id}/title`
 
 In Swagger UI, use the `Authorize` button and paste only the Supabase access token. Swagger will send it as a Bearer token automatically.

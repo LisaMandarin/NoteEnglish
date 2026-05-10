@@ -1,5 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  CheckOutlined,
+  CloseOutlined,
+  EditOutlined,
   FolderOpenOutlined,
   LogoutOutlined,
   SettingOutlined,
@@ -8,7 +11,7 @@ import {
 import { Button } from "antd";
 import { useTranslation } from "../context/translationContext";
 import { formatUpdatedAt } from "../lib/formatUpdatedAt";
-import { listSessions } from "../lib/api";
+import { listSessions, updateSessionTitle } from "../lib/api";
 
 const SIDEBAR_BUTTONS = [
   {
@@ -36,6 +39,10 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut }) {
   const [historyItems, setHistoryItems] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editValue, setEditValue] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const editInputRef = useRef(null);
 
   useEffect(() => {
     if (activePanel !== "history") return;
@@ -146,28 +153,105 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut }) {
                   session.title?.trim() ||
                   session.source_text?.trim()?.slice(0, 80) ||
                   "Untitled session";
+                const isEditing = editingId === session.id;
+
+                function startEdit(e) {
+                  e.stopPropagation();
+                  setEditingId(session.id);
+                  setEditValue(title);
+                  setTimeout(() => editInputRef.current?.focus(), 0);
+                }
+
+                function cancelEdit(e) {
+                  e?.stopPropagation();
+                  setEditingId(null);
+                  setEditValue("");
+                }
+
+                async function confirmEdit(e) {
+                  e?.stopPropagation();
+                  const trimmed = editValue.trim();
+                  if (!trimmed || trimmed === title) { cancelEdit(); return; }
+                  setEditSaving(true);
+                  try {
+                    await updateSessionTitle(session.id, trimmed);
+                    setHistoryItems((prev) =>
+                      prev.map((s) => s.id === session.id ? { ...s, title: trimmed } : s)
+                    );
+                  } finally {
+                    setEditSaving(false);
+                    setEditingId(null);
+                    setEditValue("");
+                  }
+                }
 
                 return (
-                  <button
+                  <div
                     key={session.id}
-                    type="button"
-                    onClick={() => { if (!isCurrent) loadSession(session.id); }}
-                    disabled={sessionLoading || saving}
-                    className="w-full rounded-2xl border p-3 text-left transition"
+                    className="group relative w-full rounded-2xl border p-3 text-left transition"
                     style={{
                       borderColor: isCurrent ? "var(--accent)" : "rgb(0 0 0 / 0.08)",
                       backgroundColor: isCurrent
                         ? "color-mix(in srgb, var(--accent) 10%, white)"
                         : "rgb(255 255 255 / 0.78)",
                     }}
-                    >
-                    <p className="m-0 text-base font-semibold text-black/85">{title}</p>
-                    <div className="mt-2 text-xs leading-tight">
-                      <div className="text-black/55">
-                        {formatUpdatedAt(session.updated_at)}
+                  >
+                    {isEditing ? (
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          ref={editInputRef}
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") confirmEdit(e);
+                            if (e.key === "Escape") cancelEdit(e);
+                          }}
+                          disabled={editSaving}
+                          className="min-w-0 flex-1 rounded-lg border border-black/20 bg-white px-2 py-0.5 text-sm font-semibold text-black/85 outline-none focus:border-(--accent)"
+                        />
+                        <button
+                          type="button"
+                          onClick={confirmEdit}
+                          disabled={editSaving}
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-(--accent) text-white"
+                        >
+                          <CheckOutlined style={{ fontSize: 10 }} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelEdit}
+                          disabled={editSaving}
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-black/10 text-black/60"
+                        >
+                          <CloseOutlined style={{ fontSize: 10 }} />
+                        </button>
                       </div>
-                    </div>
-                  </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => { if (!isCurrent) loadSession(session.id); }}
+                        disabled={sessionLoading || saving}
+                        className="w-full text-left"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="m-0 text-base font-semibold text-black/85">{title}</p>
+                          <button
+                            type="button"
+                            onClick={startEdit}
+                            className="mt-0.5 shrink-0 text-black/30 opacity-0 transition-opacity group-hover:opacity-100 hover:text-(--accent)"
+                            aria-label="Edit session title"
+                          >
+                            <EditOutlined style={{ fontSize: 13 }} />
+                          </button>
+                        </div>
+                        <div className="mt-2 text-xs leading-tight">
+                          <div className="text-black/55">
+                            {formatUpdatedAt(session.updated_at)}
+                          </div>
+                        </div>
+                      </button>
+                    )}
+                  </div>
                 );
               })}
             </div>

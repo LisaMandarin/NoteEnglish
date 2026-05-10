@@ -18,6 +18,7 @@ You can paste a passage, get sentence-by-sentence translation, look up selected 
   - Original + translation
   - Original + queried vocab notes
   - Print support (`window.print`) for handouts.
+- Sidebar with session history: load previous sessions and rename titles inline.
 
 ## Tech Stack
 - Frontend: React 19, Vite, Tailwind CSS v4, Ant Design.
@@ -118,6 +119,7 @@ Notes:
 - `GET /api/sessions`: list the signed-in user's saved sessions.
 - `GET /api/sessions/{id}`: load one saved session.
 - `POST /api/sessions/save`: create or update one saved session.
+- `PATCH /api/sessions/{id}/title`: rename a saved session.
 
 ## Usage Flow
 1. Paste a passage and click `Translate`.
@@ -151,6 +153,7 @@ NoteEnglish 句句通是給英語學習者的雙語學習工具。
 - 支援彙整視窗（`?view=summary`）與列印：
   - 原文 + 翻譯
   - 原文 + 已查詢單字筆記
+- 側欄學習紀錄：可載入舊紀錄，並直接在側欄內聯修改紀錄標題。
 
 ### 技術棧
 - 前端：React 19、Vite、Tailwind CSS v4、Ant Design
@@ -225,6 +228,7 @@ npm run dev
 - `GET /api/sessions`：列出登入使用者的所有學習紀錄
 - `GET /api/sessions/{id}`：載入單一學習紀錄
 - `POST /api/sessions/save`：建立或更新學習紀錄
+- `PATCH /api/sessions/{id}/title`：重新命名學習紀錄標題
 
 ### Render 部署後端
 專案根目錄已加入 `render.yaml`，可直接拿來建立 Render Web Service。

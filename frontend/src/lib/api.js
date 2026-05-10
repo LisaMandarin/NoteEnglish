@@ -50,6 +50,13 @@ export async function getSessionDetail(sessionId) {
   return apiFetch(`/api/sessions/${sessionId}`);
 }
 
+export async function updateSessionTitle(sessionId, title) {
+  return apiFetch(`/api/sessions/${sessionId}/title`, {
+    method: "PATCH",
+    body: JSON.stringify({ title }),
+  });
+}
+
 export async function saveSession({ sessionId, text, sentences }) {
   return apiFetch("/api/sessions/save", {
     method: "POST",
