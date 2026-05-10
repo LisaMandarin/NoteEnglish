@@ -391,10 +391,30 @@ export function TranslationProvider({ children }) {
       });
     }
 
-    function removeSentenceVocab(sentenceIdx, lemma, pos) {
+    async function removeSentenceVocab(sentenceIdx, lemma, pos) {
+      const keyLemma = (lemma ?? "").toLowerCase();
+      const keyPos = (pos ?? "").toLowerCase();
+      const nextSentences = state.sentences.map((sentence, idx) => {
+        if (idx !== sentenceIdx) return sentence;
+        const prevVocab = Array.isArray(sentence.vocab) ? sentence.vocab : [];
+        return {
+          ...sentence,
+          vocab: prevVocab.filter((v) =>
+            !((v.lemma ?? "").toLowerCase() === keyLemma && (v.pos ?? "").toLowerCase() === keyPos)
+          ),
+        };
+      });
+
       dispatch({
         type: ACTIONS.REMOVE_SENTENCE_VOCAB,
-        payload: {sentenceIdx, lemma, pos},
+        payload: { sentenceIdx, lemma, pos },
+      });
+
+      await saveGeneratedProgress({
+        text: state.text,
+        sentences: nextSentences,
+        dispatch,
+        existingSession: state.currentSession,
       });
     }
 
