@@ -151,7 +151,7 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut }) {
                   <button
                     key={session.id}
                     type="button"
-                    onClick={() => loadSession(session.id)}
+                    onClick={() => { if (!isCurrent) loadSession(session.id); }}
                     disabled={sessionLoading || saving}
                     className="w-full rounded-2xl border p-3 text-left transition"
                     style={{

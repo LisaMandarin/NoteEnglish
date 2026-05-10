@@ -340,10 +340,43 @@ export function TranslationProvider({ children }) {
       }
     }
 
-    function updateSentenceVocab(sentenceIdx, vocabItem) {
+    async function updateSentenceVocab(sentenceIdx, vocabItem) {
+      if (sentenceIdx == null) return;
+
+      const s = state.sentences[sentenceIdx];
+      if (!s) return;
+
+      const prevVocab = Array.isArray(s.vocab) ? s.vocab : [];
+      const keyLemma = (vocabItem?.lemma ?? "").toLowerCase();
+      const keyPos = (vocabItem?.pos ?? "").toLowerCase();
+      const exists = prevVocab.some(
+        (v) =>
+          (v.lemma ?? "").toLowerCase() === keyLemma &&
+          (v.pos ?? "").toLowerCase() === keyPos
+      );
+      const nextVocab = exists
+        ? prevVocab.map((v) =>
+            (v.lemma ?? "").toLowerCase() === keyLemma &&
+            (v.pos ?? "").toLowerCase() === keyPos
+              ? { ...v, ...vocabItem }
+              : v
+          )
+        : [...prevVocab, vocabItem];
+
+      const nextSentences = state.sentences.map((sentence, idx) =>
+        idx === sentenceIdx ? { ...sentence, vocab: nextVocab } : sentence
+      );
+
       dispatch({
         type: ACTIONS.UPDATE_SENTENCE_VOCAB,
         payload: { sentenceIdx, vocabItem },
+      });
+
+      await saveGeneratedProgress({
+        text: state.text,
+        sentences: nextSentences,
+        dispatch,
+        existingSession: state.currentSession,
       });
     }
 
@@ -362,7 +395,7 @@ export function TranslationProvider({ children }) {
       updateSentenceVocab,
       removeSentenceVocab,
     };
-  }, [state.currentSession, state.text]);
+  }, [state.currentSession, state.text, state.sentences]);
 
   const value = useMemo(() => ({ state, actions }), [state, actions]);
 
