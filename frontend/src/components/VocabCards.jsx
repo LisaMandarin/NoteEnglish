@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { DeleteTwoTone } from '@ant-design/icons';
+import { DeleteTwoTone, QuestionCircleOutlined } from '@ant-design/icons';
+import { Tooltip } from 'antd';
 import {
   DndContext,
   closestCenter,
@@ -148,6 +149,22 @@ function VocabCard({ v, onDelete, dragProps }) {
             <span className="text-xs font-semibold text-(--text-main)">{v.level}</span>
           )}
           <LevelDots level={v.level} />
+          <Tooltip
+            title={
+              <div className="text-xs leading-relaxed space-y-0.5">
+                <div><strong>CEFR Levels</strong></div>
+                <div>A1 · A2 — Beginner</div>
+                <div>B1 · B2 — Intermediate</div>
+                <div>C1 · C2 — Advanced</div>
+              </div>
+            }
+            placement="top"
+          >
+            <QuestionCircleOutlined
+              onPointerDown={(e) => e.stopPropagation()}
+              className="text-gray-400 cursor-default text-xs"
+            />
+          </Tooltip>
         </div>
         <button
           type="button"
