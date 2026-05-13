@@ -209,11 +209,6 @@ function getLevelInfo(level) {
   return { filled: idx + 1, total: 6, color };
 }
 
-function getPosStyle(pos) {
-  const p = (pos ?? "").toLowerCase();
-  if (p === "verb") return "bg-purple-100 text-purple-700";
-  if (p === "noun") return "bg-emerald-100 text-emerald-700";
-  if (p === "adjective" || p === "adj") return "bg-blue-100 text-blue-700";
-  if (p === "adverb" || p === "adv") return "bg-yellow-100 text-yellow-700";
-  return "bg-gray-100 text-gray-600";
+function getPosStyle() {
+  return "bg-(--accent)/15 text-(--accent)";
 }
