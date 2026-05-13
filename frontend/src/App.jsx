@@ -37,9 +37,9 @@ function MainPage({ user, onSignOut }) {
 
   return (
     <TranslationProvider>
-      <div className="min-h-screen w-full px-6 py-10 sm:px-10">
+      <div className="min-h-screen w-full px-6 pb-10 pt-20 sm:px-10 lg:py-10">
         <div
-          className="mx-auto grid max-w-7xl gap-5 transition-[grid-template-columns] duration-300 lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)]"
+          className="mx-auto max-w-7xl gap-5 transition-[grid-template-columns] duration-300 lg:grid lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)]"
           style={{
             "--sidebar-width": isSidebarOpen ? "408px" : "88px",
           }}

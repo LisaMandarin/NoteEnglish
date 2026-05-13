@@ -6,6 +6,7 @@ import {
   EditOutlined,
   FolderOpenOutlined,
   LogoutOutlined,
+  MenuOutlined,
   SettingOutlined,
   UserOutlined,
 } from "@ant-design/icons";
@@ -307,19 +308,50 @@ export default function AppSidebar({
   email,
   onSignOut,
 }) {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  function closeMobileMenu() {
+    setIsMobileMenuOpen(false);
+    if (activePanel) onTogglePanel(activePanel);
+  }
+
   return (
-    <aside className="flex min-h-[calc(100vh-5rem)] overflow-hidden rounded-[28px] bg-[color-mix(in_srgb,var(--accent)_16%,white)] shadow-sm">
-      <div className="flex w-22 shrink-0 flex-row justify-between px-4 py-5 lg:flex-col lg:items-center">
-        <div className="flex flex-row gap-3 lg:flex-col">
+    <>
+      {/* ===== MOBILE (< lg) ===== */}
+      <div className="lg:hidden">
+        {/* Backdrop */}
+        <div
+          className={`fixed inset-0 z-30 bg-black/10 transition-opacity duration-300 ${
+            isMobileMenuOpen ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+          onClick={closeMobileMenu}
+        />
+
+        {/* Hamburger button */}
+        <button
+          className="fixed left-4 top-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border-0 bg-white text-xl shadow-md transition-colors duration-200"
+          style={{ color: "var(--accent)" }}
+          onClick={() => setIsMobileMenuOpen((v) => !v)}
+          aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+        >
+          {isMobileMenuOpen ? <CloseOutlined /> : <MenuOutlined />}
+        </button>
+
+        {/* Icon strip — slides in from the left */}
+        <div
+          className={`fixed left-18 top-4 z-40 flex flex-row gap-3 transition-all duration-300 ${
+            isMobileMenuOpen
+              ? "translate-x-0 opacity-100"
+              : "-translate-x-8 opacity-0 pointer-events-none"
+          }`}
+        >
           {SIDEBAR_BUTTONS.map((button) => {
             const isActive = activePanel === button.key;
-
             return (
               <Button
                 key={button.key}
                 aria-label={button.ariaLabel(username)}
                 aria-expanded={isActive}
-                aria-controls="sidebar-panel"
                 onClick={() => onTogglePanel(button.key)}
                 icon={<button.icon aria-hidden="true" />}
                 shape="circle"
@@ -328,27 +360,20 @@ export default function AppSidebar({
                 style={{
                   backgroundColor: isActive
                     ? "var(--accent)"
-                    : "rgb(255 255 255 / 0.8)",
+                    : "rgb(255 255 255 / 0.9)",
                   color: isActive ? "#ffffff" : "var(--accent)",
                 }}
               />
             );
           })}
         </div>
-      </div>
 
-      <section
-        id="sidebar-panel"
-        className={`overflow-hidden transition-[max-width,max-height,padding,transform] duration-300 ${
-          isSidebarOpen
-            ? "max-h-80 max-w-[320px] px-6 py-8 lg:max-h-none"
-            : "pointer-events-none max-h-0 max-w-0 px-0 py-0 lg:max-h-none"
-        }`}
-        aria-hidden={!isSidebarOpen}
-      >
+        {/* Panel — slides down when an icon is active */}
         <div
-          className={`w-[320px] max-w-full transition-transform duration-300 ${
-            isSidebarOpen ? "translate-x-0" : "-translate-x-8"
+          className={`fixed left-4 right-4 top-18 z-40 max-h-[70vh] overflow-y-auto rounded-3xl bg-[color-mix(in_srgb,var(--accent)_16%,white)] px-6 py-8 shadow-xl transition-all duration-300 ${
+            isMobileMenuOpen && activePanel
+              ? "translate-y-0 opacity-100"
+              : "-translate-y-3 opacity-0 pointer-events-none"
           }`}
         >
           <SidebarPanelContent
@@ -358,7 +383,60 @@ export default function AppSidebar({
             onSignOut={onSignOut}
           />
         </div>
-      </section>
-    </aside>
+      </div>
+
+      {/* ===== DESKTOP (lg+) ===== */}
+      <aside className="hidden lg:flex min-h-[calc(100vh-5rem)] overflow-hidden rounded-[28px] bg-[color-mix(in_srgb,var(--accent)_16%,white)] shadow-sm">
+        <div className="flex w-22 shrink-0 flex-col items-center px-4 py-5">
+          <div className="flex flex-col gap-3">
+            {SIDEBAR_BUTTONS.map((button) => {
+              const isActive = activePanel === button.key;
+              return (
+                <Button
+                  key={button.key}
+                  aria-label={button.ariaLabel(username)}
+                  aria-expanded={isActive}
+                  aria-controls="sidebar-panel"
+                  onClick={() => onTogglePanel(button.key)}
+                  icon={<button.icon aria-hidden="true" />}
+                  shape="circle"
+                  size="large"
+                  className="flex h-12 w-12 items-center justify-center border-0 text-xl shadow-sm transition"
+                  style={{
+                    backgroundColor: isActive
+                      ? "var(--accent)"
+                      : "rgb(255 255 255 / 0.8)",
+                    color: isActive ? "#ffffff" : "var(--accent)",
+                  }}
+                />
+              );
+            })}
+          </div>
+        </div>
+
+        <section
+          id="sidebar-panel"
+          className={`overflow-hidden transition-[max-width,padding] duration-300 ${
+            isSidebarOpen
+              ? "max-w-[320px] px-6 py-8"
+              : "pointer-events-none max-w-0 px-0 py-0"
+          }`}
+          aria-hidden={!isSidebarOpen}
+        >
+          <div
+            className={`w-[320px] max-w-full transition-transform duration-300 ${
+              isSidebarOpen ? "translate-x-0" : "-translate-x-8"
+            }`}
+          >
+            <SidebarPanelContent
+              activePanel={activePanel}
+              username={username}
+              email={email}
+              onSignOut={onSignOut}
+            />
+          </div>
+        </section>
+      </aside>
+    </>
   );
 }
