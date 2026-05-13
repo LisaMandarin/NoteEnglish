@@ -296,7 +296,6 @@ def save_session(
     sentences: list[dict],
     session_id: str | None,
 ) -> dict:
-    title = build_session_title(text)
     saved_at = datetime.now(timezone.utc).isoformat()
 
     if session_id:
@@ -306,7 +305,6 @@ def save_session(
             f"{settings.supabase_url}/rest/v1/study_sessions?{query}",
             headers=_service_headers("return=representation"),
             payload={
-                "title": title,
                 "source_text": text,
                 "updated_at": saved_at,
             },
@@ -315,6 +313,7 @@ def save_session(
             raise HTTPException(status_code=404, detail="Study session not found.")
         session = updated_rows[0]
     else:
+        title = build_session_title(text)
         created_rows = _request_json(
             "POST",
             f"{settings.supabase_url}/rest/v1/study_sessions",
