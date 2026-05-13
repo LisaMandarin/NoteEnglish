@@ -1,4 +1,4 @@
-import { Typography, Input, Button, Alert } from "antd"
+import { Typography, Input, Button, Alert, Modal } from "antd"
 import { useTranslation } from "../context/translationContext"
 import { formatUpdatedAt } from "../lib/formatUpdatedAt"
 const { Text } = Typography
@@ -6,9 +6,29 @@ const { TextArea } = Input
 
 export default function AppTextarea() {
     const {
-        state: {text, translating, sessionLoading, saving, error, saveError, updatedAt},
+        state: {text, translating, sessionLoading, saving, error, saveError, updatedAt, sentences},
         actions: {translate, setText, clear}
     } = useTranslation()
+
+    function hasVocabCards() {
+        return Array.isArray(sentences) && sentences.some(
+            (s) => Array.isArray(s.vocab) && s.vocab.length > 0
+        )
+    }
+
+    function handleTranslate() {
+        if (hasVocabCards()) {
+            Modal.confirm({
+                title: "確定要重新翻譯嗎？",
+                content: "按下「確定」將會刪除目前所有的單字卡，此動作無法復原。",
+                okText: "確定",
+                cancelText: "取消",
+                onOk: translate,
+            })
+        } else {
+            translate()
+        }
+    }
 
     return (
         <>
@@ -27,9 +47,9 @@ export default function AppTextarea() {
             <div className="flex gap-3 mb-4">
               <Button
                 type="primary"
-                onClick={translate}
-                loading={translating || saving}
-                disabled={sessionLoading}
+                onClick={handleTranslate}
+                loading={translating}
+                disabled={sessionLoading || saving}
               >
                 {saving ? "Saving..." : "Translate"}
               </Button>

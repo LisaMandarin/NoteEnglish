@@ -45,6 +45,11 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut }) {
   const [editValue, setEditValue] = useState("");
   const [editSaving, setEditSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [pendingId, setPendingId] = useState(null);
+
+  useEffect(() => {
+    if (!sessionLoading) setPendingId(null);
+  }, [sessionLoading]);
   const editInputRef = useRef(null);
   const prevDepsRef = useRef({ activePanel: undefined, sessionId: undefined });
 
@@ -160,7 +165,7 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut }) {
           {!historyLoading && !historyError && historyItems.length > 0 ? (
             <div className="mt-3 space-y-3">
               {historyItems.map((session) => {
-                const isCurrent = session.id === currentSession?.id;
+                const isCurrent = pendingId ? session.id === pendingId : session.id === currentSession?.id;
                 const title =
                   session.title?.trim() ||
                   session.source_text?.trim()?.slice(0, 80) ||
@@ -259,7 +264,7 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut }) {
                       <>
                         <button
                           type="button"
-                          onClick={() => { if (!isCurrent) loadSession(session.id); }}
+                          onClick={() => { if (!isCurrent) { setPendingId(session.id); loadSession(session.id); } }}
                           disabled={sessionLoading || saving}
                           className={`w-full pr-5 text-left ${!isCurrent && !sessionLoading && !saving ? "cursor-pointer" : "cursor-default"}`}
                         >
