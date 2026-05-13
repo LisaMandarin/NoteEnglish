@@ -8,7 +8,7 @@ const { Text } = Typography;
 
 export default function TranslationsList() {
   const {
-    state: { sentences },
+    state: { sentences, saving },
     actions: { updateSentenceVocab, removeSentenceVocab, reorderSentenceVocab },
   } = useTranslation();
 
@@ -142,7 +142,12 @@ export default function TranslationsList() {
     return <Text type="secondary">No translations yet.</Text>;
   }
   return (
-    <div ref={containerRef} onMouseUp={handleMouseUp}>
+    <div ref={containerRef} onMouseUp={handleMouseUp} className="relative">
+      {saving && (
+        <div className="absolute inset-0 z-10 rounded-lg bg-white/50 backdrop-blur-[1px] flex items-start justify-end pr-3 pt-2 pointer-events-auto">
+          <span className="text-xs text-gray-400 animate-pulse">儲存中...</span>
+        </div>
+      )}
       <ol className="list-decimal pl-5 space-y-8">
         {sentences.map((s, idx) => (
           <li key={idx} data-idx={idx}>

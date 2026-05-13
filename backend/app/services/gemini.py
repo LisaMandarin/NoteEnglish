@@ -94,7 +94,7 @@ def ai_fill_vocab_fields(lemma:str, pos:str, options:VocabOptions) -> dict:
         tasks.append("definition: ONE clear English definition")
     if options.example:
         tasks.append("example: One natural example sentence.")
-    if options.example:
+    if options.level:
         tasks.append("level: CEFR level (A1-C2).")
     task_list = "\n".join(f"- {t}" for t in tasks) if tasks else "- None"
     prompt = f"""

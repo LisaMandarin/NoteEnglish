@@ -157,10 +157,10 @@ def get_session_detail(user_id: str, session_id: str) -> dict:
             "session_id": f"eq.{session_id}",
             "user_id": f"eq.{user_id}",
             "select": (
-                "sentence_index,selected_text,lemma,pos,translation,"
+                "sentence_index,vocab_index,selected_text,lemma,pos,translation,"
                 "definition,example,level"
             ),
-            "order": "sentence_index.asc",
+            "order": "sentence_index.asc,vocab_index.asc",
         }
     )
 
@@ -175,11 +175,12 @@ def get_session_detail(user_id: str, session_id: str) -> dict:
         headers=_service_headers(),
     ) or []
 
-    queried_by_sentence: dict[int, dict[str, dict]] = {}
+    queried_by_sentence: dict[int, list[dict]] = {}
+    queried_keys_by_sentence: dict[int, set[str]] = {}
     for vocab in vocab_rows:
         idx = vocab["sentence_index"]
         key = f"{vocab['lemma']}|{vocab.get('pos')}"
-        queried_by_sentence.setdefault(idx, {})[key] = {
+        queried_by_sentence.setdefault(idx, []).append({
             "text": vocab.get("selected_text") or "",
             "lemma": vocab["lemma"],
             "pos": vocab.get("pos"),
@@ -188,30 +189,31 @@ def get_session_detail(user_id: str, session_id: str) -> dict:
             "example": vocab.get("example"),
             "level": vocab.get("level"),
             "queried": True,
-        }
+        })
+        queried_keys_by_sentence.setdefault(idx, set()).add(key)
 
     hydrated = []
     for sentence in sentences:
         idx = sentence["sentence_index"]
-        queried = queried_by_sentence.get(idx, {})
+        queried_list = queried_by_sentence.get(idx, [])
+        queried_keys = queried_keys_by_sentence.get(idx, set())
 
         nlp_vocab = extract_vocab(sentence["original_text"])
-        merged_vocab = []
-        for item in nlp_vocab:
-            key = f"{item.lemma}|{item.pos}"
-            if key in queried:
-                merged_vocab.append(queried[key])
-            else:
-                merged_vocab.append({
-                    "text": item.text,
-                    "lemma": item.lemma,
-                    "pos": item.pos,
-                    "translation": None,
-                    "definition": None,
-                    "example": None,
-                    "level": None,
-                    "queried": False,
-                })
+        unqueried = [
+            {
+                "text": item.text,
+                "lemma": item.lemma,
+                "pos": item.pos,
+                "translation": None,
+                "definition": None,
+                "example": None,
+                "level": None,
+                "queried": False,
+            }
+            for item in nlp_vocab
+            if f"{item.lemma}|{item.pos}" not in queried_keys
+        ]
+        merged_vocab = queried_list + unqueried
 
         hydrated.append({
             "id": idx,
@@ -283,16 +285,18 @@ def _insert_session_children(user_id: str, session_id: str, sentences: list[dict
 
     vocab_rows = []
     for idx, sentence in enumerate(sentences):
+        vocab_index = 0
         for vocab in sentence.get("vocab", []):
             if not vocab.get("lemma"):
                 continue
-            if not any([vocab.get("translation"), vocab.get("definition")]):
+            if not vocab.get("queried"):
                 continue
             vocab_rows.append(
                 {
                     "session_id": session_id,
                     "user_id": user_id,
                     "sentence_index": idx,
+                    "vocab_index": vocab_index,
                     "selected_text": vocab.get("text") or None,
                     "lemma": vocab["lemma"],
                     "pos": vocab.get("pos"),
@@ -302,6 +306,7 @@ def _insert_session_children(user_id: str, session_id: str, sentences: list[dict
                     "level": vocab.get("level"),
                 }
             )
+            vocab_index += 1
     if vocab_rows:
         _request_json(
             "POST",
