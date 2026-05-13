@@ -5,6 +5,7 @@ from urllib import error, parse, request
 from fastapi import HTTPException
 
 from app.core.config import settings
+from app.services.nlp import extract_vocab
 
 
 def _require_supabase_config() -> None:
@@ -157,7 +158,7 @@ def get_session_detail(user_id: str, session_id: str) -> dict:
             "user_id": f"eq.{user_id}",
             "select": (
                 "sentence_index,selected_text,lemma,pos,translation,"
-                "definition,example,level,queried"
+                "definition,example,level"
             ),
             "order": "sentence_index.asc",
         }
@@ -174,31 +175,50 @@ def get_session_detail(user_id: str, session_id: str) -> dict:
         headers=_service_headers(),
     ) or []
 
-    vocab_by_sentence: dict[int, list[dict]] = {}
+    queried_by_sentence: dict[int, dict[str, dict]] = {}
     for vocab in vocab_rows:
         idx = vocab["sentence_index"]
-        vocab_by_sentence.setdefault(idx, []).append(
-            {
-                "text": vocab.get("selected_text") or "",
-                "lemma": vocab["lemma"],
-                "pos": vocab.get("pos"),
-                "translation": vocab.get("translation"),
-                "definition": vocab.get("definition"),
-                "example": vocab.get("example"),
-                "level": vocab.get("level"),
-                "queried": vocab.get("queried", True),
-            }
-        )
+        key = f"{vocab['lemma']}|{vocab.get('pos')}"
+        queried_by_sentence.setdefault(idx, {})[key] = {
+            "text": vocab.get("selected_text") or "",
+            "lemma": vocab["lemma"],
+            "pos": vocab.get("pos"),
+            "translation": vocab.get("translation"),
+            "definition": vocab.get("definition"),
+            "example": vocab.get("example"),
+            "level": vocab.get("level"),
+            "queried": True,
+        }
 
-    hydrated = [
-        {
-            "id": sentence["sentence_index"],
+    hydrated = []
+    for sentence in sentences:
+        idx = sentence["sentence_index"]
+        queried = queried_by_sentence.get(idx, {})
+
+        nlp_vocab = extract_vocab(sentence["original_text"])
+        merged_vocab = []
+        for item in nlp_vocab:
+            key = f"{item.lemma}|{item.pos}"
+            if key in queried:
+                merged_vocab.append(queried[key])
+            else:
+                merged_vocab.append({
+                    "text": item.text,
+                    "lemma": item.lemma,
+                    "pos": item.pos,
+                    "translation": None,
+                    "definition": None,
+                    "example": None,
+                    "level": None,
+                    "queried": False,
+                })
+
+        hydrated.append({
+            "id": idx,
             "original": sentence["original_text"],
             "translation": sentence["translated_text"],
-            "vocab": vocab_by_sentence.get(sentence["sentence_index"], []),
-        }
-        for sentence in sentences
-    ]
+            "vocab": merged_vocab,
+        })
 
     title = session.get("title") or build_session_title(session.get("source_text") or "")
     return {
@@ -264,7 +284,9 @@ def _insert_session_children(user_id: str, session_id: str, sentences: list[dict
     vocab_rows = []
     for idx, sentence in enumerate(sentences):
         for vocab in sentence.get("vocab", []):
-            if not vocab.get("queried", True) or not vocab.get("lemma"):
+            if not vocab.get("lemma"):
+                continue
+            if not any([vocab.get("translation"), vocab.get("definition")]):
                 continue
             vocab_rows.append(
                 {
@@ -278,7 +300,6 @@ def _insert_session_children(user_id: str, session_id: str, sentences: list[dict
                     "definition": vocab.get("definition"),
                     "example": vocab.get("example"),
                     "level": vocab.get("level"),
-                    "queried": vocab.get("queried", True),
                 }
             )
     if vocab_rows:
