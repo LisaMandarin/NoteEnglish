@@ -16,6 +16,15 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+const CEFR_TOOLTIP = (
+  <div className="text-xs leading-relaxed space-y-0.5">
+    <div><strong>CEFR Levels</strong></div>
+    <div>A1 · A2 — Beginner</div>
+    <div>B1 · B2 — Intermediate</div>
+    <div>C1 · C2 — Advanced</div>
+  </div>
+);
+
 export default function VocabCards({ vocab, sentenceIdx, onDelete, onReorder }) {
   const items = useMemo(() => {
     const list = Array.isArray(vocab) ? vocab : [];
@@ -149,17 +158,7 @@ function VocabCard({ v, onDelete, dragProps }) {
             <span className="text-xs font-semibold text-(--text-main)">{v.level}</span>
           )}
           <LevelDots level={v.level} />
-          <Tooltip
-            title={
-              <div className="text-xs leading-relaxed space-y-0.5">
-                <div><strong>CEFR Levels</strong></div>
-                <div>A1 · A2 — Beginner</div>
-                <div>B1 · B2 — Intermediate</div>
-                <div>C1 · C2 — Advanced</div>
-              </div>
-            }
-            placement="top"
-          >
+          <Tooltip title={CEFR_TOOLTIP} placement="top">
             <QuestionCircleOutlined
               onPointerDown={(e) => e.stopPropagation()}
               className="text-gray-400 cursor-default text-xs"
