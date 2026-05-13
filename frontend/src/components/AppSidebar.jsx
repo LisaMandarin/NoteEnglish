@@ -186,9 +186,9 @@ function SidebarPanelContent({ activePanel, username, email, onSignOut }) {
                   if (!trimmed || trimmed === title) { cancelEdit(); return; }
                   setEditSaving(true);
                   try {
-                    await updateSessionTitle(session.id, trimmed);
+                    const updated = await updateSessionTitle(session.id, trimmed);
                     setHistoryItems((prev) =>
-                      prev.map((s) => s.id === session.id ? { ...s, title: trimmed } : s)
+                      prev.map((s) => s.id === session.id ? { ...s, title: trimmed, updated_at: updated?.updated_at ?? s.updated_at } : s)
                     );
                   } finally {
                     setEditSaving(false);

@@ -220,7 +220,7 @@ def update_session_title(user_id: str, session_id: str, title: str) -> dict:
         "PATCH",
         f"{settings.supabase_url}/rest/v1/study_sessions?{query}",
         headers=_service_headers("return=representation"),
-        payload={"title": title.strip()},
+        payload={"title": title.strip(), "updated_at": datetime.now(timezone.utc).isoformat()},
     ) or []
     if not updated_rows:
         raise HTTPException(status_code=404, detail="Study session not found.")
