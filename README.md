@@ -18,7 +18,9 @@ You can paste a passage, get sentence-by-sentence translation, look up selected 
   - Original + translation
   - Original + queried vocab notes
   - Print support (`window.print`) for handouts.
-- Sidebar with session history: load previous sessions and rename titles inline.
+- Sidebar with session history: load previous sessions, rename titles inline, and delete sessions.
+- Sidebar profile panel: displays username and email, with sign-out button.
+- Sidebar settings panel (placeholder for future workspace preferences).
 
 ## Tech Stack
 - Frontend: React 19, Vite, Tailwind CSS v4, Ant Design.
@@ -111,8 +113,10 @@ Notes:
 - For production, keep `FRONTEND_ORIGINS` to the deployed frontend domain only. Use `backend/.env` for local `http://localhost:5173`.
 
 ## API Endpoints
-- `GET /api/health`: health check.
-- `POST /api/debug/split`: inspect sentence splitting result.
+All endpoints except health/debug require a Supabase Bearer token.
+
+- `GET /api/health`: health check (requires `test` router to be registered in `main.py`).
+- `POST /api/debug/split`: inspect sentence splitting result (same caveat).
 - `POST /api/translate`: translate text and return sentence list with base vocab.
 - `POST /api/vocab/detail`: fetch selected vocab details by requested fields.
 - `POST /api/profile/ensure`: ensure the signed-in user's profile row exists.
@@ -120,6 +124,7 @@ Notes:
 - `GET /api/sessions/{id}`: load one saved session.
 - `POST /api/sessions/save`: create or update one saved session.
 - `PATCH /api/sessions/{id}/title`: rename a saved session.
+- `DELETE /api/sessions/{id}`: delete a saved session and all related data.
 
 ## Usage Flow
 1. Paste a passage and click `Translate`.
@@ -153,7 +158,9 @@ NoteEnglish 句句通是給英語學習者的雙語學習工具。
 - 支援彙整視窗（`?view=summary`）與列印：
   - 原文 + 翻譯
   - 原文 + 已查詢單字筆記
-- 側欄學習紀錄：可載入舊紀錄，並直接在側欄內聯修改紀錄標題。
+- 側欄學習紀錄：可載入舊紀錄、直接在側欄內聯修改標題、刪除紀錄。
+- 側欄個人資料面板：顯示使用者名稱與信箱，並提供登出按鈕。
+- 側欄設定面板（預留給未來工作區偏好設定）。
 
 ### 技術棧
 - 前端：React 19、Vite、Tailwind CSS v4、Ant Design
@@ -220,8 +227,10 @@ npm run dev
 ```
 
 ### API 端點
-- `GET /api/health`：健康檢查
-- `POST /api/debug/split`：查看斷句結果
+health/debug 以外的所有端點均需 Supabase Bearer token。
+
+- `GET /api/health`：健康檢查（需在 `main.py` 註冊 `test` router）
+- `POST /api/debug/split`：查看斷句結果（同上）
 - `POST /api/translate`：翻譯文字並回傳逐句資料與基礎單字
 - `POST /api/vocab/detail`：查詢指定單字欄位細節
 - `POST /api/profile/ensure`：建立或更新登入使用者的 profile
@@ -229,6 +238,7 @@ npm run dev
 - `GET /api/sessions/{id}`：載入單一學習紀錄
 - `POST /api/sessions/save`：建立或更新學習紀錄
 - `PATCH /api/sessions/{id}/title`：重新命名學習紀錄標題
+- `DELETE /api/sessions/{id}`：刪除學習紀錄及所有相關資料
 
 ### Render 部署後端
 專案根目錄已加入 `render.yaml`，可直接拿來建立 Render Web Service。

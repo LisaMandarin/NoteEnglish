@@ -47,19 +47,24 @@ Notes:
 
 ## Quick checks
 - Health: `curl http://localhost:8000/api/health`
-- Translate (requires valid key):
+  > **Note:** `app/routes/test.py` contains the health and debug/split routes but is not registered in `main.py`. Register `test_router` there to re-enable these endpoints.
+- Translate (requires auth token):
 ```
 curl -X POST http://localhost:8000/api/translate \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <supabase_access_token>" \
   -d '{"text":"I like apples.","target_lang":"zh-TW","mode":"normal"}'
 ```
 
 ## Authenticated APIs
-These endpoints expect a Supabase access token in `Authorization: Bearer <token>`.
+All non-health endpoints require a Supabase access token in `Authorization: Bearer <token>`.
+- `POST /api/translate`
+- `POST /api/vocab/detail`
 - `POST /api/profile/ensure`
 - `GET /api/sessions`
 - `GET /api/sessions/{id}`
 - `POST /api/sessions/save`
 - `PATCH /api/sessions/{id}/title`
+- `DELETE /api/sessions/{id}`
 
 In Swagger UI, use the `Authorize` button and paste only the Supabase access token. Swagger will send it as a Bearer token automatically.
