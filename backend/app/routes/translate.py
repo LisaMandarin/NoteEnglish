@@ -1,14 +1,19 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from app.models.translate import TranslateRequest, TranslateResponse, SentencePair
 from app.services.nlp import split_sentences, extract_vocab
 from app.services.gemini import ai_translate_list
+from app.core.auth import require_user
 
 # Router for translation-related endpoints.
 router = APIRouter(tags=["translate"])
 
 # Translate incoming text into sentence-level results with vocab extraction.
 @router.post("/translate", response_model=TranslateResponse)
-def translate(req: TranslateRequest):
+def translate(req: TranslateRequest, _user: dict = Depends(require_user)):
+    """
+    Split `req.text` into sentences, translate each via Gemini, and return
+    sentence pairs with extracted vocabulary. Returns an empty list for blank input.
+    """
     raw = req.text.strip()
     if not raw:
         return TranslateResponse(sentences=[])

@@ -8,6 +8,7 @@ nlp = spacy.load("en_core_web_sm")
 
 # Clean up whitespace and normalize newlines.
 def normalize_text(text:str) -> str:
+    """Collapse non-breaking spaces, Windows line endings, and runs of whitespace into single spaces."""
     text = text.replace("\u00a0", " ")
     text = text.replace("\r\n", "\n").replace("\r", "\n")
 
@@ -18,6 +19,7 @@ def normalize_text(text:str) -> str:
 
 # Split a block of text into sentences using spaCy.
 def split_sentences(text: str) -> list[str]:
+    """Return a list of non-empty sentences from `text` using spaCy's sentence boundary detection."""
     text = normalize_text(text)
     if not text:
         return []
@@ -37,6 +39,7 @@ ALLOWED_POS = {"NOUN", "VERB", "ADJ", "ADV", "ADP", "SCONJ"}
 
 # Extract unique vocab items from a sentence, filtered by allowed POS.
 def extract_vocab(sentence: str) -> list[VocabItem]:
+    """Return unique vocab items from `sentence`, keeping only content words (nouns, verbs, adjectives, adverbs, prepositions, subordinating conjunctions) and skipping stop words and non-alpha tokens."""
     doc = nlp(sentence)
 
     seen = set()
