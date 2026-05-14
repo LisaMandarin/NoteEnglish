@@ -3,8 +3,13 @@ import spacy
 
 from app.models.vocab import VocabItem
 
-# Load spaCy English model once at module import.
-nlp = spacy.load("en_core_web_sm")
+_nlp = None
+
+def _get_nlp():
+    global _nlp
+    if _nlp is None:
+        _nlp = spacy.load("en_core_web_sm")
+    return _nlp
 
 # Clean up whitespace and normalize newlines.
 def normalize_text(text:str) -> str:
@@ -23,8 +28,8 @@ def split_sentences(text: str) -> list[str]:
     text = normalize_text(text)
     if not text:
         return []
-    
-    doc = nlp(text)
+
+    doc = _get_nlp()(text)
     
     sentences = []
 
@@ -40,7 +45,7 @@ ALLOWED_POS = {"NOUN", "VERB", "ADJ", "ADV", "ADP", "SCONJ"}
 # Extract unique vocab items from a sentence, filtered by allowed POS.
 def extract_vocab(sentence: str) -> list[VocabItem]:
     """Return unique vocab items from `sentence`, keeping only content words (nouns, verbs, adjectives, adverbs, prepositions, subordinating conjunctions) and skipping stop words and non-alpha tokens."""
-    doc = nlp(sentence)
+    doc = _get_nlp()(sentence)
 
     seen = set()
     vocab: list[VocabItem] = []
