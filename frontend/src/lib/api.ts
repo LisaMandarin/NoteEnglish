@@ -17,7 +17,7 @@ async function getAccessToken() {
 }
 
 // 帶上 Bearer token 發送 API 請求，自動處理錯誤與 204 無內容回應
-async function apiFetch(path: string, options: RequestInit = {}) {
+export async function apiFetch(path: string, options: RequestInit = {}) {
   const token = await getAccessToken();
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,

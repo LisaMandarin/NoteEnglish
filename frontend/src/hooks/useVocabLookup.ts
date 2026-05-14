@@ -1,6 +1,5 @@
 import { useState } from "react";
-
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
+import { apiFetch } from "../lib/api";
 
 
 /**
@@ -62,18 +61,10 @@ export function useVocabLookup(sentences, updateSentenceVocab) {
         },
       };
 
-      const res = await fetch(`${API_BASE}/api/vocab/detail`, {
+      const detail = await apiFetch("/api/vocab/detail", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
-      if (!res.ok) {
-        const errText = await res.text().catch(() => "");
-        throw new Error(`Vocab detail failed: ${res.status} ${errText}`);
-      }
-
-      const detail = await res.json();
 
       const vocabItem = {
         text,

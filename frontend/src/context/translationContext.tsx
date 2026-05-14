@@ -1,7 +1,6 @@
 import { createContext, useContext, useMemo, useReducer } from "react";
-import { getSessionDetail, saveSession } from "../lib/api";
+import { apiFetch, getSessionDetail, saveSession } from "../lib/api";
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 
 const TranslationContext = createContext(null);
 
@@ -277,18 +276,10 @@ export function TranslationProvider({ children }) {
       dispatch({ type: ACTIONS.TRANSLATE_START });
 
       try {
-        const response = await fetch(`${API_BASE}/api/translate`, {
+        const data = await apiFetch("/api/translate", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: state.text }),
         });
-
-        if (!response.ok) {
-          const msg = await response.text();
-          throw new Error(`HTTP ${response.status} - ${msg}`);
-        }
-
-        const data = await response.json();
         const nextSentences = data.sentences ?? [];
 
         dispatch({ type: ACTIONS.TRANSLATE_SUCCESS, payload: nextSentences });
