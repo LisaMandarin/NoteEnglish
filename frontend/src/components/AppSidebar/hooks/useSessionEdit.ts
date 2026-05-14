@@ -14,7 +14,7 @@ export function useSessionEdit(onTitleUpdated) {
     setTimeout(() => editInputRef.current?.focus(), 0);
   }
 
-  function cancelEdit(e) {
+  function cancelEdit(e?) {
     e?.stopPropagation();
     setEditingId(null);
     setEditValue("");

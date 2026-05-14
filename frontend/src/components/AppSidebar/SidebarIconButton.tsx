@@ -1,6 +1,6 @@
 import { Button } from "antd";
 
-export default function SidebarIconButton({ button, isActive, username, ariaControls, onClick }) {
+export default function SidebarIconButton({ button, isActive, username, ariaControls = undefined, onClick }) {
   return (
     <Button
       aria-label={button.ariaLabel(username)}

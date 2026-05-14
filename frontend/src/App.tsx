@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { TranslationProvider } from "./context/translationContext";
 import AppMainSection from "./components/AppMainSection";
 import AppSidebar from "./components/AppSidebar";
@@ -42,7 +42,7 @@ function MainPage({ user, onSignOut }) {
           className="mx-auto max-w-7xl gap-5 transition-[grid-template-columns] duration-300 lg:grid lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)]"
           style={{
             "--sidebar-width": isSidebarOpen ? "408px" : "88px",
-          }}
+          } as React.CSSProperties}
         >
           <AppSidebar
             activePanel={activePanel}

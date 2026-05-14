@@ -15,7 +15,7 @@ async function getAccessToken() {
   return token;
 }
 
-async function apiFetch(path, options = {}) {
+async function apiFetch(path: string, options: RequestInit = {}) {
   const token = await getAccessToken();
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,

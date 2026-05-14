@@ -225,6 +225,6 @@ function getLevelInfo(level) {
   return { filled: idx + 1, total: 6, color };
 }
 
-function getPosStyle() {
+function getPosStyle(_pos?: string) {
   return "bg-(--accent)/15 text-(--accent)";
 }
