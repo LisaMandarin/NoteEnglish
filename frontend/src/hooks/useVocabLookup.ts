@@ -6,7 +6,7 @@ import { apiFetch } from "../lib/api";
  * @param {Array} sentences 
  * @param {Function} updateSentenceVocab - from translationContext actions
  */
-export function useVocabLookup(sentences, updateSentenceVocab) {
+export function useVocabLookup(sentences, updateSentenceVocab, sessionId: string | null = null) {
   const [selectedText, setSelectedText] = useState("");
   const [selectedSentenceIdx, setSelectedSentenceIdx] = useState(null);
   const [options, setOptions] = useState([]);
@@ -47,12 +47,15 @@ export function useVocabLookup(sentences, updateSentenceVocab) {
 
       const opt = new Set(options);
 
-      const lemma = hit?.lemma ?? normalized;
-      const pos = hit?.pos ?? "unknown";
+      const sentenceText = sentence?.original ?? "";
+      const wordIndex = sentenceText.toLowerCase().indexOf(normalized);
 
       const payload = {
-        lemma,
-        pos,
+        selected_text: text,
+        sentence: sentenceText,
+        session_id: sessionId,
+        sentence_id: sentenceIdx,
+        word_index: wordIndex,
         options: {
           translation: opt.has("zh"),
           definition: opt.has("en"),
@@ -61,16 +64,15 @@ export function useVocabLookup(sentences, updateSentenceVocab) {
         },
       };
 
-      const detail = await apiFetch("/api/vocab/detail", {
+      const detail = await apiFetch("/api/vocab/lookup", {
         method: "POST",
         body: JSON.stringify(payload),
       });
 
       const vocabItem = {
-        text,
-        lemma,
-        pos,
         queried: true,
+        lemma: hit?.lemma,
+        pos: hit?.pos,
         ...detail,
       }
 

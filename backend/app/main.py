@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import FastAPI
 from app.routes.translate import router as translate_router
 from app.routes.vocab import router as vocab_router
@@ -6,6 +8,8 @@ from app.routes.profile import router as profile_router
 from app.routes.test import router as test_router
 from app.core.config import settings
 from fastapi.middleware.cors import CORSMiddleware
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
 # Create the FastAPI application with metadata from settings.
 app = FastAPI(title=settings.app_title, version=settings.app_version)

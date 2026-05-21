@@ -5,7 +5,6 @@ from urllib import error, parse, request
 from fastapi import HTTPException
 
 from app.core.config import settings
-from app.services.nlp import extract_vocab
 
 
 def _require_supabase_config() -> None:
@@ -176,10 +175,8 @@ def get_session_detail(user_id: str, session_id: str) -> dict:
     ) or []
 
     queried_by_sentence: dict[int, list[dict]] = {}
-    queried_keys_by_sentence: dict[int, set[str]] = {}
     for vocab in vocab_rows:
         idx = vocab["sentence_index"]
-        key = f"{vocab['lemma']}|{vocab.get('pos')}"
         queried_by_sentence.setdefault(idx, []).append({
             "text": vocab.get("selected_text") or "",
             "lemma": vocab["lemma"],
@@ -190,30 +187,13 @@ def get_session_detail(user_id: str, session_id: str) -> dict:
             "level": vocab.get("level"),
             "queried": True,
         })
-        queried_keys_by_sentence.setdefault(idx, set()).add(key)
 
     hydrated = []
     for sentence in sentences:
         idx = sentence["sentence_index"]
         queried_list = queried_by_sentence.get(idx, [])
-        queried_keys = queried_keys_by_sentence.get(idx, set())
 
-        nlp_vocab = extract_vocab(sentence["original_text"])
-        unqueried = [
-            {
-                "text": item.text,
-                "lemma": item.lemma,
-                "pos": item.pos,
-                "translation": None,
-                "definition": None,
-                "example": None,
-                "level": None,
-                "queried": False,
-            }
-            for item in nlp_vocab
-            if f"{item.lemma}|{item.pos}" not in queried_keys
-        ]
-        merged_vocab = queried_list + unqueried
+        merged_vocab = queried_list
 
         hydrated.append({
             "id": idx,

@@ -10,18 +10,6 @@ from app.core.config import settings
 # Initialize Gemini client with the configured API key.
 client = genai.Client(api_key=settings.gemini_api_key)
 
-# JSON schema describing expected vocab fields from the model.
-VOCAB_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "translation": {"type": "string"},
-        "definition": {"type": "string"},
-        "example": {"type": "string"},
-        "level": {"type": "string"}
-    },
-    "required": ["translation", "definition", "example", "level"]
-}
-
 # Translate a list of sentences using Gemini and return aligned results.
 def ai_translate_list(sentences: list[str], target_lang: str = "zh-TW", mode: str = "normal") -> list[str]:
     if not sentences:
@@ -84,45 +72,50 @@ def ai_translate_list(sentences: list[str], target_lang: str = "zh-TW", mode: st
         fixed.append(translations[i] if i < len(translations) else "")
     return fixed
 
-# Ask Gemini to fill in vocab fields based on request options.
-def ai_fill_vocab_fields(lemma:str, pos:str, options:VocabOptions) -> dict:
+# Ask Gemini to identify lemma/pos from sentence context and fill requested vocab fields.
+def ai_lookup_word(selected_text: str, sentence: str, options: VocabOptions) -> dict:
     tasks = []
-    
     if options.translation:
-        tasks.append("translation: Chinese meaning of the word.")
+        tasks.append("translation: Traditional Chinese (zh-TW) meaning of this word in context.")
     if options.definition:
-        tasks.append("definition: ONE clear English definition")
+        tasks.append("definition: ONE clear English definition for this word as used in the sentence.")
     if options.example:
         tasks.append("example: One natural example sentence.")
     if options.level:
         tasks.append("level: CEFR level (A1-C2).")
     task_list = "\n".join(f"- {t}" for t in tasks) if tasks else "- None"
-    prompt = f"""
-You are an English dictionary for intermediate to advanced learners.
-    
-Word: "{lemma}"
-Part of speech: {pos}
 
-You MUST return a JSON object with EXACTLY these keys:
+    prompt = f"""You are an English dictionary for language learners.
+
+Sentence: "{sentence}"
+Selected word: "{selected_text}"
+
+First, identify how this word is used in the sentence:
+- lemma: base form of "{selected_text}" (e.g. "running" → "run")
+- pos: part of speech in this context (use one of: NOUN, VERB, ADJ, ADV, ADP, SCONJ)
+
+Then complete these tasks:
+{task_list}
+
+Return a JSON object with EXACTLY these keys:
+- text
+- lemma
+- pos
 - translation
 - definition
 - example
 - level
 
-Tasks to fill:
-{task_list}
-
 Rules:
-- Use ONLY the given part of speech.
-- If a field is NOT listed in "Tasks to fill", return an empty string "" for that field.
-- Definition must be English onlyl.
+- "text" must be the selected word exactly as given.
+- If a field is NOT listed in tasks, return "" for that field.
 - Translation must be Traditional Chinese (zh-TW).
+- Definition must be English only.
 - Example must be ONE sentence.
-- Level must be one of :A1, A2, B1, B2, C1, C2.
-- Do NOT add extra text.
+- Level must be one of: A1, A2, B1, B2, C1, C2.
 - Return ONLY valid JSON.
 """
-    
+
     response = client.models.generate_content(
         model=settings.gemini_model,
         contents=prompt,

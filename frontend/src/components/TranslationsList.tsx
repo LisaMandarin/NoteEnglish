@@ -10,12 +10,12 @@ const { Text } = Typography;
 
 export default function TranslationsList() {
   const {
-    state: { sentences, saving },
+    state: { sentences, saving, currentSession },
     actions: { updateSentenceVocab, removeSentenceVocab, reorderSentenceVocab },
   } = useTranslation();
 
   const containerRef = useRef(null);
-  const vocab = useVocabLookup(sentences, updateSentenceVocab);
+  const vocab = useVocabLookup(sentences, updateSentenceVocab, currentSession?.id ?? null);
   const { menuOpen, menuPos, handleMouseUp, closeMenu, clearSelection } =
     useSelectionMenu({ containerRef, vocab });
 

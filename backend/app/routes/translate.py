@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from app.models.translate import TranslateRequest, TranslateResponse, SentencePair
-from app.services.nlp import split_sentences, extract_vocab
+from app.services.nlp import split_sentences
 from app.services.gemini import ai_translate_list
 from app.core.auth import require_user
 
@@ -30,10 +30,10 @@ def translate(req: TranslateRequest, _user: dict = Depends(require_user)):
     for i in range(len(parts)):
         results.append(
             SentencePair(
-                id=i, 
-                original=parts[i], 
+                id=i,
+                original=parts[i],
                 translation=translations[i],
-                vocab=extract_vocab(parts[i])
+                vocab=[]
                 ))
 
     return TranslateResponse(sentences=results)
