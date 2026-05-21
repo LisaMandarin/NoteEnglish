@@ -66,11 +66,11 @@ export default function SummaryWindow() {
           <div className="mb-6 text-sm opacity-80">{subtitle}</div>
 
           {data.rows?.length ? (
-            <div className="space-y-6">
+            <div className="divide-y divide-dashed divide-(--card-border)">
               {data.rows.map((row) => (
                 <section
                   key={row.idx}
-                  className="rounded-2xl border border-(--card-border) bg-(--card-bg) p-4"
+                  className="py-6"
                 >
                   <div className="space-y-1">
                     <div>
@@ -83,24 +83,33 @@ export default function SummaryWindow() {
                     )}
                   </div>
 
-                  {data.includeVocab && (
-                    <div className={data.includeTranslation ? "mt-3" : "mt-2"}>
-                      <div className="font-semibold">單字筆記:</div>
-                      {row.vocab?.length ? (
-                        <div className="mt-2 grid grid-cols-1 min-[480px]:grid-cols-2 gap-3">
-                          {row.vocab.map((v, i) => (
-                            <VocabCard
-                              key={`${row.idx}-${v.lemma ?? v.text ?? "vocab"}-${v.pos ?? "unknown"}-${i}`}
-                              v={v}
-                              readOnly
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="mt-2 text-sm opacity-70">(目前沒有單字筆記)</div>
-                      )}
-                    </div>
-                  )}
+                  {data.includeVocab && (() => {
+                    const vocabItems = (row.vocab ?? []).filter(
+                      (v: { queried?: boolean; translation?: string; definition?: string; example?: string; level?: string }) =>
+                        v?.queried === true &&
+                        [v.translation, v.definition, v.example, v.level].some(
+                          (val) => val != null && String(val).trim() !== ""
+                        )
+                    );
+                    return (
+                      <div className={data.includeTranslation ? "mt-3" : "mt-2"}>
+                        <div className="font-semibold">單字筆記:</div>
+                        {vocabItems.length ? (
+                          <div className="mt-2 grid grid-cols-1 min-[480px]:grid-cols-2 gap-3">
+                            {vocabItems.map((v, i) => (
+                              <VocabCard
+                                key={`${row.idx}-${v.lemma ?? v.text ?? "vocab"}-${v.pos ?? "unknown"}-${i}`}
+                                v={v}
+                                readOnly
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="mt-2 text-sm opacity-70">(目前沒有單字筆記)</div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </section>
               ))}
             </div>

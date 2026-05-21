@@ -111,7 +111,7 @@ function SortableVocabCard({ id, v, onDelete }) {
   );
 }
 
-export function VocabCard({ v, onDelete, dragProps, readOnly = false }) {
+export function VocabCard({ v, onDelete, dragProps, readOnly = false }: { v: any; onDelete?: () => void; dragProps?: object; readOnly?: boolean }) {
   const head = (v.lemma ?? v.text ?? "").trim();
   const hasContent = v.definition || v.example;
 
