@@ -69,7 +69,7 @@ export default function VocabCards({ vocab, sentenceIdx, onDelete, onReorder }) 
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={sortedItems.map(itemId)} strategy={rectSortingStrategy}>
-        <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="mt-4 grid grid-cols-1 min-[480px]:grid-cols-2 gap-3">
           {sortedItems.map((v) => (
             <SortableVocabCard
               key={itemId(v)}
@@ -118,7 +118,7 @@ function VocabCard({ v, onDelete, dragProps }) {
   return (
     <div
       {...dragProps}
-      className="rounded-2xl border border-(--card-border) bg-(--card-bg) p-4 shadow-sm flex flex-col cursor-grab active:cursor-grabbing select-none"
+      className="rounded-2xl border border-(--card-border) bg-(--card-bg) p-4 shadow-sm flex flex-col cursor-grab active:cursor-grabbing select-none min-h-50 min-w-0"
     >
       {/* Word + POS badge */}
       <div className="flex items-center gap-2 mb-1">
