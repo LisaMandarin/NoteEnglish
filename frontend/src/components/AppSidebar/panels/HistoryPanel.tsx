@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { PlusOutlined } from "@ant-design/icons";
+import { Tooltip } from "antd";
 import { useTranslation } from "../../../context/translationContext";
 import { deleteSession } from "../../../lib/api";
 import { useSessionEdit } from "../hooks/useSessionEdit";
@@ -64,9 +66,19 @@ export default function HistoryPanel({ activePanel }) {
         into earlier translation drafts.
       </p>
       <div className="mt-6 rounded-3xl border border-black/10 bg-white/70 p-4">
-        <p className="m-0 text-xs font-semibold uppercase tracking-[0.18em] text-black/45">
-          Your Sessions
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="m-0 text-xs font-semibold uppercase tracking-[0.18em] text-black/45">
+            Your Sessions
+          </p>
+          <Tooltip title="New session">
+            <button
+              onClick={clear}
+              className="flex h-6 w-6 items-center justify-center rounded-full border-0 bg-transparent text-black/40 transition-colors hover:bg-black/8 hover:text-black/70"
+            >
+              <PlusOutlined />
+            </button>
+          </Tooltip>
+        </div>
         {saving && (
           <p className="mt-3 m-0 text-sm text-black/70">Saving current session...</p>
         )}
