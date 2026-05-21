@@ -1,10 +1,17 @@
+import { useState, useEffect } from "react";
 import AppTitle from "./AppTitle";
 import AppTextarea from "./AppTextarea";
 import TranslationsList from "./TranslationsList";
+import TipBox from "./TipBox";
 import { useTranslation } from "../context/translationContext";
 
 export default function AppMainSection() {
-  const { state: { sessionLoading } } = useTranslation();
+  const { state: { sessionLoading, currentSession, sentences } } = useTranslation();
+  const [showTip, setShowTip] = useState(true);
+
+  useEffect(() => {
+    setShowTip(true);
+  }, [currentSession?.id]);
 
   return (
     <div className="relative rounded-[30px] border-4 border-(--card-border) bg-(--card-bg) shadow-md">
@@ -18,7 +25,15 @@ export default function AppMainSection() {
         <AppTextarea />
 
         <div className="mt-6">
-          <h2 className="text-xl font-semibold mb-2">Translations</h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xl font-semibold">Translations</h2>
+            {showTip && sentences.length > 0 && (
+              <TipBox
+                message="Tip: Select any English word to look it up."
+                onDismiss={() => setShowTip(false)}
+              />
+            )}
+          </div>
           <TranslationsList />
         </div>
       </div>

@@ -81,12 +81,6 @@ export default function AppTextarea() {
                 className="mb-4"
               />
             )}
-
-            {updatedAt ? (
-              <Text type="secondary">
-                Translation saved {formatUpdatedAt(updatedAt)}
-              </Text>
-            ) : null}
         </>
     )
 }
