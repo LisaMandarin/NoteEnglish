@@ -111,14 +111,14 @@ function SortableVocabCard({ id, v, onDelete }) {
   );
 }
 
-function VocabCard({ v, onDelete, dragProps }) {
+export function VocabCard({ v, onDelete, dragProps, readOnly = false }) {
   const head = (v.lemma ?? v.text ?? "").trim();
   const hasContent = v.definition || v.example;
 
   return (
     <div
-      {...dragProps}
-      className="rounded-2xl border border-(--card-border) bg-(--card-bg) p-4 shadow-sm flex flex-col cursor-grab active:cursor-grabbing select-none min-h-50 min-w-0"
+      {...(!readOnly ? dragProps : {})}
+      className={`rounded-2xl border border-(--card-border) bg-(--card-bg) p-4 shadow-sm flex flex-col select-none min-h-50 min-w-0 ${readOnly ? "" : "cursor-grab active:cursor-grabbing"}`}
     >
       {/* Word + POS badge */}
       <div className="flex items-center gap-2 mb-1">
@@ -165,14 +165,16 @@ function VocabCard({ v, onDelete, dragProps }) {
             />
           </Tooltip>
         </div>
-        <button
-          type="button"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
-          className="cursor-pointer"
-        >
-          <DeleteTwoTone twoToneColor="#eb2f96" />
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
+            className="cursor-pointer"
+          >
+            <DeleteTwoTone twoToneColor="#eb2f96" />
+          </button>
+        )}
       </div>
     </div>
   );

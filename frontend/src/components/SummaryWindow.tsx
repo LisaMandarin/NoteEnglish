@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Button, Typography } from "antd";
+import { VocabCard } from "./VocabCards";
 
 const { Text } = Typography;
 
@@ -86,41 +87,13 @@ export default function SummaryWindow() {
                     <div className={data.includeTranslation ? "mt-3" : "mt-2"}>
                       <div className="font-semibold">單字筆記:</div>
                       {row.vocab?.length ? (
-                        <div className="mt-2 space-y-2">
+                        <div className="mt-2 grid grid-cols-1 min-[480px]:grid-cols-2 gap-3">
                           {row.vocab.map((v, i) => (
-                            <article
+                            <VocabCard
                               key={`${row.idx}-${v.lemma ?? v.text ?? "vocab"}-${v.pos ?? "unknown"}-${i}`}
-                              className="rounded-xl bg-(--card-bg) p-3 border-[0.5px] border-(--card-border) "
-                            >
-                              <div>
-                                <span className="font-semibold">{v.lemma ?? v.text ?? "vocab"}</span> ({v.pos ?? "unknown"})
-                              </div>
-                              {v.text &&
-                                v.lemma &&
-                                v.text.toLowerCase() !== v.lemma.toLowerCase() && (
-                                  <div className="mt-1 text-sm opacity-80">選取：{v.text}</div>
-                                )}
-
-                              {[
-                                ["中文", v.translation],
-                                ["定義", v.definition],
-                                ["例句", v.example],
-                                ["程度", v.level],
-                              ]
-                                .filter(([, val]) => val != null && String(val).trim() !== "")
-                                .map(([label, val]) => (
-                                  <div key={label} className="mt-1 text-sm">
-                                    <span className="font-semibold">{label}：</span>
-                                    <span>{val}</span>
-                                  </div>
-                                ))}
-
-                              {![v.translation, v.definition, v.example, v.level].some(
-                                (val) => val != null && String(val).trim() !== "",
-                              ) && (
-                                <div className="mt-1 text-sm opacity-70">(目前沒有回傳可顯示的欄位)</div>
-                              )}
-                            </article>
+                              v={v}
+                              readOnly
+                            />
                           ))}
                         </div>
                       ) : (

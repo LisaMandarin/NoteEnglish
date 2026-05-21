@@ -60,10 +60,37 @@ h1, h2, h3 {
 
     .summary-page {
       background: white !important;
+      min-height: unset !important;
+      padding: 0 !important;
+    }
+
+    .summary-page > div {
+      border: none !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      padding: 0 !important;
+    }
+
+    .summary-page > div > div {
+      padding: 8px 16px !important;
     }
 
     .summary-page .bg-\(--card-bg\) {
       background: white !important;
     }
 
+    /* Hide print button */
+    button {
+      display: none !important;
+    }
+
+    /* Tighten section spacing */
+    .space-y-6 > * + * {
+      margin-top: 12px !important;
+    }
+
+    section {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
   }
