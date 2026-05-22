@@ -70,15 +70,27 @@ export default function SummaryWindow() {
               {data.rows.map((row) => (
                 <section
                   key={row.idx}
-                  className="py-6"
+                  className="py-6 flex gap-4"
                 >
-                  <div className="space-y-1">
+                  <div className="w-7 h-7 rounded-full bg-(--accent) text-white flex items-center justify-center shrink-0 font-bold text-sm mt-0.5">
+                    {row.idx + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="space-y-1">
                     <div>
-                      <span className="font-semibold">{row.idx + 1}. 原文:</span> {row.original}
+                      <span className="font-semibold">原文:</span> {row.original}
                     </div>
                     {data.includeTranslation && (
-                      <div>
-                        <span className="font-semibold">Translation:</span> {row.translation}
+                      <div className="space-y-1 mt-1">
+                        {(row.translation ?? "")
+                          .split(/(?<=。)|(?<=\. )/)
+                          .map((s: string) => s.trim())
+                          .filter(Boolean)
+                          .map((sentence: string, i: number) => (
+                            <div key={i} className="flex items-start gap-2">
+                              <span>{sentence}</span>
+                            </div>
+                          ))}
                       </div>
                     )}
                   </div>
@@ -110,6 +122,7 @@ export default function SummaryWindow() {
                       </div>
                     );
                   })()}
+                  </div>
                 </section>
               ))}
             </div>

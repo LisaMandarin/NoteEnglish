@@ -63,11 +63,13 @@ export default function VocabCards({ vocab, sentenceIdx, onDelete, onReorder }) 
   if (items.length === 0) return null;
 
   return (
+    // DndContext provides the shared drag-and-drop state for all vocab cards.
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragEnd={handleDragEnd}
     >
+      {/* SortableContext tells dnd-kit which cards can be reordered in this grid. */}
       <SortableContext items={sortedItems.map(itemId)} strategy={rectSortingStrategy}>
         <div className="mt-4 grid grid-cols-1 min-[480px]:grid-cols-2 gap-3">
           {sortedItems.map((v) => (
@@ -89,6 +91,8 @@ function itemId(v) {
 }
 
 function SortableVocabCard({ id, v, onDelete }) {
+  // useSortable wires this card to dnd-kit and returns the props/styles needed
+  // for drag handles, DOM measurement, and animated position changes.
   const {
     attributes,
     listeners,
