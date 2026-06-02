@@ -14,6 +14,9 @@ You can paste a passage, get sentence-by-sentence translation, look up selected 
   - Example sentence
   - CEFR level
 - Vocab notes shown as cards under each sentence (expand/collapse + delete).
+  - Inline editing of all card fields (translation, definition, example, up to 5 custom notes).
+  - Drag-to-reorder cards within a sentence.
+  - Pronounce button (speech synthesis) on word headings and example sentences.
 - Summary window (`?view=summary`) with selectable sections:
   - Original + translation
   - Original + queried vocab notes
@@ -82,6 +85,9 @@ NoteEnglish 句句通是給英語學習者的雙語學習工具。
   - 例句
   - CEFR 程度
 - 每句下方顯示「單字筆記卡片」（可收合/展開、可刪除）。
+  - 可內聯編輯所有欄位（翻譯、定義、例句，以及最多 5 個自訂備注欄位）。
+  - 可拖曳排序同一句的單字卡片。
+  - 單字標題與例句旁有發音按鈕（語音合成）。
 - 支援彙整視窗（`?view=summary`）與列印：
   - 原文 + 翻譯
   - 原文 + 已查詢單字筆記
