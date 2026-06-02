@@ -5,11 +5,18 @@ import VocabCards from "./VocabCards";
 import { speak } from "../lib/speech";
 const { Text } = Typography;
 
-export default function SentenceItem({ sentence, idx, onDelete, onReorder }: {
+export default function SentenceItem({
+  sentence,
+  idx,
+  onDelete,
+  onReorder,
+  onEdit,
+}: {
   sentence: Sentence;
   idx: number;
   onDelete?: (sentenceIdx: number, lemma: string, pos: string) => void;
   onReorder?: (sentenceIdx: number, newVocab: VocabItem[]) => void;
+  onEdit?: (sentenceIdx: number, vocabItem: VocabItem) => void;
 }): React.ReactElement {
   return (
     <li data-idx={idx} className="flex gap-4">
@@ -17,28 +24,34 @@ export default function SentenceItem({ sentence, idx, onDelete, onReorder }: {
         {idx + 1}
       </div>
       <div className="flex-1 min-w-0">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => speak(sentence.original)}
-          className="text-gray-400 hover:text-(--accent) transition-colors cursor-pointer"
-          aria-label="Pronounce sentence"
-        >
-          <SoundOutlined />
-        </button>
-        <Text strong style={{ fontSize: "1.25rem" }}>
-          {sentence.original}
-        </Text>
-      </div>
-      <div className="select-none">
-        <Text type="secondary">{sentence.translation}</Text>
-      </div>
-      <VocabCards
-        vocab={sentence.vocab}
-        sentenceIdx={idx}
-        onDelete={onDelete}
-        onReorder={onReorder}
-      />
+        <div className="flex flex-row items-baseline gap-2">
+          <div>
+            <button
+              type="button"
+              onClick={() => speak(sentence.original)}
+              className="text-gray-400 hover:text-(--accent) transition-colors cursor-pointer"
+              aria-label="Pronounce sentence"
+            >
+              <SoundOutlined />
+            </button>
+          </div>
+          <div>
+            <Text strong style={{ fontSize: "1.25rem" }}>
+              {sentence.original}
+            </Text>
+            <div className="select-none">
+              <Text type="secondary">{sentence.translation}</Text>
+            </div>
+          </div>
+        </div>
+
+        <VocabCards
+          vocab={sentence.vocab}
+          sentenceIdx={idx}
+          onDelete={onDelete}
+          onReorder={onReorder}
+          onEdit={onEdit}
+        />
       </div>
     </li>
   );

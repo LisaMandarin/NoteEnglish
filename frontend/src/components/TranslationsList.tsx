@@ -46,6 +46,7 @@ export default function TranslationsList(): React.ReactElement {
             idx={idx}
             onDelete={removeSentenceVocab}
             onReorder={reorderSentenceVocab}
+            onEdit={updateSentenceVocab}
           />
         ))}
       </ol>

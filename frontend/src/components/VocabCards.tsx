@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { VocabItem } from "../types";
-import { DeleteTwoTone, QuestionCircleOutlined, SoundOutlined } from '@ant-design/icons';
+import { CheckOutlined, DeleteTwoTone, EditTwoTone, QuestionCircleOutlined, SoundOutlined } from '@ant-design/icons';
 import { speak } from "../lib/speech";
-import { Tooltip } from 'antd';
+import { Modal, Tooltip } from 'antd';
 import {
   DndContext,
   closestCenter,
@@ -104,7 +104,7 @@ function LevelDots({ level }: { level?: string }) {
   );
 }
 
-function SortableVocabCard({ id, v, onDelete }: { id: string; v: VocabItem; onDelete?: () => void }) {
+function SortableVocabCard({ id, v, onDelete, onEdit }: { id: string; v: VocabItem; onDelete?: () => void; onEdit?: (updates: Partial<VocabItem>) => void }) {
   const {
     attributes,
     listeners,
@@ -122,7 +122,7 @@ function SortableVocabCard({ id, v, onDelete }: { id: string; v: VocabItem; onDe
 
   return (
     <div ref={setNodeRef} style={style}>
-      <VocabCard v={v} onDelete={onDelete} dragProps={{ ...attributes, ...listeners }} />
+      <VocabCard v={v} onDelete={onDelete} onEdit={onEdit} dragProps={{ ...attributes, ...listeners }} />
     </div>
   );
 }
@@ -130,14 +130,75 @@ function SortableVocabCard({ id, v, onDelete }: { id: string; v: VocabItem; onDe
 // ── Exported components ───────────────────────────────────────────────────────
 
 
-export function VocabCard({ v, onDelete, dragProps, readOnly = false }: { v: VocabItem; onDelete?: () => void; dragProps?: object; readOnly?: boolean }) {
+type EditDraft = { translation: string; definition: string; example: string };
+
+export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: { v: VocabItem; onDelete?: () => void; onEdit?: (updates: Partial<VocabItem>) => void; dragProps?: object; readOnly?: boolean }) {
   const head = (v.lemma ?? v.text ?? "").trim();
   const hasContent = v.definition || v.example;
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState<EditDraft>({ translation: "", definition: "", example: "" });
+  const cardRef = useRef<HTMLDivElement>(null);
+  const isConfirmingRef = useRef(false);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const onEditRef = useRef(onEdit);
+  onEditRef.current = onEdit;
+
+  useEffect(() => {
+    if (!isEditing) return;
+
+    function handleOutsideMousedown(e: MouseEvent): void {
+      if (isConfirmingRef.current) return;
+      if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
+        isConfirmingRef.current = true;
+        Modal.confirm({
+          title: '離開編輯',
+          content: '要儲存還是取消編輯？',
+          okText: '完成編輯',
+          cancelText: '取消編輯',
+          onOk: () => {
+            isConfirmingRef.current = false;
+            onEditRef.current?.({ ...draftRef.current });
+            setIsEditing(false);
+          },
+          onCancel: () => {
+            isConfirmingRef.current = false;
+            setIsEditing(false);
+          },
+        });
+      }
+    }
+
+    document.addEventListener('mousedown', handleOutsideMousedown);
+    return () => document.removeEventListener('mousedown', handleOutsideMousedown);
+  }, [isEditing]);
+
+  function enterEdit(e: React.MouseEvent): void {
+    e.stopPropagation();
+    setDraft({ translation: v.translation ?? "", definition: v.definition ?? "", example: v.example ?? "" });
+    setIsEditing(true);
+  }
+
+  function commitEdit(): void {
+    onEditRef.current?.({ ...draftRef.current });
+    setIsEditing(false);
+  }
+
+  function handleTranslationKeyDown(e: React.KeyboardEvent<HTMLInputElement>): void {
+    if (e.key === "Enter") { e.preventDefault(); commitEdit(); }
+    if (e.key === "Escape") setIsEditing(false);
+  }
+
+  function handleTextareaKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>): void {
+    if (e.key === "Escape") setIsEditing(false);
+  }
+
   return (
     <div
-      {...(!readOnly ? dragProps : {})}
-      className={`rounded-2xl border border-(--card-border) bg-(--card-bg) p-4 shadow-sm flex flex-col select-none min-h-50 min-w-0 ${readOnly ? "" : "cursor-grab active:cursor-grabbing"}`}
+      ref={cardRef}
+      {...(!readOnly && !isEditing ? dragProps : {})}
+      className={`rounded-2xl border border-(--card-border) bg-(--card-bg) p-4 shadow-sm flex flex-col min-h-50 min-w-0 ${isEditing ? "select-text" : "select-none"} ${readOnly || isEditing ? "" : "cursor-grab active:cursor-grabbing"}`}
     >
       {/* Word + POS badge */}
       <div className="flex items-center gap-2 mb-1">
@@ -160,37 +221,76 @@ export function VocabCard({ v, onDelete, dragProps, readOnly = false }: { v: Voc
         )}
       </div>
 
-      {/* Chinese translation */}
-      {v.translation && (
-        <div className="text-2xl font-bold text-(--text-main) mb-2">{v.translation}</div>
-      )}
+      {/* Editable content area */}
+      {isEditing ? (
+        <div
+          className="flex-1 flex flex-col gap-2"
+          onMouseDown={(e) => e.stopPropagation()}
+          onMouseUp={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <input
+            type="text"
+            value={draft.translation}
+            onChange={(e) => setDraft((d) => ({ ...d, translation: e.target.value }))}
+            onKeyDown={handleTranslationKeyDown}
+            autoFocus
+            placeholder="Translation"
+            className="text-2xl font-bold text-(--text-main) w-full border-b-2 border-(--accent) bg-transparent outline-none pb-0.5"
+          />
+          <textarea
+            value={draft.definition}
+            onChange={(e) => setDraft((d) => ({ ...d, definition: e.target.value }))}
+            onKeyDown={handleTextareaKeyDown}
+            placeholder="Definition"
+            rows={2}
+            className="text-sm text-(--text-main) w-full border border-(--card-border) rounded-lg px-2 py-1 bg-transparent outline-none resize-none focus:border-(--accent)"
+          />
+          <textarea
+            value={draft.example}
+            onChange={(e) => setDraft((d) => ({ ...d, example: e.target.value }))}
+            onKeyDown={handleTextareaKeyDown}
+            placeholder="Example sentence"
+            rows={2}
+            className="text-sm text-(--text-main) w-full border border-(--card-border) rounded-lg px-2 py-1 bg-transparent outline-none resize-none focus:border-(--accent)"
+          />
+        </div>
+      ) : (
+        <>
+          {/* Chinese translation */}
+          {v.translation && (
+            <div className="text-2xl font-bold text-(--text-main) mb-2">{v.translation}</div>
+          )}
 
-      {/* Definition + Example */}
-      <div className="flex-1">
-        {hasContent && (
-          <div className="space-y-2">
-            {v.definition && (
-              <p className="text-sm text-(--text-main) leading-relaxed">{v.definition}</p>
-            )}
-            {v.example && (
-              <div className="rounded-lg bg-gray-100 px-3 py-2 text-sm flex items-start gap-2">
-                <button
-                  type="button"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => { e.stopPropagation(); speak(v.example!); }}
-                  className="mt-0.5 shrink-0 text-gray-400 hover:text-(--accent) transition-colors cursor-pointer"
-                  aria-label="Pronounce example"
-                >
-                  <SoundOutlined />
-                </button>
-                <HighlightedExample example={v.example} lemma={v.lemma} text={v.text} />
+          {/* Definition + Example */}
+          <div className="flex-1">
+            {hasContent && (
+              <div className="space-y-2">
+                {v.definition && (
+                  <p className="text-sm text-(--text-main) leading-relaxed">{v.definition}</p>
+                )}
+                {v.example && (
+                  <div className="rounded-lg bg-gray-100 px-3 py-2 text-sm flex items-start gap-2">
+                    <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => { e.stopPropagation(); speak(v.example!); }}
+                      className="mt-0.5 shrink-0 text-gray-400 hover:text-(--accent) transition-colors cursor-pointer"
+                      aria-label="Pronounce example"
+                    >
+                      <SoundOutlined />
+                    </button>
+                    <HighlightedExample example={v.example} lemma={v.lemma} text={v.text} />
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
-      {/* Footer: level dots + delete */}
+      {/* Footer: level dots + check/edit + delete */}
       <div className="flex items-center justify-between mt-3">
         <div className="flex items-center gap-1.5">
           {v.level && (
@@ -207,21 +307,44 @@ export function VocabCard({ v, onDelete, dragProps, readOnly = false }: { v: Voc
           )}
         </div>
         {!readOnly && (
-          <button
-            type="button"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
-            className="cursor-pointer"
-          >
-            <DeleteTwoTone twoToneColor="#eb2f96" />
-          </button>
+          <div className="flex items-center gap-2">
+            {isEditing ? (
+              <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); commitEdit(); }}
+                className="cursor-pointer"
+                aria-label="Save vocab"
+              >
+                <CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={enterEdit}
+                className="cursor-pointer"
+                aria-label="Edit vocab"
+              >
+                <EditTwoTone twoToneColor="#1677ff" />
+              </button>
+            )}
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
+              className="cursor-pointer"
+            >
+              <DeleteTwoTone twoToneColor="#eb2f96" />
+            </button>
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-export default function VocabCards({ vocab, sentenceIdx, onDelete, onReorder }: { vocab: VocabItem[]; sentenceIdx: number; onDelete?: (sentenceIdx: number, lemma: string, pos: string) => void; onReorder?: (sentenceIdx: number, newVocab: VocabItem[]) => void }): React.ReactElement | null {
+export default function VocabCards({ vocab, sentenceIdx, onDelete, onReorder, onEdit }: { vocab: VocabItem[]; sentenceIdx: number; onDelete?: (sentenceIdx: number, lemma: string, pos: string) => void; onReorder?: (sentenceIdx: number, newVocab: VocabItem[]) => void; onEdit?: (sentenceIdx: number, vocabItem: VocabItem) => void }): React.ReactElement | null {
   const items = useMemo(() => {
     const list = Array.isArray(vocab) ? vocab : [];
     return list.filter((v) =>
@@ -271,6 +394,7 @@ export default function VocabCards({ vocab, sentenceIdx, onDelete, onReorder }: 
               id={itemId(v)}
               v={v}
               onDelete={() => onDelete?.(sentenceIdx, v.lemma, v.pos)}
+              onEdit={(updates) => onEdit?.(sentenceIdx, { ...v, ...updates })}
             />
           ))}
         </div>
