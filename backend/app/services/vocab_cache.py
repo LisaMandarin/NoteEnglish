@@ -1,7 +1,7 @@
 import logging
 
 from app.models.vocab import CachedLookup, VocabLookupRequest, VocabLookupResponse, VocabOptions
-from app.services.gemini import ai_lookup_word
+from app.services.gemini import ai_lookup_word, normalize_pos
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ def get_vocab_lookup(req: VocabLookupRequest) -> VocabLookupResponse:
                 sentence=req.sentence,
                 text=ai_data.get("text") or req.selected_text,
                 lemma=ai_data.get("lemma") or req.selected_text.lower(),
-                pos=ai_data.get("pos") or "",
+                pos=normalize_pos(ai_data.get("pos") or ""),
             )
 
         for field in ["translation", "definition", "example", "level"]:

@@ -128,9 +128,11 @@ export function VocabCard({ v, onDelete, dragProps, readOnly = false }: { v: Voc
       {/* Word + POS badge */}
       <div className="flex items-center gap-2 mb-1">
         <span className="text-lg font-bold text-(--text-main)">{head || "vocab"}</span>
-        <span className={`rounded px-2 py-0.5 text-xs font-bold uppercase tracking-wider ${getPosStyle(v.pos)}`}>
-          {v.pos ?? "—"}
-        </span>
+        <Tooltip title={v.pos ? POS_LABELS[v.pos] : undefined}>
+          <span className={`rounded px-2 py-0.5 text-xs font-bold uppercase tracking-wider ${getPosStyle(v.pos)}`}>
+            {v.pos ?? "—"}
+          </span>
+        </Tooltip>
       </div>
 
       {/* Chinese translation */}
@@ -235,3 +237,17 @@ function getLevelInfo(level?: string): { filled: number; total: number; color: s
 function getPosStyle(_pos?: string) {
   return "bg-(--accent)/15 text-(--accent)";
 }
+
+const POS_LABELS: Record<string, string> = {
+  "n.": "名詞",
+  "v.": "動詞",
+  "pron.": "代名詞",
+  "propn.": "專有名詞",
+  "adj.": "形容詞",
+  "adv.": "副詞",
+  "prep.": "介系詞",
+  "conj.": "連接詞",
+  "aux.": "助動詞",
+  "phr.": "片語",
+  "interj.": "感嘆詞",
+};
