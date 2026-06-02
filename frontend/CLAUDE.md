@@ -1,5 +1,30 @@
 # CLAUDE.md — Frontend
 
+## UI & Styling
+
+When styling components, follow this priority order:
+
+1. **Ant Design** — use AntD components and props first (`Button`, `Card`, `Space`, `Typography`, etc.)
+2. **Tailwind CSS** — use utility classes if AntD doesn't cover the need. Use CSS variable syntax: `bg-(--card-bg)`, `border-(--card-border)`, `text-(--text-main)`. Do not mix in arbitrary value syntax like `bg-[var(--card-bg)]` unless the surrounding component already does so.
+3. **Plain CSS** — only if neither AntD nor Tailwind can achieve the result
+
+When any UI work involves color, background, font, or border, always use the CSS variables defined in `src/index.css` `:root` rather than hardcoding values. If a new token is needed, add it to `:root` in `src/index.css` — do not scatter raw hex values across components.
+
+| Variable | Use |
+|---|---|
+| `--bg-main` | Page background |
+| `--card-bg` | Card / surface background |
+| `--card-border` | Card borders |
+| `--text-main` | Default text |
+| `--accent` | Highlights and emphasis |
+| `--font-body` | Body text font stack |
+| `--font-heading` | Heading font (Playfair Display) |
+
+## Protected Behaviors
+
+- **`.summary-page` font stack** — do not replace or remove it. It carries the CJK-friendly font for Traditional Chinese print output.
+- **`@media print` styles** — do not remove the white-background print behavior. Print/export is a core feature.
+
 ## TypeScript Rules
 
 `tsconfig.json` has `strict: false` and `allowJs: true` — the codebase is gradually typed. Follow these rules when adding or modifying code:

@@ -31,15 +31,4 @@ npm run build
 npm run preview   # serve the build locally
 ```
 
-## Expected backend endpoints
-All endpoints require a Supabase Bearer token (obtained after sign-in).
-- `POST /api/translate`
-- `POST /api/vocab/detail`
-- `POST /api/profile/ensure`
-- `GET /api/sessions`
-- `GET /api/sessions/{id}`
-- `POST /api/sessions/save`
-- `PATCH /api/sessions/{id}/title`
-- `DELETE /api/sessions/{id}`
-
-Ensure the backend is reachable at `VITE_API_BASE` before using the app. The backend needs a valid Gemini API key and Supabase credentials; see `backend/README.md` for details.
+Ensure the backend is reachable at `VITE_API_BASE` before using the app. See `backend/README.md` for API endpoints and credentials.

@@ -2,18 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Development Commands
-
-```bash
-# Backend
-cd backend && poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# Frontend
-cd frontend && npm run dev        # http://localhost:5173
-cd frontend && npm run type-check # tsc --noEmit
-cd frontend && npm run lint
-```
-
 ## Key Architecture Decisions
 
 **Single source of truth**: `context/translationContext.tsx` owns all app state via `useReducer`. Every mutation (vocab add/remove/reorder) immediately calls `saveGeneratedProgress`, which auto-saves to the backend — there is no manual save button.

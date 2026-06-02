@@ -41,50 +41,10 @@ NoteEnglish/
 ## Quick Start
 
 ### 1) Backend
-Prerequisites:
-- Python 3.10-3.12
-- Poetry
-- Gemini API Key
-
-```bash
-cd backend
-poetry install
-```
-
-Create `backend/.env`:
-```env
-GEMINI_API_KEY=your_key_here
-FRONTEND_ORIGINS=http://localhost:5173
-GEMINI_MODEL=gemini-2.5-flash
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-```
-
-Run:
-```bash
-poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
+See [backend/README.md](backend/README.md) for setup, `.env` config, and Render deployment.
 
 ### 2) Frontend
-Prerequisites:
-- Node.js 18+
-- npm
-
-```bash
-cd frontend
-npm install
-```
-
-Optional `frontend/.env`:
-```env
-VITE_API_BASE=http://127.0.0.1:8000
-```
-
-Run:
-```bash
-npm run dev
-```
+See [frontend/README.md](frontend/README.md) for setup and build commands.
 
 ### 3) Supabase
 This app expects these Supabase tables:
@@ -92,39 +52,6 @@ This app expects these Supabase tables:
 - `study_sessions`
 - `session_sentences`
 - `vocab_notes`
-
-### 4) Deploy Backend to Render
-This repo includes `render.yaml` for the backend service.
-
-Recommended Render env vars:
-```env
-FRONTEND_ORIGINS=https://note-english-gbysku9hc-lisas-projects-8870c4b9.vercel.app
-GEMINI_API_KEY=your_key_here
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-```
-
-Notes:
-- Render should deploy from the repo root using `render.yaml`.
-- The backend service runs from `backend/`.
-- Health check path: `/api/health`.
-- `FRONTEND_ORIGINS` accepts multiple comma-separated origins.
-- For production, keep `FRONTEND_ORIGINS` to the deployed frontend domain only. Use `backend/.env` for local `http://localhost:5173`.
-
-## API Endpoints
-All endpoints except health/debug require a Supabase Bearer token.
-
-- `GET /api/health`: health check (requires `test` router to be registered in `main.py`).
-- `POST /api/debug/split`: inspect sentence splitting result (same caveat).
-- `POST /api/translate`: translate text and return sentence list with base vocab.
-- `POST /api/vocab/detail`: fetch selected vocab details by requested fields.
-- `POST /api/profile/ensure`: ensure the signed-in user's profile row exists.
-- `GET /api/sessions`: list the signed-in user's saved sessions.
-- `GET /api/sessions/{id}`: load one saved session.
-- `POST /api/sessions/save`: create or update one saved session.
-- `PATCH /api/sessions/{id}/title`: rename a saved session.
-- `DELETE /api/sessions/{id}`: delete a saved session and all related data.
 
 ## Usage Flow
 1. Paste a passage and click `Translate`.
@@ -181,83 +108,17 @@ NoteEnglish/
 ### 快速開始
 
 #### 1) 啟動後端
-需求：
-- Python 3.10-3.12
-- Poetry
-- Gemini API Key
-
-```bash
-cd backend
-poetry install
-```
-
-建立 `backend/.env`：
-```env
-GEMINI_API_KEY=your_key_here
-FRONTEND_ORIGINS=http://localhost:5173
-GEMINI_MODEL=gemini-2.5-flash
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-```
-
-啟動：
-```bash
-poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
+請參閱 [backend/README.md](backend/README.md) 了解安裝、`.env` 設定與 Render 部署方式。
 
 #### 2) 啟動前端
-需求：
-- Node.js 18+
-- npm
+請參閱 [frontend/README.md](frontend/README.md) 了解安裝與 build 指令。
 
-```bash
-cd frontend
-npm install
-```
-
-可選設定 `frontend/.env`：
-```env
-VITE_API_BASE=http://127.0.0.1:8000
-```
-
-啟動：
-```bash
-npm run dev
-```
-
-### API 端點
-health/debug 以外的所有端點均需 Supabase Bearer token。
-
-- `GET /api/health`：健康檢查（需在 `main.py` 註冊 `test` router）
-- `POST /api/debug/split`：查看斷句結果（同上）
-- `POST /api/translate`：翻譯文字並回傳逐句資料與基礎單字
-- `POST /api/vocab/detail`：查詢指定單字欄位細節
-- `POST /api/profile/ensure`：建立或更新登入使用者的 profile
-- `GET /api/sessions`：列出登入使用者的所有學習紀錄
-- `GET /api/sessions/{id}`：載入單一學習紀錄
-- `POST /api/sessions/save`：建立或更新學習紀錄
-- `PATCH /api/sessions/{id}/title`：重新命名學習紀錄標題
-- `DELETE /api/sessions/{id}`：刪除學習紀錄及所有相關資料
-
-### Render 部署後端
-專案根目錄已加入 `render.yaml`，可直接拿來建立 Render Web Service。
-
-建議在 Render 設定以下環境變數：
-```env
-FRONTEND_ORIGINS=https://note-english-gbysku9hc-lisas-projects-8870c4b9.vercel.app
-GEMINI_API_KEY=your_key_here
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-```
-
-備註：
-- Render 會從 repo root 讀取 `render.yaml`
-- backend 服務實際執行目錄是 `backend/`
-- 健康檢查路徑請用 `/api/health`
-- `FRONTEND_ORIGINS` 可用逗號分隔多個來源
-- 正式環境建議只放正式前端網域；本機開發的 `http://localhost:5173` 請放在 `backend/.env`
+#### 3) Supabase
+本專案需要以下 Supabase 資料表：
+- `profiles`
+- `study_sessions`
+- `session_sentences`
+- `vocab_notes`
 
 ### 使用流程
 1. 貼上一段文字，按 `Translate`。
