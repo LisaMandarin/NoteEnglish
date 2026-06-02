@@ -9,6 +9,11 @@ class SessionVocabItem(BaseModel):
     definition: str | None = None
     example: str | None = None
     level: str | None = None
+    other_1: str | None = None
+    other_2: str | None = None
+    other_3: str | None = None
+    other_4: str | None = None
+    other_5: str | None = None
 
 
 class SessionSentence(BaseModel):

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { VocabItem } from "../types";
-import { CheckOutlined, DeleteTwoTone, EditTwoTone, QuestionCircleOutlined, SoundOutlined } from '@ant-design/icons';
+import { CheckOutlined, DeleteTwoTone, EditTwoTone, MinusCircleOutlined, PlusCircleOutlined, QuestionCircleOutlined, SoundOutlined } from '@ant-design/icons';
 import { speak } from "../lib/speech";
 import { Modal, Tooltip } from 'antd';
 import {
@@ -130,14 +130,25 @@ function SortableVocabCard({ id, v, onDelete, onEdit }: { id: string; v: VocabIt
 // ── Exported components ───────────────────────────────────────────────────────
 
 
-type EditDraft = { translation: string; definition: string; example: string };
+const MAX_OTHERS = 5;
+
+type EditDraft = { translation: string; definition: string; example: string; others: string[] };
+
+function buildUpdates(d: EditDraft): Partial<VocabItem> {
+  const { others, ...rest } = d;
+  const otherFields: Partial<VocabItem> = {};
+  for (let i = 1; i <= MAX_OTHERS; i++) {
+    (otherFields as Record<string, string | undefined>)[`other_${i}`] = others[i - 1];
+  }
+  return { ...rest, ...otherFields };
+}
 
 export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: { v: VocabItem; onDelete?: () => void; onEdit?: (updates: Partial<VocabItem>) => void; dragProps?: object; readOnly?: boolean }) {
   const head = (v.lemma ?? v.text ?? "").trim();
-  const hasContent = v.definition || v.example;
+  const hasContent = v.definition || v.example || [1,2,3,4,5].some(i => (v as Record<string, unknown>)[`other_${i}`]);
 
   const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState<EditDraft>({ translation: "", definition: "", example: "" });
+  const [draft, setDraft] = useState<EditDraft>({ translation: "", definition: "", example: "", others: [] });
   const cardRef = useRef<HTMLDivElement>(null);
   const isConfirmingRef = useRef(false);
   const draftRef = useRef(draft);
@@ -159,7 +170,7 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: 
           cancelText: '取消編輯',
           onOk: () => {
             isConfirmingRef.current = false;
-            onEditRef.current?.({ ...draftRef.current });
+            onEditRef.current?.(buildUpdates(draftRef.current));
             setIsEditing(false);
           },
           onCancel: () => {
@@ -176,12 +187,17 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: 
 
   function enterEdit(e: React.MouseEvent): void {
     e.stopPropagation();
-    setDraft({ translation: v.translation ?? "", definition: v.definition ?? "", example: v.example ?? "" });
+    const others: string[] = [];
+    for (let i = 1; i <= MAX_OTHERS; i++) {
+      const val = (v as Record<string, unknown>)[`other_${i}`] as string | undefined;
+      if (val != null) others.push(val);
+    }
+    setDraft({ translation: v.translation ?? "", definition: v.definition ?? "", example: v.example ?? "", others });
     setIsEditing(true);
   }
 
   function commitEdit(): void {
-    onEditRef.current?.({ ...draftRef.current });
+    onEditRef.current?.(buildUpdates(draftRef.current));
     setIsEditing(false);
   }
 
@@ -255,6 +271,43 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: 
             rows={2}
             className="text-sm text-(--text-main) w-full border border-(--card-border) rounded-lg px-2 py-1 bg-transparent outline-none resize-none focus:border-(--accent)"
           />
+          {draft.others.map((val, idx) => (
+            <div key={idx} className="flex items-start gap-1">
+              <textarea
+                value={val}
+                onChange={(e) => setDraft((d) => {
+                  const next = [...d.others];
+                  next[idx] = e.target.value;
+                  return { ...d, others: next };
+                })}
+                onKeyDown={handleTextareaKeyDown}
+                placeholder={`Note ${idx + 1}`}
+                rows={2}
+                className="text-sm text-(--text-main) w-full border border-(--card-border) rounded-lg px-2 py-1 bg-transparent outline-none resize-none focus:border-(--accent)"
+              />
+              <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); setDraft((d) => ({ ...d, others: d.others.filter((_, i) => i !== idx) })); }}
+                className="mt-1 shrink-0 text-gray-400 hover:text-red-400 transition-colors cursor-pointer"
+                aria-label="Remove note"
+              >
+                <MinusCircleOutlined />
+              </button>
+            </div>
+          ))}
+          {draft.others.length < MAX_OTHERS && (
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); setDraft((d) => ({ ...d, others: [...d.others, ""] })); }}
+              className="self-start flex items-center gap-1 text-xs text-(--accent) hover:opacity-70 transition-opacity cursor-pointer"
+              aria-label="Add note"
+            >
+              <PlusCircleOutlined />
+              <span>新增欄位</span>
+            </button>
+          )}
         </div>
       ) : (
         <>
@@ -284,6 +337,15 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: 
                     <HighlightedExample example={v.example} lemma={v.lemma} text={v.text} />
                   </div>
                 )}
+                {([1,2,3,4,5] as const).map(i => {
+                  const val = (v as Record<string, unknown>)[`other_${i}`] as string | undefined;
+                  if (!val) return null;
+                  return (
+                    <div key={i} className="text-sm text-(--text-main) leading-relaxed">
+                      {val}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -348,7 +410,7 @@ export default function VocabCards({ vocab, sentenceIdx, onDelete, onReorder, on
   const items = useMemo(() => {
     const list = Array.isArray(vocab) ? vocab : [];
     return list.filter((v) =>
-      [v.translation, v.definition, v.example, v.level].some(
+      [v.translation, v.definition, v.example, v.level, v.other_1, v.other_2, v.other_3, v.other_4, v.other_5].some(
         (value) => value != null && String(value).trim() !== ""
       )
     );

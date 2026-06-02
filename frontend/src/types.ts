@@ -6,6 +6,11 @@ export type VocabItem = {
   definition?: string;
   example?: string;
   level?: string;
+  other_1?: string;
+  other_2?: string;
+  other_3?: string;
+  other_4?: string;
+  other_5?: string;
 };
 
 export type Sentence = {

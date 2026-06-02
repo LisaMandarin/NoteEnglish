@@ -157,7 +157,7 @@ def get_session_detail(user_id: str, session_id: str) -> dict:
             "user_id": f"eq.{user_id}",
             "select": (
                 "sentence_index,vocab_index,selected_text,lemma,pos,translation,"
-                "definition,example,level"
+                "definition,example,level,other_1,other_2,other_3,other_4,other_5"
             ),
             "order": "sentence_index.asc,vocab_index.asc",
         }
@@ -177,7 +177,7 @@ def get_session_detail(user_id: str, session_id: str) -> dict:
     queried_by_sentence: dict[int, list[dict]] = {}
     for vocab in vocab_rows:
         idx = vocab["sentence_index"]
-        queried_by_sentence.setdefault(idx, []).append({
+        item: dict = {
             "text": vocab.get("selected_text") or "",
             "lemma": vocab["lemma"],
             "pos": vocab.get("pos"),
@@ -185,7 +185,12 @@ def get_session_detail(user_id: str, session_id: str) -> dict:
             "definition": vocab.get("definition"),
             "example": vocab.get("example"),
             "level": vocab.get("level"),
-        })
+        }
+        for i in range(1, 6):
+            val = vocab.get(f"other_{i}")
+            if val is not None:
+                item[f"other_{i}"] = val
+        queried_by_sentence.setdefault(idx, []).append(item)
 
     hydrated = []
     for sentence in sentences:
@@ -268,21 +273,22 @@ def _insert_session_children(user_id: str, session_id: str, sentences: list[dict
         for vocab in sentence.get("vocab", []):
             if not vocab.get("lemma"):
                 continue
-            vocab_rows.append(
-                {
-                    "session_id": session_id,
-                    "user_id": user_id,
-                    "sentence_index": idx,
-                    "vocab_index": vocab_index,
-                    "selected_text": vocab.get("text") or None,
-                    "lemma": vocab["lemma"],
-                    "pos": vocab.get("pos"),
-                    "translation": vocab.get("translation"),
-                    "definition": vocab.get("definition"),
-                    "example": vocab.get("example"),
-                    "level": vocab.get("level"),
-                }
-            )
+            row: dict = {
+                "session_id": session_id,
+                "user_id": user_id,
+                "sentence_index": idx,
+                "vocab_index": vocab_index,
+                "selected_text": vocab.get("text") or None,
+                "lemma": vocab["lemma"],
+                "pos": vocab.get("pos"),
+                "translation": vocab.get("translation"),
+                "definition": vocab.get("definition"),
+                "example": vocab.get("example"),
+                "level": vocab.get("level"),
+            }
+            for i in range(1, 6):
+                row[f"other_{i}"] = vocab.get(f"other_{i}")
+            vocab_rows.append(row)
             vocab_index += 1
     if vocab_rows:
         _request_json(
