@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { VocabItem } from "../types";
-import { DeleteTwoTone, QuestionCircleOutlined } from '@ant-design/icons';
+import { DeleteTwoTone, QuestionCircleOutlined, SoundOutlined } from '@ant-design/icons';
+import { speak } from "../lib/speech";
 import { Tooltip } from 'antd';
 import {
   DndContext,
@@ -128,6 +129,7 @@ function SortableVocabCard({ id, v, onDelete }: { id: string; v: VocabItem; onDe
 
 // ── Exported components ───────────────────────────────────────────────────────
 
+
 export function VocabCard({ v, onDelete, dragProps, readOnly = false }: { v: VocabItem; onDelete?: () => void; dragProps?: object; readOnly?: boolean }) {
   const head = (v.lemma ?? v.text ?? "").trim();
   const hasContent = v.definition || v.example;
@@ -145,6 +147,17 @@ export function VocabCard({ v, onDelete, dragProps, readOnly = false }: { v: Voc
             {v.pos ?? "—"}
           </span>
         </Tooltip>
+        {head && (
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); speak(head); }}
+            className="ml-auto text-gray-400 hover:text-(--accent) transition-colors cursor-pointer"
+            aria-label={`Pronounce ${head}`}
+          >
+            <SoundOutlined />
+          </button>
+        )}
       </div>
 
       {/* Chinese translation */}
@@ -160,7 +173,16 @@ export function VocabCard({ v, onDelete, dragProps, readOnly = false }: { v: Voc
               <p className="text-sm text-(--text-main) leading-relaxed">{v.definition}</p>
             )}
             {v.example && (
-              <div className="rounded-lg bg-gray-100 px-3 py-2 text-sm">
+              <div className="rounded-lg bg-gray-100 px-3 py-2 text-sm flex items-start gap-2">
+                <button
+                  type="button"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => { e.stopPropagation(); speak(v.example!); }}
+                  className="mt-0.5 shrink-0 text-gray-400 hover:text-(--accent) transition-colors cursor-pointer"
+                  aria-label="Pronounce example"
+                >
+                  <SoundOutlined />
+                </button>
                 <HighlightedExample example={v.example} lemma={v.lemma} text={v.text} />
               </div>
             )}

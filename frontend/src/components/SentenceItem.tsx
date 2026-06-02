@@ -1,6 +1,8 @@
 import { Typography } from "antd";
+import { SoundOutlined } from "@ant-design/icons";
 import type { Sentence, VocabItem } from "../types";
 import VocabCards from "./VocabCards";
+import { speak } from "../lib/speech";
 const { Text } = Typography;
 
 export default function SentenceItem({ sentence, idx, onDelete, onReorder }: {
@@ -15,7 +17,15 @@ export default function SentenceItem({ sentence, idx, onDelete, onReorder }: {
         {idx + 1}
       </div>
       <div className="flex-1 min-w-0">
-      <div>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => speak(sentence.original)}
+          className="text-gray-400 hover:text-(--accent) transition-colors cursor-pointer"
+          aria-label="Pronounce sentence"
+        >
+          <SoundOutlined />
+        </button>
         <Text strong style={{ fontSize: "1.25rem" }}>
           {sentence.original}
         </Text>
