@@ -1,15 +1,30 @@
 import { useEffect, useMemo } from "react";
 import { Button, Typography } from "antd";
+import type { VocabItem } from "../types";
 import { VocabCard } from "./VocabCards";
 
 const { Text } = Typography;
 
-function readSummaryData() {
+type SummaryRow = {
+  idx: number;
+  original: string;
+  translation: string;
+  vocab: VocabItem[];
+};
+
+type SummaryData = {
+  createdAt: number;
+  includeTranslation: boolean;
+  includeVocab: boolean;
+  rows: SummaryRow[];
+};
+
+function readSummaryData(): SummaryData | null {
   const raw = localStorage.getItem("latestSummary");
   if (!raw) return null;
 
   try {
-    return JSON.parse(raw);
+    return JSON.parse(raw) as SummaryData;
   } catch {
     return null;
   }
@@ -99,12 +114,7 @@ export default function SummaryWindow() {
                       {data.includeVocab &&
                         (() => {
                           const vocabItems = (row.vocab ?? []).filter(
-                            (v: {
-                              translation?: string;
-                              definition?: string;
-                              example?: string;
-                              level?: string;
-                            }) =>
+                            (v: VocabItem) =>
                               [
                                 v.translation,
                                 v.definition,

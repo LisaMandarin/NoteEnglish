@@ -1,8 +1,14 @@
 import { Typography } from "antd";
+import type { Sentence, VocabItem } from "../types";
 import VocabCards from "./VocabCards";
 const { Text } = Typography;
 
-export default function SentenceItem({ sentence, idx, onDelete, onReorder }) {
+export default function SentenceItem({ sentence, idx, onDelete, onReorder }: {
+  sentence: Sentence;
+  idx: number;
+  onDelete?: (sentenceIdx: number, lemma: string, pos: string) => void;
+  onReorder?: (sentenceIdx: number, newVocab: VocabItem[]) => void;
+}): React.ReactElement {
   return (
     <li data-idx={idx} className="flex gap-4">
       <div className="w-7 h-7 rounded-full bg-(--accent) text-white flex items-center justify-center shrink-0 font-bold text-sm mt-0.5">

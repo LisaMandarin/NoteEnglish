@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { MouseEvent } from "react";
 import { PlusOutlined } from "@ant-design/icons";
 import { Tooltip } from "antd";
 import { useTranslation } from "../../../context/translationContext";
@@ -7,7 +8,7 @@ import { useSessionEdit } from "../hooks/useSessionEdit";
 import { useSessionHistory } from "../hooks/useSessionHistory";
 import SessionItem from "./SessionItem";
 
-export default function HistoryPanel({ activePanel }) {
+export default function HistoryPanel({ activePanel }: { activePanel: string }): React.ReactElement {
   const {
     state: { currentSession, sessionLoading, saving },
     actions: { loadSession, clear },
@@ -16,14 +17,14 @@ export default function HistoryPanel({ activePanel }) {
   const { historyItems, setHistoryItems, historyLoading, historyError } =
     useSessionHistory(activePanel);
 
-  const [deletingId, setDeletingId] = useState(null);
-  const [pendingId, setPendingId] = useState(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!sessionLoading) setPendingId(null);
   }, [sessionLoading]);
 
-  function handleTitleUpdated(sessionId, trimmed, updatedAt) {
+  function handleTitleUpdated(sessionId: string, trimmed: string, updatedAt?: string): void {
     setHistoryItems((prev) =>
       prev.map((s) =>
         s.id === sessionId
@@ -36,7 +37,7 @@ export default function HistoryPanel({ activePanel }) {
   const { editingId, editValue, setEditValue, editSaving, editInputRef, startEdit, cancelEdit, confirmEdit } =
     useSessionEdit(handleTitleUpdated);
 
-  async function handleDelete(sessionId, isCurrent, e) {
+  async function handleDelete(sessionId: string, isCurrent: boolean, e: MouseEvent): Promise<void> {
     e?.stopPropagation();
     setDeletingId(sessionId);
     try {
@@ -48,7 +49,7 @@ export default function HistoryPanel({ activePanel }) {
     }
   }
 
-  function handleLoad(sessionId) {
+  function handleLoad(sessionId: string): void {
     setPendingId(sessionId);
     loadSession(sessionId);
   }

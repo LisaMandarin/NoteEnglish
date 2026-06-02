@@ -1,10 +1,53 @@
 import { createContext, useContext, useMemo, useReducer } from "react";
 import { apiFetch, getSessionDetail, saveSession } from "../lib/api";
+import type { Sentence, Session, VocabItem } from "../types";
 
+type AppState = {
+  text: string;
+  translating: boolean;
+  sessionLoading: boolean;
+  saving: boolean;
+  error: string;
+  saveError: string;
+  updatedAt: number | null;
+  currentSession: Session | null;
+  sentences: Sentence[];
+};
 
-const TranslationContext = createContext(null);
+type Action =
+  | { type: "set_text"; payload: string }
+  | { type: "clear" }
+  | { type: "load_session_start" }
+  | { type: "load_session_success"; payload: { text: string; sentences: Sentence[]; session: Session | null; updatedAt: number | null } }
+  | { type: "load_session_error"; payload?: string }
+  | { type: "translate_start" }
+  | { type: "translate_success"; payload: Sentence[] }
+  | { type: "translate_error"; payload?: string }
+  | { type: "save_start" }
+  | { type: "save_success"; payload: { updatedAt: number; session: Session | null } }
+  | { type: "save_error"; payload?: string }
+  | { type: "update_sentence_vocab"; payload: { sentenceIdx: number; vocabItem: VocabItem } }
+  | { type: "remove_sentence_vocab"; payload: { sentenceIdx: number; lemma: string; pos: string } }
+  | { type: "reorder_sentence_vocab"; payload: { sentenceIdx: number; newVocab: VocabItem[] } };
 
-const initialState = {
+type TranslationActions = {
+  translate: () => Promise<void>;
+  setText: (value: string) => void;
+  clear: () => void;
+  loadSession: (sessionId: string) => Promise<boolean>;
+  updateSentenceVocab: (sentenceIdx: number, vocabItem: VocabItem) => Promise<void>;
+  removeSentenceVocab: (sentenceIdx: number, lemma: string, pos: string) => Promise<void>;
+  reorderSentenceVocab: (sentenceIdx: number, newVocab: VocabItem[]) => Promise<void>;
+};
+
+type TranslationContextValue = {
+  state: AppState;
+  actions: TranslationActions;
+};
+
+const TranslationContext = createContext<TranslationContextValue | null>(null);
+
+const initialState: AppState = {
   text: "I like apples.  I like bananas.\nThis is a new sentence.",
   translating: false,
   sessionLoading: false,
@@ -16,25 +59,9 @@ const initialState = {
   sentences: [],
 };
 
-const ACTIONS = {
-  SET_TEXT: "set_text",
-  CLEAR: "clear",
-  LOAD_SESSION_START: "load_session_start",
-  LOAD_SESSION_SUCCESS: "load_session_success",
-  LOAD_SESSION_ERROR: "load_session_error",
-  TRANSLATE_START: "translate_start",
-  TRANSLATE_SUCCESS: "translate_success",
-  TRANLSATE_ERROR: "translate_error",
-  SAVE_START: "save_start",
-  SAVE_SUCCESS: "save_success",
-  SAVE_ERROR: "save_error",
-  UPDATE_SENTENCE_VOCAB: "update_sentence_vocab",
-  REMOVE_SENTENCE_VOCAB: "remove_sentence_vocab",
-  REORDER_SENTENCE_VOCAB: "reorder_sentence_vocab",
-};
-function reducer(state, action) {
+function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
-    case ACTIONS.SET_TEXT:
+    case "set_text":
       return {
         ...state,
         text: action.payload,
@@ -47,7 +74,7 @@ function reducer(state, action) {
             }
           : null,
       };
-    case ACTIONS.CLEAR:
+    case "clear":
       return {
         ...state,
         text: "",
@@ -59,14 +86,14 @@ function reducer(state, action) {
         sessionLoading: false,
         sentences: [],
       };
-    case ACTIONS.LOAD_SESSION_START:
+    case "load_session_start":
       return {
         ...state,
         sessionLoading: true,
         error: "",
         saveError: "",
       };
-    case ACTIONS.LOAD_SESSION_SUCCESS:
+    case "load_session_success":
       return {
         ...state,
         sessionLoading: false,
@@ -77,13 +104,13 @@ function reducer(state, action) {
         currentSession: action.payload?.session ?? null,
         updatedAt: action.payload?.updatedAt ?? null,
       };
-    case ACTIONS.LOAD_SESSION_ERROR:
+    case "load_session_error":
       return {
         ...state,
         sessionLoading: false,
         error: action.payload || "Could not load the saved session.",
       };
-    case ACTIONS.TRANSLATE_START:
+    case "translate_start":
       return {
         ...state,
         translating: true,
@@ -92,7 +119,7 @@ function reducer(state, action) {
         updatedAt: null,
         sentences: [],
       };
-    case ACTIONS.TRANSLATE_SUCCESS:
+    case "translate_success":
       return {
         ...state,
         translating: false,
@@ -100,15 +127,15 @@ function reducer(state, action) {
         saveError: "",
         sentences: action.payload ?? [],
       };
-    case ACTIONS.TRANLSATE_ERROR:
+    case "translate_error":
       return {
         ...state,
         translating: false,
         error: action.payload || "Request failed",
       };
-    case ACTIONS.SAVE_START:
+    case "save_start":
       return { ...state, saving: true, saveError: "" };
-    case ACTIONS.SAVE_SUCCESS:
+    case "save_success":
       return {
         ...state,
         saving: false,
@@ -116,14 +143,14 @@ function reducer(state, action) {
         updatedAt: action.payload?.updatedAt ?? Date.now(),
         currentSession: action.payload?.session ?? null,
       };
-    case ACTIONS.SAVE_ERROR:
+    case "save_error":
       return {
         ...state,
         saving: false,
         saveError: action.payload || "Could not save progress",
       };
-    case ACTIONS.UPDATE_SENTENCE_VOCAB: {
-      const { sentenceIdx, vocabItem } = action.payload || {};
+    case "update_sentence_vocab": {
+      const { sentenceIdx, vocabItem } = action.payload;
       if (sentenceIdx == null) return state;
 
       const nextSentences = [...state.sentences];
@@ -160,8 +187,8 @@ function reducer(state, action) {
       };
     }
 
-    case ACTIONS.REMOVE_SENTENCE_VOCAB: {
-      const { sentenceIdx, lemma, pos} = action.payload || {};
+    case "remove_sentence_vocab": {
+      const { sentenceIdx, lemma, pos } = action.payload;
       if (sentenceIdx == null) return state;
 
       const nextSentences = [...state.sentences];
@@ -173,13 +200,13 @@ function reducer(state, action) {
       const keyPos = (pos ?? "").toLowerCase();
 
       const nextVocab = prevVocab.filter((v) => {
-        const same = 
+        const same =
           (v.lemma ?? "").toLowerCase() === keyLemma &&
           (v.pos ?? "").toLowerCase() === keyPos;
         return !same;
       });
 
-      nextSentences[sentenceIdx] = {...s, vocab: nextVocab};
+      nextSentences[sentenceIdx] = { ...s, vocab: nextVocab };
       return {
         ...state,
         sentences: nextSentences,
@@ -188,8 +215,8 @@ function reducer(state, action) {
       };
     }
 
-    case ACTIONS.REORDER_SENTENCE_VOCAB: {
-      const { sentenceIdx, newVocab } = action.payload || {};
+    case "reorder_sentence_vocab": {
+      const { sentenceIdx, newVocab } = action.payload;
       if (sentenceIdx == null) return state;
       const nextSentences = [...state.sentences];
       const s = nextSentences[sentenceIdx];
@@ -203,7 +230,7 @@ function reducer(state, action) {
   }
 }
 
-function hasGeneratedTranslations(sentences) {
+function hasGeneratedTranslations(sentences: Sentence[]): boolean {
   return (
     Array.isArray(sentences) &&
     sentences.length > 0 &&
@@ -215,7 +242,7 @@ function hasGeneratedTranslations(sentences) {
   );
 }
 
-function buildSessionTitle(text) {
+function buildSessionTitle(text: string): string {
   const firstLine = text
     .split("\n")
     .map((line) => line.trim())
@@ -230,12 +257,17 @@ async function saveGeneratedProgress({
   sentences,
   dispatch,
   existingSession,
-}) {
+}: {
+  text: string;
+  sentences: Sentence[];
+  dispatch: React.Dispatch<Action>;
+  existingSession: Session | null;
+}): Promise<boolean> {
   if (!text.trim() || !hasGeneratedTranslations(sentences)) {
     return false;
   }
 
-  dispatch({ type: ACTIONS.SAVE_START });
+  dispatch({ type: "save_start" });
   try {
     const result = await saveSession({
       sessionId: existingSession?.id ?? null,
@@ -244,7 +276,7 @@ async function saveGeneratedProgress({
     });
 
     dispatch({
-      type: ACTIONS.SAVE_SUCCESS,
+      type: "save_success",
       payload: {
         updatedAt: result?.saved_at ? Date.parse(result.saved_at) : Date.now(),
         session: result?.session
@@ -259,65 +291,65 @@ async function saveGeneratedProgress({
       },
     });
     return true;
-  } catch (error) {
+  } catch (error: unknown) {
     dispatch({
-      type: ACTIONS.SAVE_ERROR,
-      payload: error?.message || "Could not save progress.",
+      type: "save_error",
+      payload: error instanceof Error ? error.message : "Could not save progress.",
     });
     return false;
   }
 }
 
-export function TranslationProvider({ children }) {
+export function TranslationProvider({ children }: { children: React.ReactNode }): React.ReactElement {
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  const actions = useMemo(() => {
-    async function translate() {
-      dispatch({ type: ACTIONS.TRANSLATE_START });
+  const actions = useMemo((): TranslationActions => {
+    async function translate(): Promise<void> {
+      dispatch({ type: "translate_start" });
 
       try {
         const data = await apiFetch("/api/translate", {
           method: "POST",
           body: JSON.stringify({ text: state.text }),
-        });
-        const nextSentences = data.sentences ?? [];
+        }) as { sentences?: Sentence[] };
+        const nextSentences: Sentence[] = data.sentences ?? [];
 
-        dispatch({ type: ACTIONS.TRANSLATE_SUCCESS, payload: nextSentences });
+        dispatch({ type: "translate_success", payload: nextSentences });
         await saveGeneratedProgress({
           text: state.text,
           sentences: nextSentences,
           dispatch,
           existingSession: state.currentSession,
         });
-      } catch (e) {
-        dispatch({ type: ACTIONS.TRANLSATE_ERROR, payload: e?.message });
+      } catch (e: unknown) {
+        dispatch({ type: "translate_error", payload: e instanceof Error ? e.message : undefined });
       }
     }
 
-    function setText(value) {
-      dispatch({ type: ACTIONS.SET_TEXT, payload: value });
+    function setText(value: string): void {
+      dispatch({ type: "set_text", payload: value });
     }
 
-    function clear() {
-      dispatch({ type: ACTIONS.CLEAR });
+    function clear(): void {
+      dispatch({ type: "clear" });
     }
 
-    async function loadSession(sessionId) {
+    async function loadSession(sessionId: string): Promise<boolean> {
       if (!sessionId) {
         dispatch({
-          type: ACTIONS.LOAD_SESSION_ERROR,
+          type: "load_session_error",
           payload: "Could not load the saved session.",
         });
         return false;
       }
 
-      dispatch({ type: ACTIONS.LOAD_SESSION_START });
+      dispatch({ type: "load_session_start" });
 
       try {
         const payload = await getSessionDetail(sessionId);
 
         dispatch({
-          type: ACTIONS.LOAD_SESSION_SUCCESS,
+          type: "load_session_success",
           payload: {
             text: payload?.text ?? "",
             sentences: payload?.sentences ?? [],
@@ -336,13 +368,13 @@ export function TranslationProvider({ children }) {
           },
         });
         return true;
-      } catch (e) {
-        dispatch({ type: ACTIONS.LOAD_SESSION_ERROR, payload: e?.message });
+      } catch (e: unknown) {
+        dispatch({ type: "load_session_error", payload: e instanceof Error ? e.message : undefined });
         return false;
       }
     }
 
-    async function updateSentenceVocab(sentenceIdx, vocabItem) {
+    async function updateSentenceVocab(sentenceIdx: number, vocabItem: VocabItem): Promise<void> {
       if (sentenceIdx == null) return;
 
       const s = state.sentences[sentenceIdx];
@@ -370,7 +402,7 @@ export function TranslationProvider({ children }) {
       );
 
       dispatch({
-        type: ACTIONS.UPDATE_SENTENCE_VOCAB,
+        type: "update_sentence_vocab",
         payload: { sentenceIdx, vocabItem },
       });
 
@@ -382,7 +414,7 @@ export function TranslationProvider({ children }) {
       });
     }
 
-    async function removeSentenceVocab(sentenceIdx, lemma, pos) {
+    async function removeSentenceVocab(sentenceIdx: number, lemma: string, pos: string): Promise<void> {
       const keyLemma = (lemma ?? "").toLowerCase();
       const keyPos = (pos ?? "").toLowerCase();
       const nextSentences = state.sentences.map((sentence, idx) => {
@@ -390,14 +422,18 @@ export function TranslationProvider({ children }) {
         const prevVocab = Array.isArray(sentence.vocab) ? sentence.vocab : [];
         return {
           ...sentence,
-          vocab: prevVocab.filter((v) =>
-            !((v.lemma ?? "").toLowerCase() === keyLemma && (v.pos ?? "").toLowerCase() === keyPos)
+          vocab: prevVocab.filter(
+            (v) =>
+              !(
+                (v.lemma ?? "").toLowerCase() === keyLemma &&
+                (v.pos ?? "").toLowerCase() === keyPos
+              )
           ),
         };
       });
 
       dispatch({
-        type: ACTIONS.REMOVE_SENTENCE_VOCAB,
+        type: "remove_sentence_vocab",
         payload: { sentenceIdx, lemma, pos },
       });
 
@@ -409,13 +445,13 @@ export function TranslationProvider({ children }) {
       });
     }
 
-    async function reorderSentenceVocab(sentenceIdx, newVocab) {
+    async function reorderSentenceVocab(sentenceIdx: number, newVocab: VocabItem[]): Promise<void> {
       const nextSentences = state.sentences.map((sentence, idx) =>
         idx === sentenceIdx ? { ...sentence, vocab: newVocab } : sentence
       );
 
       dispatch({
-        type: ACTIONS.REORDER_SENTENCE_VOCAB,
+        type: "reorder_sentence_vocab",
         payload: { sentenceIdx, newVocab },
       });
 
@@ -438,7 +474,7 @@ export function TranslationProvider({ children }) {
     };
   }, [state.currentSession, state.text, state.sentences]);
 
-  const value = useMemo(() => ({ state, actions }), [state, actions]);
+  const value = useMemo((): TranslationContextValue => ({ state, actions }), [state, actions]);
 
   return (
     <TranslationContext.Provider value={value}>
@@ -447,7 +483,7 @@ export function TranslationProvider({ children }) {
   );
 }
 
-export function useTranslation() {
+export function useTranslation(): TranslationContextValue {
   const ctx = useContext(TranslationContext);
   if (!ctx)
     throw new Error("useTranslation must be used within <TranslationProvider>");

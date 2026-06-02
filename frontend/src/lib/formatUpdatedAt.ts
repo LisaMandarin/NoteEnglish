@@ -5,7 +5,7 @@ dayjs.extend(relativeTime);
 
 const SIX_HOURS_IN_MS = 6 * 60 * 60 * 1000;
 
-export function formatUpdatedAt(value) {
+export function formatUpdatedAt(value: string | null | undefined): string {
   if (!value) return "";
 
   const updatedAt = dayjs(value);

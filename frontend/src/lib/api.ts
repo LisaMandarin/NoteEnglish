@@ -1,9 +1,27 @@
 import { supabase } from "./supabase";
+import type { Sentence, SessionRecord } from "../types";
+
+type ApiSessionShape = {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SaveSessionResponse = {
+  saved_at: string;
+  session: ApiSessionShape | null;
+};
+
+export type SessionDetailResponse = {
+  text: string;
+  sentences: Sentence[];
+  session: ApiSessionShape | null;
+};
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 
-// 從 Supabase session 取得 JWT access token，未登入時拋出錯誤
-async function getAccessToken() {
+async function getAccessToken(): Promise<string> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -16,8 +34,7 @@ async function getAccessToken() {
   return token;
 }
 
-// 帶上 Bearer token 發送 API 請求，自動處理錯誤與 204 無內容回應
-export async function apiFetch(path: string, options: RequestInit = {}) {
+export async function apiFetch(path: string, options: RequestInit = {}): Promise<unknown> {
   const token = await getAccessToken();
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
@@ -37,39 +54,37 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
   return response.json();
 }
 
-// 確保使用者 profile 存在，首次登入時以 displayName 建立
-export async function ensureProfile(displayName) {
+export async function ensureProfile(displayName: string): Promise<unknown> {
   return apiFetch("/api/profile/ensure", {
     method: "POST",
     body: JSON.stringify({ display_name: displayName }),
   });
 }
 
-// 取得目前使用者的所有學習 session 列表
-export async function listSessions() {
-  return apiFetch("/api/sessions");
+export async function listSessions(): Promise<SessionRecord[]> {
+  return apiFetch("/api/sessions") as Promise<SessionRecord[]>;
 }
 
-// 取得單一 session 的詳細內容（文章與句子翻譯）
-export async function getSessionDetail(sessionId) {
-  return apiFetch(`/api/sessions/${sessionId}`);
+export async function getSessionDetail(sessionId: string): Promise<SessionDetailResponse> {
+  return apiFetch(`/api/sessions/${sessionId}`) as Promise<SessionDetailResponse>;
 }
 
-// 更新指定 session 的標題
-export async function updateSessionTitle(sessionId, title) {
+export async function updateSessionTitle(sessionId: string, title: string): Promise<{ updated_at: string } | null> {
   return apiFetch(`/api/sessions/${sessionId}/title`, {
     method: "PATCH",
     body: JSON.stringify({ title }),
-  });
+  }) as Promise<{ updated_at: string } | null>;
 }
 
-// 刪除指定 session 及其所有相關資料
-export async function deleteSession(sessionId) {
+export async function deleteSession(sessionId: string): Promise<unknown> {
   return apiFetch(`/api/sessions/${sessionId}`, { method: "DELETE" });
 }
 
-// 儲存或更新 session（傳入 sessionId 則更新，否則建立新的）
-export async function saveSession({ sessionId, text, sentences }) {
+export async function saveSession({ sessionId, text, sentences }: {
+  sessionId: string | null;
+  text: string;
+  sentences: Sentence[];
+}): Promise<SaveSessionResponse> {
   return apiFetch("/api/sessions/save", {
     method: "POST",
     body: JSON.stringify({
@@ -77,5 +92,5 @@ export async function saveSession({ sessionId, text, sentences }) {
       text,
       sentences,
     }),
-  });
+  }) as Promise<SaveSessionResponse>;
 }

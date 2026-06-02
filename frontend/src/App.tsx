@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 import { TranslationProvider } from "./context/translationContext";
 import AppMainSection from "./components/AppMainSection";
 import AppSidebar from "./components/AppSidebar";
@@ -7,7 +8,7 @@ import LoginPage from "./components/LoginPage";
 import { supabase } from "./lib/supabase";
 import { ensureProfile as ensureProfileApi } from "./lib/api";
 
-function getDisplayName(user) {
+function getDisplayName(user: User): string {
   const metadataName = user?.user_metadata?.display_name?.trim();
   if (metadataName) return metadataName;
 
@@ -17,19 +18,19 @@ function getDisplayName(user) {
   return "User";
 }
 
-async function ensureProfile(user) {
+async function ensureProfile(user: User): Promise<void> {
   if (!user?.id) return;
 
   const displayName = getDisplayName(user);
   await ensureProfileApi(displayName);
 }
 
-function MainPage({ user, onSignOut }) {
-  const [activePanel, setActivePanel] = useState(null);
+function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): React.ReactElement {
+  const [activePanel, setActivePanel] = useState<string | null>(null);
   const isSidebarOpen = activePanel !== null;
   const username = getDisplayName(user);
 
-  function togglePanel(panelName) {
+  function togglePanel(panelName: string): void {
     setActivePanel((currentPanel) =>
       currentPanel === panelName ? null : panelName
     );
@@ -59,8 +60,8 @@ function MainPage({ user, onSignOut }) {
   );
 }
 
-export default function App() {
-  const [user, setUser] = useState(null);
+export default function App(): React.ReactElement {
+  const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const params = new URLSearchParams(window.location.search);
   const isSummaryView = params.get("view") === "summary";
@@ -68,7 +69,7 @@ export default function App() {
   useEffect(() => {
     let mounted = true;
 
-    async function loadSession() {
+    async function loadSession(): Promise<void> {
       const {
         data: { session },
       } = await supabase.auth.getSession();

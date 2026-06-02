@@ -1,6 +1,19 @@
+import type { ComponentType } from "react";
 import { Button } from "antd";
 
-export default function SidebarIconButton({ button, isActive, username, ariaControls = undefined, onClick }) {
+type SidebarButtonConfig = {
+  key: string;
+  ariaLabel: (username: string) => string;
+  icon: ComponentType<{ "aria-hidden"?: boolean | "true" | "false" }>;
+};
+
+export default function SidebarIconButton({ button, isActive, username, ariaControls = undefined, onClick }: {
+  button: SidebarButtonConfig;
+  isActive: boolean;
+  username: string;
+  ariaControls?: string;
+  onClick: () => void;
+}): React.ReactElement {
   return (
     <Button
       aria-label={button.ariaLabel(username)}

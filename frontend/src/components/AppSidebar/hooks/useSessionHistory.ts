@@ -1,18 +1,27 @@
 import { useEffect, useRef, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { useTranslation } from "../../../context/translationContext";
 import { listSessions } from "../../../lib/api";
+import type { SessionRecord } from "../../../types";
 
-// 管理 History 面板的 session 列表載入，避免重複請求
-export function useSessionHistory(activePanel) {
+export function useSessionHistory(activePanel: string): {
+  historyItems: SessionRecord[];
+  setHistoryItems: Dispatch<SetStateAction<SessionRecord[]>>;
+  historyLoading: boolean;
+  historyError: string;
+} {
   const {
     state: { currentSession },
   } = useTranslation();
 
-  const [historyItems, setHistoryItems] = useState([]);
+  const [historyItems, setHistoryItems] = useState<SessionRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
 
-  const prevDepsRef = useRef({ activePanel: undefined, sessionId: undefined });
+  const prevDepsRef = useRef<{ activePanel: string | undefined; sessionId: string | null | undefined }>({
+    activePanel: undefined,
+    sessionId: undefined,
+  });
 
   useEffect(() => {
     const prev = prevDepsRef.current;
@@ -26,17 +35,16 @@ export function useSessionHistory(activePanel) {
 
     let cancelled = false;
 
-    // 呼叫 API 取得 session 列表，若請求已取消則忽略結果
-    async function loadHistory() {
+    async function loadHistory(): Promise<void> {
       setHistoryLoading(true);
       setHistoryError("");
       try {
         const data = await listSessions();
         if (cancelled) return;
         setHistoryItems(data ?? []);
-      } catch (error) {
+      } catch (error: unknown) {
         if (cancelled) return;
-        setHistoryError(error?.message || "Could not load session history.");
+        setHistoryError(error instanceof Error ? error.message : "Could not load session history.");
         setHistoryItems([]);
       } finally {
         if (!cancelled) setHistoryLoading(false);

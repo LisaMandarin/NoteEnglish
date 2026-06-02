@@ -1,9 +1,19 @@
+import type { Dispatch, SetStateAction } from "react";
 import { Button } from "antd";
 
-export default function SelectionMenu({ open, x, y, options, setOptions, onLookUp, onCancel, loading }) {
+export default function SelectionMenu({ open, x, y, options, setOptions, onLookUp, onCancel, loading }: {
+  open: boolean;
+  x: number;
+  y: number;
+  options: string[];
+  setOptions: Dispatch<SetStateAction<string[]>>;
+  onLookUp: () => Promise<void>;
+  onCancel: () => void;
+  loading: boolean;
+}): React.ReactElement | null {
   if (!open) return null;
 
-  function toggle(value) {
+  function toggle(value: string): void {
     setOptions((prev) =>
       prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
     );
@@ -47,8 +57,8 @@ export default function SelectionMenu({ open, x, y, options, setOptions, onLookU
         </div>
 
         <div className="mt-3 flex gap-2">
-            <Button 
-                type="primary" 
+            <Button
+                type="primary"
                 onClick={onLookUp}
                 loading={loading}
                 disabled={loading}

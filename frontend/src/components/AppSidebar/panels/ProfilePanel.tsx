@@ -1,7 +1,11 @@
 import { LogoutOutlined } from "@ant-design/icons";
 import { Button } from "antd";
 
-export default function ProfilePanel({ username, email, onSignOut }) {
+export default function ProfilePanel({ username, email, onSignOut }: {
+  username: string;
+  email: string;
+  onSignOut: () => void;
+}): React.ReactElement {
   return (
     <>
       <p className="mb-3 text-sm font-semibold uppercase tracking-[0.24em] text-(--accent)">

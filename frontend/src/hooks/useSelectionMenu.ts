@@ -1,20 +1,27 @@
 import { useEffect, useState } from "react";
+import type { RefObject } from "react";
 
-function clearSelection() {
+type VocabController = {
+  reset: () => void;
+  setSelectedText: (text: string) => void;
+  setSelectedSentenceIdx: (idx: number) => void;
+};
+
+function clearSelection(): void {
   const sel = window.getSelection?.();
   if (!sel) return;
   if (sel.rangeCount > 0 && sel.removeAllRanges) sel.removeAllRanges();
 }
 
-function getSentenceIdxFromRange(range) {
+function getSentenceIdxFromRange(range: Range): number | null {
   const containerNode = range.commonAncestorContainer;
   const el =
-    containerNode.nodeType === 1 ? containerNode : containerNode?.parentElement;
+    containerNode.nodeType === 1 ? containerNode as Element : (containerNode as Node).parentElement;
   const li = el?.closest("li[data-idx]");
-  return li ? Number(li.dataset.idx) : null;
+  return li ? Number((li as HTMLElement).dataset.idx) : null;
 }
 
-function getMenuPosition(range) {
+function getMenuPosition(range: Range): { x: number; y: number } {
   const rect = range.getBoundingClientRect();
   const MENU_W = 280;
   const MENU_H = 170;
@@ -34,17 +41,26 @@ function getMenuPosition(range) {
   return { x, y };
 }
 
-export function useSelectionMenu({ containerRef, vocab }) {
+export function useSelectionMenu({ containerRef, vocab }: {
+  containerRef: RefObject<HTMLElement | null>;
+  vocab: VocabController;
+}): {
+  menuOpen: boolean;
+  menuPos: { x: number; y: number };
+  handleMouseUp: () => void;
+  closeMenu: () => void;
+  clearSelection: () => void;
+} {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
 
-  function closeMenu() {
+  function closeMenu(): void {
     setMenuOpen(false);
     vocab.reset();
     clearSelection();
   }
 
-  function handleMouseUp() {
+  function handleMouseUp(): void {
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed) return closeMenu();
 
@@ -58,8 +74,8 @@ export function useSelectionMenu({ containerRef, vocab }) {
     const commonAncestor = range.commonAncestorContainer;
     const node =
       commonAncestor.nodeType === 1
-        ? commonAncestor
-        : commonAncestor.parentElement;
+        ? commonAncestor as Element
+        : (commonAncestor as Node).parentElement;
 
     if (!node || !container.contains(node)) return closeMenu();
 
@@ -74,9 +90,9 @@ export function useSelectionMenu({ containerRef, vocab }) {
   }
 
   useEffect(() => {
-    function onDocMouseDown(e) {
+    function onDocMouseDown(e: MouseEvent): void {
       if (!menuOpen) return;
-      if (!containerRef.current?.contains(e.target)) closeMenu();
+      if (!containerRef.current?.contains(e.target as Node)) closeMenu();
     }
     document.addEventListener("mousedown", onDocMouseDown);
     return () => document.removeEventListener("mousedown", onDocMouseDown);

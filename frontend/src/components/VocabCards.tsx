@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { VocabItem } from "../types";
 import { DeleteTwoTone, QuestionCircleOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import {
@@ -7,6 +8,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  type DragEndEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -25,7 +27,7 @@ const CEFR_TOOLTIP = (
   </div>
 );
 
-export default function VocabCards({ vocab, sentenceIdx, onDelete, onReorder }) {
+export default function VocabCards({ vocab, sentenceIdx, onDelete, onReorder }: { vocab: VocabItem[]; sentenceIdx: number; onDelete?: (sentenceIdx: number, lemma: string, pos: string) => void; onReorder?: (sentenceIdx: number, newVocab: VocabItem[]) => void }): React.ReactElement | null {
   const items = useMemo(() => {
     const list = Array.isArray(vocab) ? vocab : [];
     return list.filter((v) =>
@@ -35,7 +37,7 @@ export default function VocabCards({ vocab, sentenceIdx, onDelete, onReorder }) 
     );
   }, [vocab]);
 
-  const [order, setOrder] = useState([]);
+  const [order, setOrder] = useState<string[]>([]);
 
   const sortedItems = useMemo(() => {
     const itemMap = new Map(items.map((v) => [itemId(v), v]));
@@ -48,7 +50,7 @@ export default function VocabCards({ vocab, sentenceIdx, onDelete, onReorder }) 
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  function handleDragEnd(event) {
+  function handleDragEnd(event: DragEndEvent): void {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
@@ -85,11 +87,11 @@ export default function VocabCards({ vocab, sentenceIdx, onDelete, onReorder }) 
   );
 }
 
-function itemId(v) {
+function itemId(v: VocabItem): string {
   return `${v.lemma ?? v.text}-${v.pos ?? "unknown"}`;
 }
 
-function SortableVocabCard({ id, v, onDelete }) {
+function SortableVocabCard({ id, v, onDelete }: { id: string; v: VocabItem; onDelete?: () => void }) {
   // useSortable wires this card to dnd-kit and returns the props/styles needed
   // for drag handles, DOM measurement, and animated position changes.
   const {
@@ -114,7 +116,7 @@ function SortableVocabCard({ id, v, onDelete }) {
   );
 }
 
-export function VocabCard({ v, onDelete, dragProps, readOnly = false }: { v: any; onDelete?: () => void; dragProps?: object; readOnly?: boolean }) {
+export function VocabCard({ v, onDelete, dragProps, readOnly = false }: { v: VocabItem; onDelete?: () => void; dragProps?: object; readOnly?: boolean }) {
   const head = (v.lemma ?? v.text ?? "").trim();
   const hasContent = v.definition || v.example;
 
@@ -183,7 +185,7 @@ export function VocabCard({ v, onDelete, dragProps, readOnly = false }: { v: any
   );
 }
 
-function HighlightedExample({ example, lemma, text }) {
+function HighlightedExample({ example, lemma, text }: { example: string; lemma?: string; text?: string }) {
   const word = text || lemma || "";
   if (!word || !example) return <span>{example}</span>;
 
@@ -192,7 +194,7 @@ function HighlightedExample({ example, lemma, text }) {
 
   return (
     <span>
-      {parts.map((part, i) =>
+      {parts.map((part: string, i: number) =>
         part.toLowerCase() === word.toLowerCase() ? (
           <mark key={i} className="bg-purple-100 text-purple-700 rounded px-0.5 not-italic">
             {part}
@@ -205,7 +207,7 @@ function HighlightedExample({ example, lemma, text }) {
   );
 }
 
-function LevelDots({ level }) {
+function LevelDots({ level }: { level?: string }) {
   const { filled, total, color } = getLevelInfo(level);
   return (
     <div className="flex items-center gap-0.5">
@@ -223,7 +225,7 @@ function LevelDots({ level }) {
 
 const LEVEL_ORDER = ["A1", "A2", "B1", "B2", "C1", "C2"];
 
-function getLevelInfo(level) {
+function getLevelInfo(level?: string): { filled: number; total: number; color: string } {
   const idx = LEVEL_ORDER.indexOf((level ?? "").toUpperCase());
   if (idx === -1) return { filled: 0, total: 6, color: "bg-gray-400" };
   const color = idx < 2 ? "bg-green-500" : idx < 4 ? "bg-amber-500" : "bg-red-500";

@@ -1,4 +1,6 @@
+import type { Dispatch, MouseEvent, RefObject, SetStateAction } from "react";
 import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
+import type { SessionRecord } from "../../../types";
 import { formatUpdatedAt } from "../../../lib/formatUpdatedAt";
 
 export default function SessionItem({
@@ -17,7 +19,23 @@ export default function SessionItem({
   onCancelEdit,
   onConfirmEdit,
   onDelete,
-}) {
+}: {
+  session: SessionRecord;
+  isCurrent: boolean;
+  sessionLoading: boolean;
+  saving: boolean;
+  deletingId: string | null;
+  editingId: string | null;
+  editValue: string;
+  setEditValue: Dispatch<SetStateAction<string>>;
+  editSaving: boolean;
+  editInputRef: RefObject<HTMLInputElement | null>;
+  onLoad: (sessionId: string) => void;
+  onStartEdit: (sessionId: string, title: string, e: MouseEvent) => void;
+  onCancelEdit: (e?: MouseEvent) => void;
+  onConfirmEdit: (sessionId: string, title: string, e: MouseEvent) => void;
+  onDelete: (sessionId: string, isCurrent: boolean, e: MouseEvent) => void;
+}): React.ReactElement {
   const isEditing = editingId === session.id;
   const isDeleting = deletingId === session.id;
   const title =
@@ -47,8 +65,8 @@ export default function SessionItem({
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") onConfirmEdit(session.id, title, e);
-              if (e.key === "Escape") onCancelEdit(e);
+              if (e.key === "Enter") onConfirmEdit(session.id, title, e as unknown as MouseEvent);
+              if (e.key === "Escape") onCancelEdit(e as unknown as MouseEvent);
             }}
             disabled={editSaving}
             className="min-w-0 flex-1 rounded-lg border border-black/20 bg-white px-2 py-0.5 text-sm font-semibold text-black/85 outline-none focus:border-(--accent)"

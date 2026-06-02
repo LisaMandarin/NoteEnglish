@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ComponentType } from "react";
 import {
   CloseOutlined,
   FolderOpenOutlined,
@@ -9,10 +10,16 @@ import {
 import SidebarIconButton from "./SidebarIconButton";
 import SidebarPanelContent from "./SidebarPanelContent";
 
-const SIDEBAR_BUTTONS = [
+type SidebarButtonConfig = {
+  key: string;
+  ariaLabel: (username: string) => string;
+  icon: ComponentType<{ "aria-hidden"?: boolean | "true" | "false" }>;
+};
+
+const SIDEBAR_BUTTONS: SidebarButtonConfig[] = [
   {
     key: "profile",
-    ariaLabel: (username) => `${username} profile`,
+    ariaLabel: (username: string) => `${username} profile`,
     icon: UserOutlined,
   },
   {
@@ -34,10 +41,17 @@ export default function AppSidebar({
   username,
   email,
   onSignOut,
-}) {
+}: {
+  activePanel: string | null;
+  isSidebarOpen: boolean;
+  onTogglePanel: (panelName: string) => void;
+  username: string;
+  email: string;
+  onSignOut: () => void;
+}): React.ReactElement {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  function closeMobileMenu() {
+  function closeMobileMenu(): void {
     setIsMobileMenuOpen(false);
     if (activePanel) onTogglePanel(activePanel);
   }

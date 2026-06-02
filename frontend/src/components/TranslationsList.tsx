@@ -8,18 +8,18 @@ import SentenceItem from "./SentenceItem";
 import SummaryExportBar from "./SummaryExportBar";
 const { Text } = Typography;
 
-export default function TranslationsList() {
+export default function TranslationsList(): React.ReactElement {
   const {
     state: { sentences, saving, currentSession },
     actions: { updateSentenceVocab, removeSentenceVocab, reorderSentenceVocab },
   } = useTranslation();
 
-  const containerRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const vocab = useVocabLookup(sentences, updateSentenceVocab, currentSession?.id ?? null);
   const { menuOpen, menuPos, handleMouseUp, closeMenu, clearSelection } =
     useSelectionMenu({ containerRef, vocab });
 
-  async function onLookUp() {
+  async function onLookUp(): Promise<void> {
     const ok = await vocab.lookup();
     if (ok) {
       closeMenu();

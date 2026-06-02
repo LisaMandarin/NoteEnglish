@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Button, Checkbox } from "antd";
+import type { Sentence } from "../types";
 
-export default function SummaryExportBar({ sentences }) {
+export default function SummaryExportBar({ sentences }: { sentences: Sentence[] }): React.ReactElement {
   const [includeTranslation, setIncludeTranslation] = useState(true);
   const [includeVocab, setIncludeVocab] = useState(true);
 

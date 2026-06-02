@@ -1,24 +1,35 @@
 import { useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { apiFetch } from "../lib/api";
+import type { Sentence, VocabItem } from "../types";
 
-
-/**
- * @param {Array} sentences 
- * @param {Function} updateSentenceVocab - from translationContext actions
- */
-export function useVocabLookup(sentences, updateSentenceVocab, sessionId: string | null = null) {
-  const [selectedText, setSelectedText] = useState("");
-  const [selectedSentenceIdx, setSelectedSentenceIdx] = useState(null);
-  const [options, setOptions] = useState([]);
+export function useVocabLookup(
+  sentences: Sentence[],
+  updateSentenceVocab: (sentenceIdx: number, vocabItem: VocabItem) => void,
+  sessionId: string | null = null
+): {
+  selectedText: string;
+  selectedSentenceIdx: number | null;
+  options: string[];
+  loading: boolean;
+  setSelectedText: Dispatch<SetStateAction<string>>;
+  setSelectedSentenceIdx: Dispatch<SetStateAction<number | null>>;
+  setOptions: Dispatch<SetStateAction<string[]>>;
+  lookup: () => Promise<boolean>;
+  reset: () => void;
+} {
+  const [selectedText, setSelectedText] = useState<string>("");
+  const [selectedSentenceIdx, setSelectedSentenceIdx] = useState<number | null>(null);
+  const [options, setOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  function reset() {
+  function reset(): void {
     setSelectedText("");
     setSelectedSentenceIdx(null);
     setOptions([]);
   }
 
-  async function lookup() {
+  async function lookup(): Promise<boolean> {
     const text = selectedText.trim();
     if (!text) return false;
 
@@ -34,11 +45,10 @@ export function useVocabLookup(sentences, updateSentenceVocab, sessionId: string
 
     try {
       const sentence = sentences?.[sentenceIdx];
-      const vocabList = sentence?.vocab ?? [];
+      const vocabList: VocabItem[] = sentence?.vocab ?? [];
 
       const normalized = text.toLowerCase();
 
-      // Prefer an exact text match, otherwise fall back to lemma match.
       const hit = vocabList.find((v) => {
         const textMatch = v.text?.toLowerCase() === normalized;
         const lemmaMatch = v.lemma?.toLowerCase() === normalized;
@@ -67,28 +77,25 @@ export function useVocabLookup(sentences, updateSentenceVocab, sessionId: string
       const detail = await apiFetch("/api/vocab/lookup", {
         method: "POST",
         body: JSON.stringify(payload),
-      });
+      }) as Partial<VocabItem>;
 
-      const vocabItem = {
-        lemma: hit?.lemma,
-        pos: hit?.pos,
+      const vocabItem: VocabItem = {
+        text: hit?.text ?? text,
+        lemma: hit?.lemma ?? text,
+        pos: hit?.pos ?? "",
         ...detail,
-      }
+      };
 
-      if (typeof updateSentenceVocab === "function") {
-        updateSentenceVocab(sentenceIdx, vocabItem);
-      } else {
-        console.warn("updateSentenceVocab is missing; cannot write back vocab.");
-      }
+      updateSentenceVocab(sentenceIdx, vocabItem);
 
       reset();
       return true;
-    } catch (e) {
+    } catch (e: unknown) {
       console.error(e);
       alert("查詢失敗，請再試一次");
       return false;
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   }
 
