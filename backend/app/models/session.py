@@ -9,7 +9,6 @@ class SessionVocabItem(BaseModel):
     definition: str | None = None
     example: str | None = None
     level: str | None = None
-    queried: bool = False
 
 
 class SessionSentence(BaseModel):

@@ -73,7 +73,7 @@ export default function HistoryPanel({ activePanel }) {
           <Tooltip title="New session">
             <button
               onClick={clear}
-              className="flex h-6 w-6 items-center justify-center rounded-full border-0 bg-transparent text-black/40 transition-colors hover:bg-black/8 hover:text-black/70"
+              className="flex h-6 w-6 items-center justify-center rounded-full border-0 bg-transparent text-black/40 transition-colors hover:bg-black/8 hover:text-black/70 hover:cursor-pointer"
             >
               <PlusOutlined />
             </button>

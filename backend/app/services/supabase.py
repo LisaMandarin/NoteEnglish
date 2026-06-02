@@ -185,7 +185,6 @@ def get_session_detail(user_id: str, session_id: str) -> dict:
             "definition": vocab.get("definition"),
             "example": vocab.get("example"),
             "level": vocab.get("level"),
-            "queried": True,
         })
 
     hydrated = []
@@ -268,8 +267,6 @@ def _insert_session_children(user_id: str, session_id: str, sentences: list[dict
         vocab_index = 0
         for vocab in sentence.get("vocab", []):
             if not vocab.get("lemma"):
-                continue
-            if not vocab.get("queried"):
                 continue
             vocab_rows.append(
                 {

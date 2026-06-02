@@ -28,12 +28,11 @@ const CEFR_TOOLTIP = (
 export default function VocabCards({ vocab, sentenceIdx, onDelete, onReorder }) {
   const items = useMemo(() => {
     const list = Array.isArray(vocab) ? vocab : [];
-    return list.filter((v) => {
-      if (v?.queried !== true) return false;
-      return [v.translation, v.definition, v.example, v.level].some(
+    return list.filter((v) =>
+      [v.translation, v.definition, v.example, v.level].some(
         (value) => value != null && String(value).trim() !== ""
-      );
-    });
+      )
+    );
   }, [vocab]);
 
   const [order, setOrder] = useState([]);

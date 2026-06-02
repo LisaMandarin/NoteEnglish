@@ -70,7 +70,6 @@ export function useVocabLookup(sentences, updateSentenceVocab, sessionId: string
       });
 
       const vocabItem = {
-        queried: true,
         lemma: hit?.lemma,
         pos: hit?.pos,
         ...detail,

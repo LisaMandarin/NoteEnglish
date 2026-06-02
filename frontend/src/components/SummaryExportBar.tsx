@@ -16,7 +16,7 @@ export default function SummaryExportBar({ sentences }) {
         idx,
         original: s.original ?? "",
         translation: s.translation ?? "",
-        vocab: (s.vocab ?? []).filter((v) => v?.queried === true),
+        vocab: s.vocab ?? [],
       })),
     };
 

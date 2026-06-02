@@ -414,6 +414,11 @@ export function TranslationProvider({ children }) {
         idx === sentenceIdx ? { ...sentence, vocab: newVocab } : sentence
       );
 
+      dispatch({
+        type: ACTIONS.REORDER_SENTENCE_VOCAB,
+        payload: { sentenceIdx, newVocab },
+      });
+
       await saveGeneratedProgress({
         text: state.text,
         sentences: nextSentences,

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "../../../context/translationContext";
 import { listSessions } from "../../../lib/api";
 
+// 管理 History 面板的 session 列表載入，避免重複請求
 export function useSessionHistory(activePanel) {
   const {
     state: { currentSession },
@@ -25,6 +26,7 @@ export function useSessionHistory(activePanel) {
 
     let cancelled = false;
 
+    // 呼叫 API 取得 session 列表，若請求已取消則忽略結果
     async function loadHistory() {
       setHistoryLoading(true);
       setHistoryError("");
