@@ -87,6 +87,7 @@ function HighlightedExample({ example, lemma, text }: { example: string; lemma?:
 }
 
 function LevelDots({ level }: { level?: string }) {
+  if (!level) return null;
   const { filled, total, color } = getLevelInfo(level);
   return (
     <div className="flex items-center gap-0.5">
@@ -174,12 +175,14 @@ export function VocabCard({ v, onDelete, dragProps, readOnly = false }: { v: Voc
             <span className="text-xs font-semibold text-(--text-main)">{v.level}</span>
           )}
           <LevelDots level={v.level} />
-          <Tooltip title={CEFR_TOOLTIP} placement="top">
-            <QuestionCircleOutlined
-              onPointerDown={(e) => e.stopPropagation()}
-              className="text-gray-400 cursor-default text-xs"
-            />
-          </Tooltip>
+          {v.level && (
+            <Tooltip title={CEFR_TOOLTIP} placement="top">
+              <QuestionCircleOutlined
+                onPointerDown={(e) => e.stopPropagation()}
+                className="text-gray-400 cursor-default text-xs"
+              />
+            </Tooltip>
+          )}
         </div>
         {!readOnly && (
           <button
