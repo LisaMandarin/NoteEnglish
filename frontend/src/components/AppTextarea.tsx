@@ -44,16 +44,18 @@ export default function AppTextarea() {
         <>
             <div className="mb-3">
               <Text strong>Paste a passage:</Text>
-              <div className="relative mt-2">
+              <div className="mt-2">
                 <TextArea
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   rows={8}
                   placeholder="Paste a passage here..."
                 />
-                <span className={`absolute bottom-2 right-2 text-xs pointer-events-none ${countColor}`}>
-                  {isOverLimit ? `-${charCount - MAX_CHARS}/${MAX_CHARS}` : `${charCount}/${MAX_CHARS}`}
-                </span>
+                <div className="text-right mt-1">
+                  <span className={`text-xs ${countColor}`}>
+                    {isOverLimit ? `-${charCount - MAX_CHARS}/${MAX_CHARS}` : `${charCount}/${MAX_CHARS}`}
+                  </span>
+                </div>
               </div>
             </div>
 
