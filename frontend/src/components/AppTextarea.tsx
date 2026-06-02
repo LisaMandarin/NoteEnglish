@@ -4,11 +4,19 @@ import { formatUpdatedAt } from "../lib/formatUpdatedAt"
 const { Text } = Typography
 const { TextArea } = Input
 
+const MAX_CHARS = 1300
+const WARN_THRESHOLD = 1000
+
 export default function AppTextarea() {
     const {
         state: {text, translating, sessionLoading, saving, error, saveError, updatedAt, sentences},
         actions: {translate, setText, clear}
     } = useTranslation()
+
+    const charCount = text.length
+    const isOverLimit = charCount > MAX_CHARS
+    const isNearLimit = charCount > WARN_THRESHOLD
+    const isEmpty = charCount === 0
 
     function hasVocabCards() {
         return Array.isArray(sentences) && sentences.some(
@@ -30,17 +38,23 @@ export default function AppTextarea() {
         }
     }
 
+    const countColor = isOverLimit ? "text-red-500" : isNearLimit ? "text-orange-400" : "text-(--text-main)"
+
     return (
         <>
             <div className="mb-3">
               <Text strong>Paste a passage:</Text>
-              <TextArea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                rows={8}
-                placeholder="Paste a passage here..."
-                className="mt-2"
-              />
+              <div className="relative mt-2">
+                <TextArea
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  rows={8}
+                  placeholder="Paste a passage here..."
+                />
+                <span className={`absolute bottom-2 right-2 text-xs pointer-events-none ${countColor}`}>
+                  {isOverLimit ? `-${charCount - MAX_CHARS}/${MAX_CHARS}` : `${charCount}/${MAX_CHARS}`}
+                </span>
+              </div>
             </div>
 
             {/* Buttons */}
@@ -49,7 +63,7 @@ export default function AppTextarea() {
                 type="primary"
                 onClick={handleTranslate}
                 loading={translating}
-                disabled={sessionLoading || saving}
+                disabled={sessionLoading || saving || isEmpty || isOverLimit}
               >
                 {saving ? "Saving..." : "Translate"}
               </Button>
