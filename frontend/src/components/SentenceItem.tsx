@@ -19,8 +19,8 @@ export default function SentenceItem({
   onEdit?: (sentenceIdx: number, vocabItem: VocabItem) => void;
 }): React.ReactElement {
   return (
-    <li data-idx={idx} className="flex gap-4">
-      <div className="w-7 h-7 rounded-full bg-(--accent) text-white flex items-center justify-center shrink-0 font-bold text-sm mt-0.5">
+    <li data-idx={idx} className="flex flex-col gap-1 sm:flex-row sm:gap-4">
+      <div className="w-7 h-7 rounded-full bg-(--accent) text-white flex items-center justify-center shrink-0 font-bold text-sm sm:mt-0.5">
         {idx + 1}
       </div>
       <div className="flex-1 min-w-0">
