@@ -94,4 +94,14 @@ h1, h2, h3 {
       break-inside: avoid;
       page-break-inside: avoid;
     }
+
+    /* Level dots: filled → dark gray, empty → hollow */
+    .level-dot-filled {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      background-color: #555 !important;
+    }
+    .level-dot-empty {
+      border-color: #999 !important;
+    }
   }

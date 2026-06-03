@@ -76,7 +76,7 @@ function HighlightedExample({ example, lemma, text }: { example: string; lemma?:
     <span>
       {parts.map((part: string, i: number) =>
         part.toLowerCase() === word.toLowerCase() ? (
-          <mark key={i} className="bg-purple-100 text-purple-700 rounded px-0.5 not-italic">
+          <mark key={i} className="bg-purple-100 text-purple-700 rounded px-0.5 not-italic print:bg-transparent print:text-inherit print:font-bold">
             {part}
           </mark>
         ) : (
@@ -95,8 +95,8 @@ function LevelDots({ level }: { level?: string }) {
       {Array.from({ length: total }, (_, i) => (
         <span
           key={i}
-          className={`inline-block w-2.5 h-2.5 rounded-full ${
-            i < filled ? color : "border border-gray-300 bg-transparent"
+          className={`level-dot inline-block w-2.5 h-2.5 rounded-full ${
+            i < filled ? `level-dot-filled ${color}` : "level-dot-empty border border-gray-300 bg-transparent"
           }`}
         />
       ))}
