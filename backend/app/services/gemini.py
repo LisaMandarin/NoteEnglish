@@ -122,8 +122,20 @@ Sentence: "{sentence}"
 Selected word: "{selected_text}"
 
 First, identify how this word is used in the sentence:
-- lemma: base form of "{selected_text}" (e.g. "running" → "run")
 - pos: part of speech in this context (use one of: noun, pronoun, proper noun, verb, adjective, adverb, preposition, conjunction, auxiliary, phrase, interjection; if none apply use "unknown")
+- lemma: base form determined by pos (rules below)
+
+IMPORTANT rules for pos:
+- If a present participle (-ing) or past participle (-ed/-en) is part of a verb phrase (e.g. "was consoling", "have oppressed", "is being"), tag it as "verb".
+- Only tag a participle as "adjective" when it directly modifies a noun with no auxiliary verb (e.g. "a consoling smile", "the oppressed people").
+- The pos must reflect how the word functions grammatically in THIS sentence, not its most common dictionary form.
+
+IMPORTANT rules for lemma (depends on pos):
+- noun → singular base form (e.g. "books" → "book", "churches" → "church")
+- verb → infinitive base form (e.g. "kisses" → "kiss", "started" → "start", "running" → "run")
+- adjective → keep the word exactly as it appears (e.g. "consoling" → "consoling", "oppressed" → "oppressed", "broken" → "broken")
+- adverb → keep the word exactly as it appears
+- all other pos → keep the word exactly as it appears
 
 Then complete these tasks:
 {task_list}
