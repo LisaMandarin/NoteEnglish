@@ -25,7 +25,7 @@ export default function AppMainSection() {
         <AppTextarea />
 
         <div className="mt-6">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <h2 className="text-xl font-semibold">Translations</h2>
             {showTip && sentences.length > 0 && (
               <TipBox
