@@ -8,4 +8,4 @@ router = APIRouter(tags=["vocab"])
 # Look up a word in context; AI determines lemma/pos and fills requested fields.
 @router.post("/vocab/lookup", response_model=VocabLookupResponse)
 def vocab_lookup(req: VocabLookupRequest, _user: dict = Depends(require_user)):
-    return get_vocab_lookup(req)
+    return get_vocab_lookup(req, _user["id"])

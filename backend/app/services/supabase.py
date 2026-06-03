@@ -1,10 +1,13 @@
 import json
+import logging
 from datetime import datetime, timezone
 from urllib import error, parse, request
 
 from fastapi import HTTPException
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def _require_supabase_config() -> None:
@@ -342,6 +345,25 @@ def save_session(
         "saved_at": refreshed["session"].get("updated_at") or saved_at,
         "session": refreshed["session"],
     }
+
+
+def log_api_usage(user_id: str, endpoint: str, model: str, usage: dict) -> None:
+    try:
+        _request_json(
+            "POST",
+            f"{settings.supabase_url}/rest/v1/api_usage",
+            headers=_service_headers(),
+            payload={
+                "user_id": user_id,
+                "endpoint": endpoint,
+                "model": model,
+                "prompt_tokens": usage.get("prompt_tokens", 0),
+                "response_tokens": usage.get("response_tokens", 0),
+                "total_tokens": usage.get("total_tokens", 0),
+            },
+        )
+    except Exception:
+        logger.warning("Failed to log API usage: user=%s endpoint=%s", user_id, endpoint)
 
 
 def delete_session(user_id: str, session_id: str) -> None:

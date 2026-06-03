@@ -43,7 +43,7 @@ export default function AppTextarea() {
     return (
         <>
             <div className="mb-3">
-              <Text strong>Paste a passage:</Text>
+              <Text strong>貼文章:</Text>
               <div className="mt-2">
                 <TextArea
                   value={text}
@@ -67,11 +67,11 @@ export default function AppTextarea() {
                 loading={translating}
                 disabled={sessionLoading || saving || isEmpty || isOverLimit}
               >
-                {saving ? "Saving..." : "Translate"}
+                {saving ? "儲存中..." : "翻譯"}
               </Button>
 
               <Button onClick={clear} disabled={translating || saving || sessionLoading}>
-                Clear
+                清除
               </Button>
             </div>
 

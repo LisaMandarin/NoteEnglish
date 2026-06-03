@@ -11,7 +11,18 @@ from app.core.config import settings
 client = genai.Client(api_key=settings.gemini_api_key)
 
 # Translate a list of sentences using Gemini and return aligned results.
-def ai_translate_list(sentences: list[str], target_lang: str = "zh-TW", mode: str = "normal") -> list[str]:
+def _extract_usage(response) -> dict:
+    meta = getattr(response, "usage_metadata", None)
+    if meta is None:
+        return {"prompt_tokens": 0, "response_tokens": 0, "total_tokens": 0}
+    return {
+        "prompt_tokens": getattr(meta, "prompt_token_count", 0) or 0,
+        "response_tokens": getattr(meta, "candidates_token_count", 0) or 0,
+        "total_tokens": getattr(meta, "total_token_count", 0) or 0,
+    }
+
+
+def ai_translate_list(sentences: list[str], target_lang: str = "zh-TW", mode: str = "normal") -> tuple[list[str], dict]:
     if not sentences:
         return []
     
@@ -41,7 +52,8 @@ def ai_translate_list(sentences: list[str], target_lang: str = "zh-TW", mode: st
             model=settings.gemini_model,
             contents=prompt,
             config={
-                "response_mime_type": "application/json"
+                "response_mime_type": "application/json",
+                "thinking_config": {"thinking_budget": 0},
             }
         )
         text = response.text.strip()
@@ -50,7 +62,9 @@ def ai_translate_list(sentences: list[str], target_lang: str = "zh-TW", mode: st
             status_code=502,
             detail=f"Gemini API request failed: {e}"
         )
-    
+
+    usage = _extract_usage(response)
+
     # Parse JSON array from model output.
     try:
         translations = json.loads(text)
@@ -65,12 +79,12 @@ def ai_translate_list(sentences: list[str], target_lang: str = "zh-TW", mode: st
             status_code=502,
             detail="Gemini output is not a JSON array."
         )
-    
+
     # Ensure output list matches input length.
     fixed = []
     for i in range(len(sentences)):
         fixed.append(translations[i] if i < len(translations) else "")
-    return fixed
+    return fixed, usage
 
 _POS_MAP = {
     "noun": "n.",
@@ -90,7 +104,7 @@ def normalize_pos(raw: str) -> str:
     return _POS_MAP.get(raw.strip().lower(), "?")
 
 # Ask Gemini to identify lemma/pos from sentence context and fill requested vocab fields.
-def ai_lookup_word(selected_text: str, sentence: str, options: VocabOptions) -> dict:
+def ai_lookup_word(selected_text: str, sentence: str, options: VocabOptions) -> tuple[dict, dict]:
     tasks = []
     if options.translation:
         tasks.append("translation: Traditional Chinese (zh-TW) meaning of this word in context.")
@@ -138,7 +152,8 @@ Rules:
         contents=prompt,
         config={
             "response_mime_type": "application/json",
-            "temperature": 0.2
+            "temperature": 0.2,
+            "thinking_config": {"thinking_budget": 0},
         }
     )
-    return json.loads(response.text)
+    return json.loads(response.text), _extract_usage(response)
