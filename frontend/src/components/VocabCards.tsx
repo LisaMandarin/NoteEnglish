@@ -224,7 +224,7 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: 
             {v.pos ?? "—"}
           </span>
         </Tooltip>
-        {head && (
+        {head && !readOnly && (
           <button
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
@@ -325,15 +325,17 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: 
                 )}
                 {v.example && (
                   <div className="rounded-lg bg-gray-100 px-3 py-2 text-sm flex items-start gap-2">
-                    <button
-                      type="button"
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => { e.stopPropagation(); speak(v.example!); }}
-                      className="mt-0.5 shrink-0 text-gray-400 hover:text-(--accent) transition-colors cursor-pointer"
-                      aria-label="Pronounce example"
-                    >
-                      <SoundOutlined />
-                    </button>
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => { e.stopPropagation(); speak(v.example!); }}
+                        className="mt-0.5 shrink-0 text-gray-400 hover:text-(--accent) transition-colors cursor-pointer"
+                        aria-label="Pronounce example"
+                      >
+                        <SoundOutlined />
+                      </button>
+                    )}
                     <HighlightedExample example={v.example} lemma={v.lemma} text={v.text} />
                   </div>
                 )}
@@ -359,7 +361,7 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: 
             <span className="text-xs font-semibold text-(--text-main)">{v.level}</span>
           )}
           <LevelDots level={v.level} />
-          {v.level && (
+          {v.level && !readOnly && (
             <Tooltip title={CEFR_TOOLTIP} placement="top">
               <QuestionCircleOutlined
                 onPointerDown={(e) => e.stopPropagation()}

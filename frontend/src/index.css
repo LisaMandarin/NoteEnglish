@@ -89,7 +89,8 @@ h1, h2, h3 {
       margin-top: 12px !important;
     }
 
-    section {
+    /* Keep individual vocab cards intact, but let sections flow naturally across pages */
+    .summary-page section .grid > div {
       break-inside: avoid;
       page-break-inside: avoid;
     }
