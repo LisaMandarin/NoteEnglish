@@ -46,7 +46,7 @@ def split_sentences(text: str) -> list[str]:
         for sent in doc.sents:
             sentence = sent.text.strip()
             # Skip tokens that contain no word characters (e.g. bare "\u2026" or "...").
-            if sentence and re.search(r"\w", sentence):
+            if sentence and re.search(r"[a-zA-Z]", sentence):
                 sentences.append(sentence)
 
     return sentences
