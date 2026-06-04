@@ -101,10 +101,10 @@ export default function VocabPrintWindow(): React.ReactElement {
   return (
     <div className="vocab-print-root">
       <div className="vocab-print-toolbar no-print">
-        <span className="vpc-title">{data.sessionTitle ?? "單字卡"}</span>
         <Button type="primary" onClick={() => window.print()}>
           列印 / Print
         </Button>
+        <span className="vpc-title">{data.sessionTitle ?? "單字卡"}</span>
       </div>
 
       {pages.length === 0 ? (
