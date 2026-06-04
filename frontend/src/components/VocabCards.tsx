@@ -220,7 +220,7 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: 
       <div className="flex items-center gap-2 mb-1">
         <span className="text-lg font-bold text-(--text-main)">{head || "vocab"}</span>
         <Tooltip title={v.pos ? POS_LABELS[v.pos] : undefined}>
-          <span className={`rounded px-2 py-0.5 text-xs font-bold uppercase tracking-wider ${getPosStyle(v.pos)}`}>
+          <span className={`pos-badge rounded px-2 py-0.5 text-xs font-bold uppercase tracking-wider ${getPosStyle(v.pos)}`}>
             {v.pos ?? "—"}
           </span>
         </Tooltip>

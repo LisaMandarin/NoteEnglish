@@ -51,9 +51,41 @@ h1, h2, h3 {
 .summary-page {
   font-family: "PingFang TC", "Heiti TC", "Microsoft JhengHei", "Noto Sans TC",
     system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --bg-main: #fff;
+  --card-bg: #fff;
+}
+
+/* Inside the outer card: grayscale, same as print */
+.summary-content {
+  --card-bg: #fff;
+  --card-border: #aaa;
+  --accent: #444;
+  --text-main: #000;
+}
+
+.summary-content .sentence-number {
+  background-color: #444 !important;
+  color: #fff !important;
+}
+
+.summary-content .level-dot-filled {
+  background-color: #555 !important;
+}
+
+.summary-content mark {
+  background-color: #e5e5e5 !important;
+  color: #000 !important;
 }
 
   @media print {
+    :root {
+      --card-bg: #fff;
+      --card-border: #aaa;
+      --accent: #444;
+      --text-main: #000;
+      --bg-main: #fff;
+    }
+
     body {
       background: white !important;
     }
@@ -93,6 +125,30 @@ h1, h2, h3 {
     .summary-page section .grid > div {
       break-inside: avoid;
       page-break-inside: avoid;
+      box-shadow: none !important;
+    }
+
+    /* Preserve number badge background */
+    .sentence-number {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      background-color: #444 !important;
+      color: #fff !important;
+    }
+
+    /* Preserve light gray background on POS badges */
+    .pos-badge {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      background-color: #e5e5e5 !important;
+      color: #444 !important;
+    }
+
+    /* Preserve light gray background on example sentences */
+    .summary-page .bg-gray-100 {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      background-color: #f3f4f6 !important;
     }
 
     /* Level dots: filled → dark gray, empty → hollow */

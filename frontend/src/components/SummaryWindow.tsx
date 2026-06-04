@@ -68,7 +68,7 @@ export default function SummaryWindow() {
   return (
     <div className="summary-page min-h-screen w-full px-6 py-10 sm:px-10">
       <div className="rounded-[30px] bg-(--card-bg) shadow-md border-4 border-(--card-border)">
-        <div className="w-full m-0 px-12 py-10 box-border">
+        <div className="summary-content w-full m-0 px-12 py-10 box-border">
           <h1 className="text-2xl font-bold mb-2">彙整結果</h1>
           <Button
             type="primary"
@@ -87,7 +87,7 @@ export default function SummaryWindow() {
               <div className="divide-y divide-dashed divide-(--card-border)">
                 {data.rows.map((row) => (
                   <section key={row.idx} className="py-6 flex gap-4">
-                    <div className="w-7 h-7 rounded-full bg-(--accent) text-white flex items-center justify-center shrink-0 font-bold text-sm mt-0.5">
+                    <div className="sentence-number w-7 h-7 rounded-full bg-(--accent) text-white flex items-center justify-center shrink-0 font-bold text-sm mt-0.5">
                       {row.idx + 1}
                     </div>
                     <div className="flex-1 min-w-0">
