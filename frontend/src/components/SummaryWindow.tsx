@@ -14,6 +14,7 @@ type SummaryRow = {
 
 type SummaryData = {
   createdAt: number;
+  sessionTitle?: string;
   includeTranslation: boolean;
   includeVocab: boolean;
   rows: SummaryRow[];
@@ -46,8 +47,8 @@ export default function SummaryWindow() {
       document.title = "NoteEnglish | 彙整結果 | 資料不存在";
       return;
     }
-    document.title = `NoteEnglish | 彙整結果 | ${subtitle}`;
-  }, [data, subtitle]);
+    document.title = data.sessionTitle?.trim().slice(0, 25) || "NoteEnglish 彙整結果";
+  }, [data]);
 
   if (!data) {
     return (

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button, Checkbox } from "antd";
 import type { Sentence } from "../types";
 
-export default function SummaryExportBar({ sentences }: { sentences: Sentence[] }): React.ReactElement {
+export default function SummaryExportBar({ sentences, sessionTitle }: { sentences: Sentence[]; sessionTitle: string }): React.ReactElement {
   const [includeTranslation, setIncludeTranslation] = useState(true);
   const [includeVocab, setIncludeVocab] = useState(true);
 
@@ -11,6 +11,7 @@ export default function SummaryExportBar({ sentences }: { sentences: Sentence[] 
 
     const payload = {
       createdAt: Date.now(),
+      sessionTitle,
       includeTranslation,
       includeVocab,
       rows: sentences.map((s, idx) => ({

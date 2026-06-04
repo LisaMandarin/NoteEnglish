@@ -59,7 +59,7 @@ export default function TranslationsList(): React.ReactElement {
           <li><Text>Click Look Up.按「查詢」</Text></li>
         </ol>
       </div>
-      <SummaryExportBar sentences={sentences} />
+      <SummaryExportBar sentences={sentences} sessionTitle={currentSession?.title ?? ""} />
       <div
         onMouseUp={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}

@@ -11,7 +11,7 @@ import SessionItem from "./SessionItem";
 export default function HistoryPanel({ activePanel }: { activePanel: string }): React.ReactElement {
   const {
     state: { currentSession, sessionLoading, saving },
-    actions: { loadSession, clear },
+    actions: { loadSession, clear, updateCurrentSessionTitle },
   } = useTranslation();
 
   const { historyItems, setHistoryItems, historyLoading, historyError } =
@@ -32,6 +32,9 @@ export default function HistoryPanel({ activePanel }: { activePanel: string }): 
           : s
       )
     );
+    if (sessionId === currentSession?.id) {
+      updateCurrentSessionTitle(trimmed);
+    }
   }
 
   const { editingId, editValue, setEditValue, editSaving, editInputRef, startEdit, cancelEdit, confirmEdit } =

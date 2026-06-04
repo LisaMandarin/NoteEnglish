@@ -28,7 +28,8 @@ type Action =
   | { type: "save_error"; payload?: string }
   | { type: "update_sentence_vocab"; payload: { sentenceIdx: number; vocabItem: VocabItem } }
   | { type: "remove_sentence_vocab"; payload: { sentenceIdx: number; lemma: string; pos: string } }
-  | { type: "reorder_sentence_vocab"; payload: { sentenceIdx: number; newVocab: VocabItem[] } };
+  | { type: "reorder_sentence_vocab"; payload: { sentenceIdx: number; newVocab: VocabItem[] } }
+  | { type: "update_current_session_title"; payload: string };
 
 type TranslationActions = {
   translate: () => Promise<void>;
@@ -38,6 +39,7 @@ type TranslationActions = {
   updateSentenceVocab: (sentenceIdx: number, vocabItem: VocabItem) => Promise<void>;
   removeSentenceVocab: (sentenceIdx: number, lemma: string, pos: string) => Promise<void>;
   reorderSentenceVocab: (sentenceIdx: number, newVocab: VocabItem[]) => Promise<void>;
+  updateCurrentSessionTitle: (title: string) => void;
 };
 
 type TranslationContextValue = {
@@ -224,6 +226,10 @@ function reducer(state: AppState, action: Action): AppState {
       nextSentences[sentenceIdx] = { ...s, vocab: newVocab };
       return { ...state, sentences: nextSentences, saveError: "", updatedAt: null };
     }
+
+    case "update_current_session_title":
+      if (!state.currentSession) return state;
+      return { ...state, currentSession: { ...state.currentSession, title: action.payload } };
 
     default:
       return state;
@@ -463,6 +469,10 @@ export function TranslationProvider({ children }: { children: React.ReactNode })
       });
     }
 
+    function updateCurrentSessionTitle(title: string): void {
+      dispatch({ type: "update_current_session_title", payload: title });
+    }
+
     return {
       translate,
       setText,
@@ -471,6 +481,7 @@ export function TranslationProvider({ children }: { children: React.ReactNode })
       updateSentenceVocab,
       removeSentenceVocab,
       reorderSentenceVocab,
+      updateCurrentSessionTitle,
     };
   }, [state.currentSession, state.text, state.sentences]);
 
