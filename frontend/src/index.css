@@ -161,3 +161,191 @@ h1, h2, h3 {
       border-color: #999 !important;
     }
   }
+
+/* ── Vocab Print Window ────────────────────────────────────────────────────── */
+
+.vocab-print-root {
+  font-family: "PingFang TC", "Heiti TC", "Microsoft JhengHei", "Noto Sans TC",
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #fff;
+  min-height: 100vh;
+  color: #111;
+}
+
+.vocab-print-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid #ddd;
+  background: #f9f9f9;
+}
+
+.vpc-title {
+  font-size: 1rem;
+  font-weight: 600;
+  flex: 1;
+}
+
+/* A4 page: 210mm wide, 297mm tall, 10mm padding all sides */
+.vocab-print-page {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 24px auto;
+  padding: 10mm;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(6, 1fr);
+  gap: 4mm;
+  border: 1px solid #ccc;
+  background: #fff;
+}
+
+/* Each vocab card inside the print grid */
+.vocab-print-card {
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  padding: 3mm 4mm;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1mm;
+  overflow: hidden;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.vpc-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.vpc-word {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111;
+}
+
+.vpc-pos {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: #e5e5e5;
+  color: #555;
+  border-radius: 2px;
+  padding: 0 3px;
+  letter-spacing: 0.03em;
+}
+
+.vpc-level {
+  font-size: 9px;
+  font-weight: 600;
+  color: #666;
+  margin-left: auto;
+}
+
+.vpc-translation {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111;
+  line-height: 1.2;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.vpc-definition {
+  font-size: 9px;
+  color: #333;
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.vpc-example {
+  font-size: 8.5px;
+  color: #555;
+  font-style: italic;
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  background: #f3f4f6;
+  border-radius: 2px;
+  padding: 1mm 2mm;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.vpc-dots {
+  display: flex;
+  gap: 2px;
+  margin-top: auto;
+}
+
+.vpc-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.vpc-dot-filled {
+  background: #555;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.vpc-dot-empty {
+  border: 1px solid #aaa;
+  background: transparent;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .vocab-print-root {
+    background: white !important;
+  }
+
+  .vocab-print-page {
+    width: 210mm !important;
+    min-height: 297mm !important;
+    margin: 0 !important;
+    border: none !important;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .vocab-print-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .vocab-print-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .vpc-dot-filled {
+    background-color: #555 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .vpc-pos {
+    background-color: #e5e5e5 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

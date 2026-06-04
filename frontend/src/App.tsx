@@ -4,6 +4,7 @@ import { TranslationProvider } from "./context/translationContext";
 import AppMainSection from "./components/AppMainSection";
 import AppSidebar from "./components/AppSidebar";
 import SummaryWindow from "./components/SummaryWindow";
+import VocabPrintWindow from "./components/VocabPrintWindow";
 import LoginPage from "./components/LoginPage";
 import { supabase } from "./lib/supabase";
 import { ensureProfile as ensureProfileApi } from "./lib/api";
@@ -65,6 +66,7 @@ export default function App(): React.ReactElement {
   const [authReady, setAuthReady] = useState(false);
   const params = new URLSearchParams(window.location.search);
   const isSummaryView = params.get("view") === "summary";
+  const isVocabPrintView = params.get("view") === "vocab-print";
 
   useEffect(() => {
     let mounted = true;
@@ -109,6 +111,10 @@ export default function App(): React.ReactElement {
 
   if (isSummaryView) {
     return <SummaryWindow />;
+  }
+
+  if (isVocabPrintView) {
+    return <VocabPrintWindow />;
   }
 
   if (!authReady) {
