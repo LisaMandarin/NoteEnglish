@@ -4,6 +4,33 @@ import { formatUpdatedAt } from "../lib/formatUpdatedAt"
 const { Text } = Typography
 const { TextArea } = Input
 
+type ParsedError = { message: string; technical: string };
+
+function parseApiError(raw: string): ParsedError {
+  let detail = raw;
+  try {
+    const parsed = JSON.parse(raw) as { detail?: string };
+    if (parsed.detail) detail = parsed.detail;
+  } catch {
+    // not JSON — use raw as-is
+  }
+
+  const low = detail.toLowerCase();
+  if (low.includes("502") || low.includes("503") || low.includes("high demand") || low.includes("unavailable")) {
+    return { message: "AI 服務目前流量過大，請稍後再試。", technical: detail };
+  }
+  if (low.includes("429") || low.includes("quota") || low.includes("rate limit")) {
+    return { message: "已超過 API 使用限額，請稍後再試。", technical: detail };
+  }
+  if (low.includes("network") || low.includes("fetch") || low.includes("connect")) {
+    return { message: "無法連線至伺服器，請確認網路連線。", technical: detail };
+  }
+  if (low.includes("not authenticated") || low.includes("401")) {
+    return { message: "驗證已過期，請重新登入。", technical: detail };
+  }
+  return { message: "翻譯失敗，請稍後再試。", technical: detail };
+}
+
 const MAX_CHARS = 1300
 const WARN_THRESHOLD = 1000
 
@@ -76,17 +103,27 @@ export default function AppTextarea() {
             </div>
 
             {/* Error */}
-            {error && (
-              <Alert
-                type="error"
-                showIcon
-                message="Request failed"
-                description={
-                  <pre className="m-0 whitespace-pre-wrap">{error}</pre>
-                }
-                className="mb-4"
-              />
-            )}
+            {error && (() => {
+              const { message: errMsg, technical } = parseApiError(error);
+              return (
+                <Alert
+                  type="error"
+                  showIcon
+                  description={
+                    <div>
+                      <p className="m-0 font-medium">{errMsg}</p>
+                      {technical && technical !== errMsg && (
+                        <details className="mt-2">
+                          <summary className="text-xs cursor-pointer opacity-60 select-none">技術細節</summary>
+                          <pre className="m-0 mt-1 whitespace-pre-wrap text-xs opacity-70">{technical}</pre>
+                        </details>
+                      )}
+                    </div>
+                  }
+                  className="mb-4"
+                />
+              );
+            })()}
 
             {saveError && (
               <Alert
