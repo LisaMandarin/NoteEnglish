@@ -3,10 +3,12 @@ import type { ComponentType } from "react";
 import {
   CloseOutlined,
   FolderOpenOutlined,
+  LogoutOutlined,
   MenuOutlined,
   SettingOutlined,
   UserOutlined,
 } from "@ant-design/icons";
+import { Button, Tooltip } from "antd";
 import SidebarIconButton from "./SidebarIconButton";
 import SidebarPanelContent from "./SidebarPanelContent";
 
@@ -92,6 +94,18 @@ export default function AppSidebar({
               onClick={() => onTogglePanel(button.key)}
             />
           ))}
+          <Button
+            aria-label="Sign out"
+            onClick={onSignOut}
+            icon={<LogoutOutlined aria-hidden="true" />}
+            shape="circle"
+            size="large"
+            className="flex h-12 w-12 items-center justify-center border-0 text-xl shadow-sm transition"
+            style={{
+              backgroundColor: "rgb(255 255 255 / 0.8)",
+              color: "var(--accent)",
+            }}
+          />
         </div>
 
         <div
@@ -112,7 +126,7 @@ export default function AppSidebar({
 
       {/* ===== DESKTOP (lg+) ===== */}
       <aside className="hidden lg:flex min-h-[calc(100vh-5rem)] overflow-hidden rounded-[28px] bg-[color-mix(in_srgb,var(--accent)_16%,white)] shadow-sm">
-        <div className="flex w-22 shrink-0 flex-col items-center px-4 py-5">
+        <div className="flex w-22 shrink-0 flex-col items-center justify-between px-4 py-5">
           <div className="flex flex-col gap-3">
             {SIDEBAR_BUTTONS.map((button) => (
               <SidebarIconButton
@@ -125,6 +139,20 @@ export default function AppSidebar({
               />
             ))}
           </div>
+          <Tooltip title="Sign out" placement="right">
+            <Button
+              aria-label="Sign out"
+              onClick={onSignOut}
+              icon={<LogoutOutlined aria-hidden="true" />}
+              shape="circle"
+              size="large"
+              className="flex h-12 w-12 items-center justify-center border-0 text-xl shadow-sm transition"
+              style={{
+                backgroundColor: "rgb(255 255 255 / 0.8)",
+                color: "var(--accent)",
+              }}
+            />
+          </Tooltip>
         </div>
 
         <section
