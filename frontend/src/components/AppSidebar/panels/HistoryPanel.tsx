@@ -62,17 +62,16 @@ export default function HistoryPanel({ activePanel }: { activePanel: string }): 
   return (
     <>
       <p className="mb-3 text-sm font-semibold uppercase tracking-[0.24em] text-(--accent)">
-        Session Histories
+        歷史學習紀錄
       </p>
-      <h2 className="mb-4 text-3xl leading-tight">Reopen previous work.</h2>
+      <h2 className="mb-4 text-3xl leading-tight">開啟過去的學習紀錄</h2>
       <p className="m-0 text-base text-black/70">
-        Use this area to list saved sessions, organize folders, and jump back
-        into earlier translation drafts.
+        點按學習紀錄可以查詢之前的文章、翻譯和查詢的單詞。
       </p>
       <div className="mt-6 rounded-3xl border border-black/10 bg-white/70 p-4">
         <div className="flex items-center justify-between">
           <p className="m-0 text-xs font-semibold uppercase tracking-[0.18em] text-black/45">
-            Your Sessions
+            你的學習紀錄
           </p>
           <Tooltip title="New session">
             <button
