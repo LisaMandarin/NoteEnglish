@@ -77,6 +77,15 @@ export default function TokenUsageView(): React.ReactElement {
       .finally(() => setLoading(false));
   }, []);
 
+  const currentUTCHour = new Date().getUTCHours();
+  const last12: UsageHourlyItem[] = data
+    ? Array.from({ length: 12 }, (_, i) => {
+        const h = (currentUTCHour - 11 + i + 24) % 24;
+        return data.today.hourly[h] ?? { hour: h, tokens: 0 };
+      })
+    : [];
+  const last12Total = last12.reduce((s, item) => s + item.tokens, 0);
+
   return (
     <div className="relative rounded-[30px] border-4 border-(--card-border) bg-(--card-bg) shadow-md">
       <div className="w-full m-0 px-8 py-10 box-border sm:px-12">
@@ -95,11 +104,11 @@ export default function TokenUsageView(): React.ReactElement {
         {data && (
           <div className="flex flex-col gap-10">
             <section>
-              <SectionHeader label="今日" total={data.today.total} />
+              <SectionHeader label="近12小時" total={last12Total} />
               <BarChart<UsageHourlyItem>
-                items={data.today.hourly}
+                items={last12}
                 getTokens={(item) => item.tokens}
-                getLabel={(item, i) => (i % 6 === 0 ? `${item.hour}h` : "")}
+                getLabel={(item, i) => (i % 3 === 0 ? `${item.hour}h` : "")}
               />
             </section>
 
