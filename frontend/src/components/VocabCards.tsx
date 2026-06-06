@@ -23,10 +23,13 @@ import { CSS } from "@dnd-kit/utilities";
 
 const CEFR_TOOLTIP = (
   <div className="text-xs leading-relaxed space-y-0.5">
-    <div><strong>CEFR Levels</strong></div>
-    <div>A1 · A2 — Beginner</div>
-    <div>B1 · B2 — Intermediate</div>
-    <div>C1 · C2 — Advanced</div>
+    <div><strong>CEFR等級</strong></div>
+    <div>A1 - 入門</div>
+    <div>A2 - 基礎</div>
+    <div>B1 - 進階</div>
+    <div>B2 - 高階</div>
+    <div>C1 - 流利</div>
+    <div>C2 - 精通</div>
   </div>
 );
 

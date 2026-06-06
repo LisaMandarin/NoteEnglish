@@ -29,7 +29,7 @@ export default function AppMainSection() {
             <h2 className="text-xl font-semibold">Translations</h2>
             {showTip && sentences.length > 0 && (
               <TipBox
-                message="Tip: Select any English word to look it up."
+                message="小技巧：選取英文字詞來查詢"
                 onDismiss={() => setShowTip(false)}
               />
             )}
