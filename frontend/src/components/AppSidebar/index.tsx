@@ -43,6 +43,7 @@ export default function AppSidebar({
   username,
   email,
   onSignOut,
+  onShowUsage,
 }: {
   activePanel: string | null;
   isSidebarOpen: boolean;
@@ -50,6 +51,7 @@ export default function AppSidebar({
   username: string;
   email: string;
   onSignOut: () => void;
+  onShowUsage: () => void;
 }): React.ReactElement {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -120,6 +122,7 @@ export default function AppSidebar({
             username={username}
             email={email}
             onSignOut={onSignOut}
+            onShowUsage={onShowUsage}
           />
         </div>
       </div>
@@ -174,6 +177,7 @@ export default function AppSidebar({
               username={username}
               email={email}
               onSignOut={onSignOut}
+              onShowUsage={onShowUsage}
             />
           </div>
         </section>

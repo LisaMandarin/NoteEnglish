@@ -27,6 +27,16 @@ export type Session = {
   sentenceCount?: number;
 };
 
+export type UsageHourlyItem = { hour: number; tokens: number };
+export type UsageDailyItem = { date: string; tokens: number };
+export type UsageMonthlyItem = { month: string; tokens: number };
+
+export type TokenUsageData = {
+  today: { total: number; hourly: UsageHourlyItem[] };
+  week: { total: number; daily: UsageDailyItem[] };
+  months: { total: number; monthly: UsageMonthlyItem[] };
+};
+
 // Shape returned by GET /api/sessions and GET /api/sessions/:id
 export type SessionRecord = {
   id: string;

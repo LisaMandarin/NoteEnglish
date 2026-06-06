@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { Sentence, SessionRecord } from "../types";
+import type { Sentence, SessionRecord, TokenUsageData } from "../types";
 
 type ApiSessionShape = {
   id: string;
@@ -78,6 +78,10 @@ export async function updateSessionTitle(sessionId: string, title: string): Prom
 
 export async function deleteSession(sessionId: string): Promise<unknown> {
   return apiFetch(`/api/sessions/${sessionId}`, { method: "DELETE" });
+}
+
+export async function getTokenUsage(): Promise<TokenUsageData> {
+  return apiFetch("/api/usage") as Promise<TokenUsageData>;
 }
 
 export async function saveSession({ sessionId, text, sentences }: {

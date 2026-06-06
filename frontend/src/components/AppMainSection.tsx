@@ -3,15 +3,24 @@ import AppTitle from "./AppTitle";
 import AppTextarea from "./AppTextarea";
 import TranslationsList from "./TranslationsList";
 import TipBox from "./TipBox";
+import TokenUsageView from "./TokenUsageView";
 import { useTranslation } from "../context/translationContext";
 
-export default function AppMainSection() {
+export default function AppMainSection({
+  mainView,
+}: {
+  mainView: "translate" | "usage";
+}): React.ReactElement {
   const { state: { sessionLoading, currentSession, sentences } } = useTranslation();
   const [showTip, setShowTip] = useState(true);
 
   useEffect(() => {
     setShowTip(true);
   }, [currentSession?.id]);
+
+  if (mainView === "usage") {
+    return <TokenUsageView />;
+  }
 
   return (
     <div className="relative rounded-[30px] border-4 border-(--card-border) bg-(--card-bg) shadow-md">

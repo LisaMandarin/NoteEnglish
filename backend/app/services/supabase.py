@@ -366,6 +366,78 @@ def log_api_usage(user_id: str, endpoint: str, model: str, usage: dict) -> None:
         logger.warning("Failed to log API usage: user=%s endpoint=%s", user_id, endpoint)
 
 
+def get_usage_stats(user_id: str) -> dict:
+    from datetime import timedelta
+
+    def _subtract_months(dt: datetime, n: int) -> datetime:
+        m = dt.month - n
+        y = dt.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        return dt.replace(year=y, month=m, day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    now = datetime.now(timezone.utc)
+    three_months_start = _subtract_months(now, 2)
+
+    query = parse.urlencode({
+        "user_id": f"eq.{user_id}",
+        "created_at": f"gte.{three_months_start.isoformat()}",
+        "select": "total_tokens,created_at",
+        "order": "created_at.asc",
+    })
+    rows = _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/api_usage?{query}",
+        headers=_service_headers(),
+    ) or []
+
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    hourly: dict[int, int] = {h: 0 for h in range(24)}
+    daily: dict[str, int] = {}
+    monthly: dict[str, int] = {}
+
+    for row in rows:
+        ts: str = row["created_at"]
+        if ts.endswith("Z"):
+            ts = ts[:-1] + "+00:00"
+        dt = datetime.fromisoformat(ts)
+        tokens: int = row.get("total_tokens") or 0
+
+        if dt >= today_start:
+            hourly[dt.hour] += tokens
+
+        date_str = dt.strftime("%Y-%m-%d")
+        daily[date_str] = daily.get(date_str, 0) + tokens
+
+        month_str = dt.strftime("%Y-%m")
+        monthly[month_str] = monthly.get(month_str, 0) + tokens
+
+    hourly_list = [{"hour": h, "tokens": hourly[h]} for h in range(24)]
+    today_total = sum(hourly.values())
+
+    week_days = []
+    for i in range(6, -1, -1):
+        d = today_start - timedelta(days=i)
+        date_str = d.strftime("%Y-%m-%d")
+        week_days.append({"date": date_str, "tokens": daily.get(date_str, 0)})
+    week_total = sum(entry["tokens"] for entry in week_days)
+
+    month_list = []
+    for i in range(2, -1, -1):
+        m = _subtract_months(now.replace(day=1), i)
+        month_str = m.strftime("%Y-%m")
+        month_list.append({"month": month_str, "tokens": monthly.get(month_str, 0)})
+    months_total = sum(entry["tokens"] for entry in month_list)
+
+    return {
+        "today": {"total": today_total, "hourly": hourly_list},
+        "week": {"total": week_total, "daily": week_days},
+        "months": {"total": months_total, "monthly": month_list},
+    }
+
+
 def delete_session(user_id: str, session_id: str) -> None:
     _delete_session_children(user_id, session_id)
     query = parse.urlencode({"id": f"eq.{session_id}", "user_id": f"eq.{user_id}"})

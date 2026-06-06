@@ -26,8 +26,11 @@ async function ensureProfile(user: User): Promise<void> {
   await ensureProfileApi(displayName);
 }
 
+type MainView = "translate" | "usage";
+
 function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): React.ReactElement {
   const [activePanel, setActivePanel] = useState<string | null>(null);
+  const [mainView, setMainView] = useState<MainView>("translate");
   const isSidebarOpen = activePanel !== null;
   const username = getDisplayName(user);
 
@@ -35,6 +38,10 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
     setActivePanel((currentPanel) =>
       currentPanel === panelName ? null : panelName
     );
+  }
+
+  function handleShowUsage(): void {
+    setMainView("usage");
   }
 
   return (
@@ -53,8 +60,9 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
             username={username}
             email={user?.email ?? ""}
             onSignOut={onSignOut}
+            onShowUsage={handleShowUsage}
           />
-          <AppMainSection />
+          <AppMainSection mainView={mainView} />
         </div>
       </div>
     </TranslationProvider>
