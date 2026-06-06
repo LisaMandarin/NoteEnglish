@@ -44,6 +44,10 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
     setMainView("usage");
   }
 
+  function handleShowTranslate(): void {
+    setMainView("translate");
+  }
+
   return (
     <TranslationProvider>
       <div className="min-h-screen w-full px-6 pb-10 pt-20 sm:px-10 lg:py-10">
@@ -61,6 +65,7 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
             email={user?.email ?? ""}
             onSignOut={onSignOut}
             onShowUsage={handleShowUsage}
+            onShowTranslate={handleShowTranslate}
           />
           <AppMainSection mainView={mainView} />
         </div>

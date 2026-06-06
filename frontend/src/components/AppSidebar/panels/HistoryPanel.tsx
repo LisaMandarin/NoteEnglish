@@ -8,7 +8,7 @@ import { useSessionEdit } from "../hooks/useSessionEdit";
 import { useSessionHistory } from "../hooks/useSessionHistory";
 import SessionItem from "./SessionItem";
 
-export default function HistoryPanel({ activePanel }: { activePanel: string }): React.ReactElement {
+export default function HistoryPanel({ activePanel, onShowTranslate }: { activePanel: string; onShowTranslate: () => void }): React.ReactElement {
   const {
     state: { currentSession, sessionLoading, saving },
     actions: { loadSession, clear, updateCurrentSessionTitle },
@@ -55,6 +55,7 @@ export default function HistoryPanel({ activePanel }: { activePanel: string }): 
   function handleLoad(sessionId: string): void {
     setPendingId(sessionId);
     loadSession(sessionId);
+    onShowTranslate();
   }
 
   const resolvedCurrentId = pendingId ?? currentSession?.id;
