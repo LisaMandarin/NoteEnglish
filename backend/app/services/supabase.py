@@ -379,6 +379,9 @@ def get_usage_stats(user_id: str) -> dict:
 
     now = datetime.now(timezone.utc)
     three_months_start = _subtract_months(now, 2)
+    recent_hours_start = now.replace(
+        minute=0, second=0, microsecond=0
+    ) - timedelta(hours=11)
 
     query = parse.urlencode({
         "user_id": f"eq.{user_id}",
@@ -395,6 +398,9 @@ def get_usage_stats(user_id: str) -> dict:
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
     hourly: dict[int, int] = {h: 0 for h in range(24)}
+    recent_hourly: dict[datetime, int] = {
+        recent_hours_start + timedelta(hours=i): 0 for i in range(12)
+    }
     daily: dict[str, int] = {}
     monthly: dict[str, int] = {}
 
@@ -403,10 +409,18 @@ def get_usage_stats(user_id: str) -> dict:
         if ts.endswith("Z"):
             ts = ts[:-1] + "+00:00"
         dt = datetime.fromisoformat(ts)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        else:
+            dt = dt.astimezone(timezone.utc)
         tokens: int = row.get("total_tokens") or 0
 
         if dt >= today_start:
             hourly[dt.hour] += tokens
+
+        hour_start = dt.replace(minute=0, second=0, microsecond=0)
+        if hour_start in recent_hourly:
+            recent_hourly[hour_start] += tokens
 
         date_str = dt.strftime("%Y-%m-%d")
         daily[date_str] = daily.get(date_str, 0) + tokens
@@ -416,6 +430,14 @@ def get_usage_stats(user_id: str) -> dict:
 
     hourly_list = [{"hour": h, "tokens": hourly[h]} for h in range(24)]
     today_total = sum(hourly.values())
+    recent_hourly_list = [
+        {
+            "timestamp": hour_start.isoformat().replace("+00:00", "Z"),
+            "tokens": recent_hourly[hour_start],
+        }
+        for hour_start in recent_hourly
+    ]
+    recent_hours_total = sum(recent_hourly.values())
 
     week_days = []
     for i in range(6, -1, -1):
@@ -433,6 +455,10 @@ def get_usage_stats(user_id: str) -> dict:
 
     return {
         "today": {"total": today_total, "hourly": hourly_list},
+        "last_12_hours": {
+            "total": recent_hours_total,
+            "hourly": recent_hourly_list,
+        },
         "week": {"total": week_total, "daily": week_days},
         "months": {"total": months_total, "monthly": month_list},
     }

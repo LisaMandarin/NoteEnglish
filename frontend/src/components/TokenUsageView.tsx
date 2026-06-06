@@ -10,9 +10,22 @@ import {
 } from "recharts";
 import type { TooltipContentProps } from "recharts";
 import { getTokenUsage } from "../lib/api";
-import type { TokenUsageData, UsageHourlyItem } from "../types";
+import type { TokenUsageData } from "../types";
 
 const tokenNumberFormatter = new Intl.NumberFormat("zh-TW");
+const localHourFormatter = new Intl.DateTimeFormat("zh-TW", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+const localDateTimeFormatter = new Intl.DateTimeFormat("zh-TW", {
+  month: "numeric",
+  day: "numeric",
+  weekday: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
 
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -132,20 +145,13 @@ export default function TokenUsageView(): React.ReactElement {
       .finally(() => setLoading(false));
   }, []);
 
-  const currentUTCHour = new Date().getUTCHours();
-  const last12: UsageHourlyItem[] = data
-    ? Array.from({ length: 12 }, (_, i) => {
-        const h = (currentUTCHour - 11 + i + 24) % 24;
-        return data.today.hourly[h] ?? { hour: h, tokens: 0 };
-      })
-    : [];
-  const last12Total = last12.reduce((s, item) => s + item.tokens, 0);
-
-  const hourlyChartItems: UsageChartDatum[] = last12.map((item, index) => {
-    const time = `${item.hour.toString().padStart(2, "0")}:00 UTC`;
+  const hourlyChartItems: UsageChartDatum[] = (
+    data?.last_12_hours.hourly ?? []
+  ).map((item, index) => {
+    const date = new Date(item.timestamp);
     return {
-      axisLabel: index % 3 === 0 ? `${item.hour}h` : "",
-      label: time,
+      axisLabel: index % 3 === 0 ? localHourFormatter.format(date) : "",
+      label: localDateTimeFormatter.format(date),
       tokens: item.tokens,
     };
   });
@@ -192,10 +198,10 @@ export default function TokenUsageView(): React.ReactElement {
         {data && (
           <div className="flex flex-col gap-10">
             <section>
-              <SectionHeader label="近12小時" total={last12Total} />
+              <SectionHeader label="近12小時" total={data.last_12_hours.total} />
               <UsageBarChart
                 items={hourlyChartItems}
-                description="近12小時 Token 使用量"
+                description="近12小時 Token 使用量（當地時間）"
               />
             </section>
 

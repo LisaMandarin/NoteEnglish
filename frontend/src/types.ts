@@ -28,11 +28,13 @@ export type Session = {
 };
 
 export type UsageHourlyItem = { hour: number; tokens: number };
+export type UsageRecentHourItem = { timestamp: string; tokens: number };
 export type UsageDailyItem = { date: string; tokens: number };
 export type UsageMonthlyItem = { month: string; tokens: number };
 
 export type TokenUsageData = {
   today: { total: number; hourly: UsageHourlyItem[] };
+  last_12_hours: { total: number; hourly: UsageRecentHourItem[] };
   week: { total: number; daily: UsageDailyItem[] };
   months: { total: number; monthly: UsageMonthlyItem[] };
 };
