@@ -160,25 +160,24 @@ h1, h2, h3 {
 
 .vocab-print-page {
   width: 210mm;
-  min-height: 297mm;
+  height: 297mm;
   margin: 24px 0;
-  padding: 10mm;
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: repeat(6, 42mm);
-  align-content: start;
-  gap: 4mm;
-  border: none;
+  grid-template-columns: repeat(2, 105mm);
+  grid-template-rows: repeat(6, 49.5mm);
+  outline: 1px solid #bbb;
+  outline-offset: -1px;
   background: #fff;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 /* Each vocab card inside the print grid */
 .vocab-print-card {
-  height: 42mm;
-  border: 1px solid #bbb;
-  border-radius: 4px;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid #bbb;
+  border-bottom: 1px solid #bbb;
   padding: 3mm 4mm;
   box-sizing: border-box;
   display: flex;
@@ -187,6 +186,14 @@ h1, h2, h3 {
   overflow: hidden;
   break-inside: avoid;
   page-break-inside: avoid;
+}
+
+.vocab-print-card:nth-child(2n) {
+  border-right: 0;
+}
+
+.vocab-print-card:nth-last-child(-n + 2) {
+  border-bottom: 0;
 }
 
 .vpc-header {
@@ -346,11 +353,10 @@ h1, h2, h3 {
 
   .vocab-print-page {
     width: 210mm !important;
-    min-height: 297mm !important;
+    height: 297mm !important;
     margin: 0 !important;
     box-shadow: none !important;
-    grid-template-rows: repeat(6, 42mm) !important;
-    align-content: start !important;
+    page: vocab-cards;
     break-after: page;
     page-break-after: always;
   }
@@ -376,4 +382,9 @@ h1, h2, h3 {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+}
+
+@page vocab-cards {
+  size: A4 portrait;
+  margin: 0;
 }

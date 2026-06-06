@@ -112,9 +112,21 @@ export default function VocabPrintWindow(): React.ReactElement {
       ) : (
         pages.map((page, pi) => (
           <div key={pi} className="vocab-print-page">
-            {page.map((v, ci) => (
-              <PrintVocabCard key={`${pi}-${ci}-${v.lemma ?? v.text}`} v={v} />
-            ))}
+            {Array.from({ length: CARDS_PER_PAGE }, (_, ci) => {
+              const vocab = page[ci];
+              return vocab ? (
+                <PrintVocabCard
+                  key={`${pi}-${ci}-${vocab.lemma ?? vocab.text}`}
+                  v={vocab}
+                />
+              ) : (
+                <div
+                  key={`${pi}-${ci}-empty`}
+                  className="vocab-print-card vocab-print-card-empty"
+                  aria-hidden="true"
+                />
+              );
+            })}
           </div>
         ))
       )}
