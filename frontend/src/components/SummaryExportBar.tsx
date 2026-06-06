@@ -58,7 +58,7 @@ export default function SummaryExportBar({ sentences, sessionTitle }: { sentence
   }
 
   return (
-    <div className="flex gap-3 mt-4">
+    <div className="flex flex-wrap gap-3 mt-4">
       <div className="flex items-center">
         <Checkbox
           checked={includeTranslation}
@@ -77,11 +77,12 @@ export default function SummaryExportBar({ sentences, sessionTitle }: { sentence
       </div>
       <div>
         <Button
-          type="primary"
+          icon={<PrinterOutlined />}
           disabled={!includeTranslation && !includeVocab}
           onClick={openSummaryWindow}
+          className="transition-colors"
         >
-          彙整
+          列印彙整資料
         </Button>
       </div>
       <div>
@@ -89,6 +90,7 @@ export default function SummaryExportBar({ sentences, sessionTitle }: { sentence
           icon={<PrinterOutlined />}
           disabled={collectVocab(sentences).length === 0}
           onClick={openVocabPrintWindow}
+          className="transition-colors duration-500"
         >
           列印單字卡
         </Button>
