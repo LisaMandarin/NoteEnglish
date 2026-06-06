@@ -1,7 +1,18 @@
 import { useEffect, useState } from "react";
 import { Spin } from "antd";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import type { TooltipContentProps } from "recharts";
 import { getTokenUsage } from "../lib/api";
-import type { TokenUsageData, UsageHourlyItem, UsageDailyItem, UsageMonthlyItem } from "../types";
+import type { TokenUsageData, UsageHourlyItem } from "../types";
+
+const tokenNumberFormatter = new Intl.NumberFormat("zh-TW");
 
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -9,46 +20,90 @@ function formatTokens(n: number): string {
   return n.toString();
 }
 
-function BarChart<T>({
+type UsageChartDatum = {
+  axisLabel: string;
+  label: string;
+  tokens: number;
+};
+
+function CustomTooltip({
+  active,
+  payload,
+}: TooltipContentProps<number, string>): React.ReactElement | null {
+  const item = payload?.[0]?.payload as UsageChartDatum | undefined;
+
+  if (!active || !item) return null;
+
+  return (
+    <div className="rounded-xl border-2 border-(--card-border) bg-(--card-bg) px-3 py-2 shadow-md">
+      <p className="m-0 text-xs font-semibold text-(--accent)">{item.label}</p>
+      <div className="mt-1 flex items-baseline gap-1.5">
+        <span className="text-lg font-bold text-(--text-main)">
+          {tokenNumberFormatter.format(item.tokens)}
+        </span>
+        <span className="text-xs text-(--text-main) opacity-50">tokens</span>
+      </div>
+    </div>
+  );
+}
+
+function UsageBarChart({
   items,
-  getLabel,
-  getTokens,
+  description,
 }: {
-  items: T[];
-  getLabel: (item: T, i: number) => string;
-  getTokens: (item: T) => number;
+  items: UsageChartDatum[];
+  description: string;
 }): React.ReactElement {
-  const max = Math.max(...items.map(getTokens), 1);
   return (
     <div className="mt-3">
-      <div className="flex items-end gap-0.5 h-14">
-        {items.map((item, i) => {
-          const tokens = getTokens(item);
-          const pct = (tokens / max) * 100;
-          return (
-            <div key={i} className="flex-1 flex flex-col items-center h-full">
-              <div className="flex-1 flex items-end w-full">
-                <div
-                  className="w-full rounded-t-sm transition-all duration-300"
-                  style={{
-                    height: tokens > 0 ? `${Math.max(pct, 5)}%` : "2px",
-                    backgroundColor: tokens > 0 ? "var(--accent)" : "var(--card-border)",
-                    opacity: tokens > 0 ? 0.65 : 0.15,
-                  }}
-                  title={`${tokens} tokens`}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex gap-0.5 mt-1">
-        {items.map((item, i) => (
-          <div key={i} className="flex-1 text-center text-[9px] text-black/40 truncate leading-tight">
-            {getLabel(item, i)}
-          </div>
-        ))}
-      </div>
+      <BarChart<UsageChartDatum>
+        responsive
+        data={items}
+        margin={{ top: 8, right: 4, bottom: 0, left: 0 }}
+        style={{ width: "100%", height: 170 }}
+        title={description}
+        desc={`${description}，單位為 tokens`}
+      >
+        <CartesianGrid
+          vertical={false}
+          stroke="var(--card-border)"
+          strokeDasharray="3 3"
+          strokeOpacity={0.14}
+        />
+        <XAxis<UsageChartDatum, string>
+          dataKey="label"
+          axisLine={{ stroke: "var(--card-border)", strokeOpacity: 0.25 }}
+          tickLine={false}
+          tick={{ fill: "var(--text-main)", fillOpacity: 0.55, fontSize: 11 }}
+          tickFormatter={(_label, index) => items[index]?.axisLabel ?? ""}
+          interval={0}
+        />
+        <YAxis<UsageChartDatum, number>
+          width="auto"
+          axisLine={false}
+          tickLine={false}
+          tick={{ fill: "var(--text-main)", fillOpacity: 0.45, fontSize: 10 }}
+          tickFormatter={formatTokens}
+          tickCount={4}
+          domain={[0, "auto"]}
+          niceTicks="snap125"
+        />
+        <Tooltip
+          content={CustomTooltip}
+          cursor={{ fill: "var(--accent)", fillOpacity: 0.08 }}
+          isAnimationActive="auto"
+        />
+        <Bar<UsageChartDatum, number>
+          dataKey="tokens"
+          name="Token 使用量"
+          fill="var(--accent)"
+          fillOpacity={0.76}
+          activeBar={{ fill: "var(--card-border)", fillOpacity: 0.88 }}
+          radius={[6, 6, 0, 0]}
+          maxBarSize={40}
+          minPointSize={2}
+        />
+      </BarChart>
     </div>
   );
 }
@@ -86,6 +141,39 @@ export default function TokenUsageView(): React.ReactElement {
     : [];
   const last12Total = last12.reduce((s, item) => s + item.tokens, 0);
 
+  const hourlyChartItems: UsageChartDatum[] = last12.map((item, index) => {
+    const time = `${item.hour.toString().padStart(2, "0")}:00 UTC`;
+    return {
+      axisLabel: index % 3 === 0 ? `${item.hour}h` : "",
+      label: time,
+      tokens: item.tokens,
+    };
+  });
+
+  const weeklyChartItems: UsageChartDatum[] = data
+    ? data.week.daily.map((item) => {
+        const date = new Date(`${item.date}T00:00:00Z`);
+        const dayLabel = DAY_LABELS[date.getUTCDay()];
+        return {
+          axisLabel: dayLabel,
+          label: `${item.date.replace(/-/g, "/")}（${dayLabel}）`,
+          tokens: item.tokens,
+        };
+      })
+    : [];
+
+  const monthlyChartItems: UsageChartDatum[] = data
+    ? data.months.monthly.map((item) => {
+        const [year, month] = item.month.split("-");
+        const monthNumber = Number(month);
+        return {
+          axisLabel: `${monthNumber}月`,
+          label: `${year}年${monthNumber}月`,
+          tokens: item.tokens,
+        };
+      })
+    : [];
+
   return (
     <div className="relative rounded-[30px] border-4 border-(--card-border) bg-(--card-bg) shadow-md">
       <div className="w-full m-0 px-8 py-10 box-border sm:px-12">
@@ -105,34 +193,25 @@ export default function TokenUsageView(): React.ReactElement {
           <div className="flex flex-col gap-10">
             <section>
               <SectionHeader label="近12小時" total={last12Total} />
-              <BarChart<UsageHourlyItem>
-                items={last12}
-                getTokens={(item) => item.tokens}
-                getLabel={(item, i) => (i % 3 === 0 ? `${item.hour}h` : "")}
+              <UsageBarChart
+                items={hourlyChartItems}
+                description="近12小時 Token 使用量"
               />
             </section>
 
             <section>
               <SectionHeader label="本週" total={data.week.total} />
-              <BarChart<UsageDailyItem>
-                items={data.week.daily}
-                getTokens={(item) => item.tokens}
-                getLabel={(item) => {
-                  const d = new Date(`${item.date}T00:00:00`);
-                  return DAY_LABELS[d.getDay()];
-                }}
+              <UsageBarChart
+                items={weeklyChartItems}
+                description="本週每日 Token 使用量"
               />
             </section>
 
             <section>
               <SectionHeader label="近三個月" total={data.months.total} />
-              <BarChart<UsageMonthlyItem>
-                items={data.months.monthly}
-                getTokens={(item) => item.tokens}
-                getLabel={(item) => {
-                  const month = parseInt(item.month.split("-")[1], 10);
-                  return `${month}月`;
-                }}
+              <UsageBarChart
+                items={monthlyChartItems}
+                description="近三個月每月 Token 使用量"
               />
             </section>
           </div>
