@@ -32,7 +32,7 @@ export default function TranslationsList(): React.ReactElement {
   }
 
   return (
-    <div ref={containerRef} onMouseUp={handleMouseUp} onTouchEnd={handleTouchEnd} className="relative">
+    <div ref={containerRef} onMouseUp={handleMouseUp} onTouchEnd={handleTouchEnd} onContextMenu={(e) => e.preventDefault()} className="relative">
       {saving && (
         <div className="absolute inset-0 z-10 rounded-lg bg-white/50 backdrop-blur-[1px] flex items-start justify-end pr-3 pt-2 pointer-events-auto">
           <span className="text-xs text-gray-400 animate-pulse">儲存中...</span>
