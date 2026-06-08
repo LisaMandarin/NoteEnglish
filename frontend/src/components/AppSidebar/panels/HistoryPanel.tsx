@@ -14,7 +14,7 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
     actions: { loadSession, clear, updateCurrentSessionTitle },
   } = useTranslation();
 
-  const { historyItems, setHistoryItems, historyLoading, historyError, refresh } =
+  const { historyItems, setHistoryItems, historyLoading, historyError, hasMore, loadingMore, refresh, loadMore } =
     useSessionHistory(activePanel);
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -139,6 +139,13 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
                 onDelete={handleDelete}
               />
             ))}
+            <button
+              onClick={loadMore}
+              disabled={!hasMore || loadingMore}
+              className="w-full rounded-2xl border-0 bg-transparent py-1.5 text-sm text-black/45 transition-colors hover:bg-black/5 hover:text-black/70 hover:cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              {loadingMore ? "載入中⋯⋯" : "更多"}
+            </button>
           </div>
         )}
       </div>

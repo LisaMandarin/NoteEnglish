@@ -111,12 +111,14 @@ def ensure_profile(user: dict, display_name: str) -> None:
     )
 
 
-def list_sessions(user_id: str) -> list[dict]:
+def list_sessions(user_id: str, limit: int = 5, offset: int = 0) -> dict:
     query = parse.urlencode(
         {
             "user_id": f"eq.{user_id}",
             "select": "id,title,source_text,created_at,updated_at",
             "order": "updated_at.desc",
+            "limit": limit + 1,
+            "offset": offset,
         }
     )
     data = _request_json(
@@ -124,7 +126,9 @@ def list_sessions(user_id: str) -> list[dict]:
         f"{settings.supabase_url}/rest/v1/study_sessions?{query}",
         headers=_service_headers(),
     )
-    return data or []
+    rows = data or []
+    has_more = len(rows) > limit
+    return {"items": rows[:limit], "has_more": has_more}
 
 
 def get_session_detail(user_id: str, session_id: str) -> dict:

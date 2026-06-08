@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { Sentence, SessionRecord, TokenUsageData } from "../types";
+import type { Sentence, SessionPage, TokenUsageData } from "../types";
 
 type ApiSessionShape = {
   id: string;
@@ -61,8 +61,8 @@ export async function ensureProfile(displayName: string): Promise<unknown> {
   });
 }
 
-export async function listSessions(): Promise<SessionRecord[]> {
-  return apiFetch("/api/sessions") as Promise<SessionRecord[]>;
+export async function listSessions(limit = 5, offset = 0): Promise<SessionPage> {
+  return apiFetch(`/api/sessions?limit=${limit}&offset=${offset}`) as Promise<SessionPage>;
 }
 
 export async function getSessionDetail(sessionId: string): Promise<SessionDetailResponse> {

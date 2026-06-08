@@ -47,3 +47,8 @@ export type SessionRecord = {
   updated_at: string;
   created_at?: string;
 };
+
+export type SessionPage = {
+  items: SessionRecord[];
+  has_more: boolean;
+};

@@ -4,12 +4,17 @@ import { useTranslation } from "../../../context/translationContext";
 import { listSessions } from "../../../lib/api";
 import type { SessionRecord } from "../../../types";
 
+const PAGE_SIZE = 5;
+
 export function useSessionHistory(activePanel: string): {
   historyItems: SessionRecord[];
   setHistoryItems: Dispatch<SetStateAction<SessionRecord[]>>;
   historyLoading: boolean;
   historyError: string;
+  hasMore: boolean;
+  loadingMore: boolean;
   refresh: () => void;
+  loadMore: () => void;
 } {
   const {
     state: { currentSession },
@@ -18,6 +23,8 @@ export function useSessionHistory(activePanel: string): {
   const [historyItems, setHistoryItems] = useState<SessionRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshCount, setRefreshCount] = useState(0);
 
   const prevDepsRef = useRef<{ activePanel: string | undefined; sessionId: string | null | undefined; refreshCount: number }>({
@@ -28,6 +35,7 @@ export function useSessionHistory(activePanel: string): {
 
   const refresh = useCallback(() => setRefreshCount((n) => n + 1), []);
 
+  // Initial / refresh load — always fetches the first page
   useEffect(() => {
     const prev = prevDepsRef.current;
     const panelJustOpened = prev.activePanel !== activePanel;
@@ -45,13 +53,15 @@ export function useSessionHistory(activePanel: string): {
       setHistoryLoading(true);
       setHistoryError("");
       try {
-        const data = await listSessions();
+        const page = await listSessions(PAGE_SIZE, 0);
         if (cancelled) return;
-        setHistoryItems(data ?? []);
+        setHistoryItems(page.items);
+        setHasMore(page.has_more);
       } catch (error: unknown) {
         if (cancelled) return;
         setHistoryError(error instanceof Error ? error.message : "Could not load session history.");
         setHistoryItems([]);
+        setHasMore(false);
       } finally {
         if (!cancelled) setHistoryLoading(false);
       }
@@ -61,5 +71,19 @@ export function useSessionHistory(activePanel: string): {
     return () => { cancelled = true; };
   }, [activePanel, currentSession?.id, currentSession?.updatedAt, refreshCount]);
 
-  return { historyItems, setHistoryItems, historyLoading, historyError, refresh };
+  const loadMore = useCallback(async (): Promise<void> => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const page = await listSessions(PAGE_SIZE, historyItems.length);
+      setHistoryItems((prev) => [...prev, ...page.items]);
+      setHasMore(page.has_more);
+    } catch {
+      // silently ignore — user can try again
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, historyItems.length]);
+
+  return { historyItems, setHistoryItems, historyLoading, historyError, hasMore, loadingMore, refresh, loadMore };
 }

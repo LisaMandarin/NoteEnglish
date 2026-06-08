@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.core.auth import require_user
 from app.models.session import SaveSessionRequest, UpdateSessionTitleRequest
@@ -15,8 +15,12 @@ router = APIRouter(tags=["sessions"])
 
 
 @router.get("/sessions")
-def session_history(user: dict = Depends(require_user)):
-    return list_sessions(user["id"])
+def session_history(
+    limit: int = Query(default=5, ge=1, le=50),
+    offset: int = Query(default=0, ge=0),
+    user: dict = Depends(require_user),
+):
+    return list_sessions(user["id"], limit=limit, offset=offset)
 
 
 @router.get("/sessions/{session_id}")
