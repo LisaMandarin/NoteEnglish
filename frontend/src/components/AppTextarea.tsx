@@ -1,6 +1,7 @@
 import { Typography, Input, Button, Alert, Modal } from "antd"
 import { useTranslation } from "../context/translationContext"
 import { formatUpdatedAt } from "../lib/formatUpdatedAt"
+import sampleArticles from "../data/sampleArticles"
 const { Text } = Typography
 const { TextArea } = Input
 
@@ -70,13 +71,12 @@ export default function AppTextarea() {
     return (
         <>
             <div className="mb-3">
-              <Text strong>貼文章:</Text>
+              <Text strong>貼英文文章:</Text>
               <div className="mt-2">
                 <TextArea
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   rows={8}
-                  placeholder="Paste a passage here..."
                 />
                 <div className="text-right mt-1">
                   <span className={`text-xs ${countColor}`}>
@@ -97,8 +97,18 @@ export default function AppTextarea() {
                 {saving ? "儲存中..." : "翻譯"}
               </Button>
 
-              <Button onClick={clear} disabled={translating || saving || sessionLoading}>
+              <Button onClick={clear} disabled={translating || saving || sessionLoading || isEmpty}>
                 清除
+              </Button>
+
+              <Button
+                onClick={() => {
+                  const article = sampleArticles[Math.floor(Math.random() * sampleArticles.length)]
+                  setText(article)
+                }}
+                disabled={translating || saving || sessionLoading}
+              >
+                隨機文章
               </Button>
             </div>
 
