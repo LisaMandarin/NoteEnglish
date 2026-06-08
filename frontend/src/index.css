@@ -43,6 +43,20 @@ body {
   background: var(--bg-main);
 }
 
+.lookup-original-text {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .lookup-original-text {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: pan-y;
+  }
+}
+
 h1, h2, h3 {
     font-family: var(--font-heading);
   }

@@ -36,9 +36,11 @@ export default function SentenceItem({
             </button>
           </div>
           <div>
-            <Text strong style={{ fontSize: "1.25rem" }}>
-              {sentence.original}
-            </Text>
+            <span className="lookup-original-text" data-original-text="true">
+              <Text strong style={{ fontSize: "1.25rem" }}>
+                {sentence.original}
+              </Text>
+            </span>
             <div className="select-none">
               <Text type="secondary">{sentence.translation}</Text>
             </div>
