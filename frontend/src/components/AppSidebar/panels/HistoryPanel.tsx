@@ -19,10 +19,15 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [loadedFromHistory, setLoadedFromHistory] = useState(false);
 
   useEffect(() => {
     if (!sessionLoading) setPendingId(null);
   }, [sessionLoading]);
+
+  useEffect(() => {
+    if (activePanel !== "history") setLoadedFromHistory(false);
+  }, [activePanel]);
 
   function handleTitleUpdated(sessionId: string, trimmed: string, updatedAt?: string): void {
     setHistoryItems((prev) =>
@@ -54,11 +59,12 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
 
   function handleLoad(sessionId: string): void {
     setPendingId(sessionId);
+    setLoadedFromHistory(true);
     loadSession(sessionId);
     onShowTranslate();
   }
 
-  const resolvedCurrentId = pendingId ?? currentSession?.id;
+  const resolvedCurrentId = loadedFromHistory ? (pendingId ?? currentSession?.id) : pendingId;
 
   return (
     <>
