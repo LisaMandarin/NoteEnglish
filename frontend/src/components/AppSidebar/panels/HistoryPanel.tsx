@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { MouseEvent } from "react";
-import { PlusOutlined } from "@ant-design/icons";
+import { PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 import { Tooltip } from "antd";
 import { useTranslation } from "../../../context/translationContext";
 import { deleteSession } from "../../../lib/api";
@@ -14,7 +14,7 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
     actions: { loadSession, clear, updateCurrentSessionTitle },
   } = useTranslation();
 
-  const { historyItems, setHistoryItems, historyLoading, historyError } =
+  const { historyItems, setHistoryItems, historyLoading, historyError, refresh } =
     useSessionHistory(activePanel);
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -80,14 +80,25 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
           <p className="m-0 text-xs font-semibold uppercase tracking-[0.18em] text-black/45">
             你的學習紀錄
           </p>
-          <Tooltip title="New session">
-            <button
-              onClick={clear}
-              className="flex h-6 w-6 items-center justify-center rounded-full border-0 bg-transparent text-black/40 transition-colors hover:bg-black/8 hover:text-black/70 hover:cursor-pointer"
-            >
-              <PlusOutlined />
-            </button>
-          </Tooltip>
+          <div className="flex items-center gap-1">
+            <Tooltip title="重新整理">
+              <button
+                onClick={refresh}
+                disabled={historyLoading}
+                className="flex h-6 w-6 items-center justify-center rounded-full border-0 bg-transparent text-black/40 transition-colors hover:bg-black/8 hover:text-black/70 hover:cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ReloadOutlined spin={historyLoading} />
+              </button>
+            </Tooltip>
+            <Tooltip title="新增學習記錄">
+              <button
+                onClick={clear}
+                className="flex h-6 w-6 items-center justify-center rounded-full border-0 bg-transparent text-black/40 transition-colors hover:bg-black/8 hover:text-black/70 hover:cursor-pointer"
+              >
+                <PlusOutlined />
+              </button>
+            </Tooltip>
+          </div>
         </div>
         {saving && (
           <p className="mt-3 m-0 text-sm text-black/70">正在儲存目前的學習紀錄⋯⋯</p>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { useTranslation } from "../../../context/translationContext";
 import { listSessions } from "../../../lib/api";
@@ -9,6 +9,7 @@ export function useSessionHistory(activePanel: string): {
   setHistoryItems: Dispatch<SetStateAction<SessionRecord[]>>;
   historyLoading: boolean;
   historyError: string;
+  refresh: () => void;
 } {
   const {
     state: { currentSession },
@@ -17,21 +18,26 @@ export function useSessionHistory(activePanel: string): {
   const [historyItems, setHistoryItems] = useState<SessionRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
+  const [refreshCount, setRefreshCount] = useState(0);
 
-  const prevDepsRef = useRef<{ activePanel: string | undefined; sessionId: string | null | undefined }>({
+  const prevDepsRef = useRef<{ activePanel: string | undefined; sessionId: string | null | undefined; refreshCount: number }>({
     activePanel: undefined,
     sessionId: undefined,
+    refreshCount: 0,
   });
+
+  const refresh = useCallback(() => setRefreshCount((n) => n + 1), []);
 
   useEffect(() => {
     const prev = prevDepsRef.current;
     const panelJustOpened = prev.activePanel !== activePanel;
     const idChanged = prev.sessionId !== (currentSession?.id ?? null);
+    const manualRefresh = prev.refreshCount !== refreshCount;
 
-    prevDepsRef.current = { activePanel, sessionId: currentSession?.id ?? null };
+    prevDepsRef.current = { activePanel, sessionId: currentSession?.id ?? null, refreshCount };
 
     if (activePanel !== "history") return;
-    if (!panelJustOpened && idChanged) return;
+    if (!manualRefresh && !panelJustOpened && idChanged) return;
 
     let cancelled = false;
 
@@ -53,7 +59,7 @@ export function useSessionHistory(activePanel: string): {
 
     loadHistory();
     return () => { cancelled = true; };
-  }, [activePanel, currentSession?.id, currentSession?.updatedAt]);
+  }, [activePanel, currentSession?.id, currentSession?.updatedAt, refreshCount]);
 
-  return { historyItems, setHistoryItems, historyLoading, historyError };
+  return { historyItems, setHistoryItems, historyLoading, historyError, refresh };
 }
