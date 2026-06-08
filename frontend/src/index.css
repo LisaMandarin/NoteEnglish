@@ -48,6 +48,15 @@ body {
   user-select: text;
 }
 
+.lookup-selected-word {
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  border-radius: 0.2em;
+  background: var(--card-border);
+  color: var(--card-bg);
+  padding: 0 0.12em;
+}
+
 @media (hover: none) and (pointer: coarse) {
   .lookup-original-text {
     -webkit-touch-callout: none;

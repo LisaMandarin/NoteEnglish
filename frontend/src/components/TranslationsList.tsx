@@ -19,6 +19,7 @@ export default function TranslationsList(): React.ReactElement {
   const {
     menuOpen,
     menuPos,
+    selectedHighlight,
     handleMouseUp,
     handleTouchStart,
     handleTouchMove,
@@ -61,6 +62,11 @@ export default function TranslationsList(): React.ReactElement {
             key={idx}
             sentence={s}
             idx={idx}
+            selectedRange={
+              selectedHighlight?.sentenceIdx === idx
+                ? { start: selectedHighlight.start, end: selectedHighlight.end }
+                : null
+            }
             onDelete={removeSentenceVocab}
             onReorder={reorderSentenceVocab}
             onEdit={updateSentenceVocab}

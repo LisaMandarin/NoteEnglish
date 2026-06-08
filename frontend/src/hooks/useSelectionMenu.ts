@@ -26,6 +26,12 @@ type TouchStart = {
   moved: boolean;
 };
 
+export type SelectionHighlight = {
+  sentenceIdx: number;
+  start: number;
+  end: number;
+};
+
 const ORIGINAL_TEXT_SELECTOR = "[data-original-text]";
 const TOUCH_MOVE_THRESHOLD = 12;
 const TOUCH_MOUSE_SUPPRESS_MS = 700;
@@ -117,6 +123,50 @@ function getTextPointFromViewport(clientX: number, clientY: number): TextPoint |
   return normalizeTextPoint(range.startContainer, range.startOffset);
 }
 
+function getTextOffsetWithin(root: Element, textNode: Text, offset: number): number | null {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let currentOffset = 0;
+  let node = walker.nextNode() as Text | null;
+
+  while (node) {
+    if (node === textNode) {
+      return currentOffset + Math.min(offset, node.data.length);
+    }
+
+    currentOffset += node.data.length;
+    node = walker.nextNode() as Text | null;
+  }
+
+  return null;
+}
+
+function createRangeFromTextOffsets(root: Element, start: number, end: number): Range | null {
+  const range = document.createRange();
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let currentOffset = 0;
+  let hasStart = false;
+  let node = walker.nextNode() as Text | null;
+
+  while (node) {
+    const nextOffset = currentOffset + node.data.length;
+
+    if (!hasStart && start >= currentOffset && start <= nextOffset) {
+      range.setStart(node, Math.min(start - currentOffset, node.data.length));
+      hasStart = true;
+    }
+
+    if (hasStart && end >= currentOffset && end <= nextOffset) {
+      range.setEnd(node, Math.min(end - currentOffset, node.data.length));
+      return range;
+    }
+
+    currentOffset = nextOffset;
+    node = walker.nextNode() as Text | null;
+  }
+
+  return null;
+}
+
 function isWordChar(char: string | undefined): boolean {
   return !!char && WORD_CHAR_RE.test(char);
 }
@@ -153,6 +203,7 @@ export function useSelectionMenu({ containerRef, vocab }: {
 }): {
   menuOpen: boolean;
   menuPos: { x: number; y: number };
+  selectedHighlight: SelectionHighlight | null;
   handleMouseUp: () => void;
   handleTouchStart: (e: ReactTouchEvent<HTMLElement>) => void;
   handleTouchMove: (e: ReactTouchEvent<HTMLElement>) => void;
@@ -162,11 +213,13 @@ export function useSelectionMenu({ containerRef, vocab }: {
 } {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
+  const [selectedHighlight, setSelectedHighlight] = useState<SelectionHighlight | null>(null);
   const touchStartRef = useRef<TouchStart | null>(null);
   const lastTouchLookupAtRef = useRef(0);
 
   function closeMenu(): void {
     setMenuOpen(false);
+    setSelectedHighlight(null);
     vocab.reset();
     clearSelection();
   }
@@ -197,6 +250,7 @@ export function useSelectionMenu({ containerRef, vocab }: {
 
     vocab.setSelectedText(text);
     vocab.setSelectedSentenceIdx(sentenceIdx);
+    setSelectedHighlight(null);
 
     setMenuPos(getMenuPosition(range));
     setMenuOpen(true);
@@ -212,12 +266,14 @@ export function useSelectionMenu({ containerRef, vocab }: {
     const textEl = getElementFromNode(point.textNode)?.closest(ORIGINAL_TEXT_SELECTOR);
     if (!textEl || !container.contains(textEl)) return false;
 
-    const word = getWordBounds(point.textNode.data, point.offset);
+    const textOffset = getTextOffsetWithin(textEl, point.textNode, point.offset);
+    if (textOffset === null) return false;
+
+    const word = getWordBounds(textEl.textContent ?? "", textOffset);
     if (!word) return false;
 
-    const range = document.createRange();
-    range.setStart(point.textNode, word.start);
-    range.setEnd(point.textNode, word.end);
+    const range = createRangeFromTextOffsets(textEl, word.start, word.end);
+    if (!range) return false;
 
     const sentenceIdx = getSentenceIdxFromRange(range);
     if (sentenceIdx === null) return false;
@@ -225,6 +281,7 @@ export function useSelectionMenu({ containerRef, vocab }: {
     clearSelection();
     vocab.setSelectedText(word.text);
     vocab.setSelectedSentenceIdx(sentenceIdx);
+    setSelectedHighlight({ sentenceIdx, start: word.start, end: word.end });
 
     setMenuPos(getMenuPosition(range));
     setMenuOpen(true);
@@ -296,6 +353,7 @@ export function useSelectionMenu({ containerRef, vocab }: {
   return {
     menuOpen,
     menuPos,
+    selectedHighlight,
     handleMouseUp,
     handleTouchStart,
     handleTouchMove,

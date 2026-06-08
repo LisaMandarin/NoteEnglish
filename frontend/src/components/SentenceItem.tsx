@@ -5,15 +5,43 @@ import VocabCards from "./VocabCards";
 import { speak } from "../lib/speech";
 const { Text } = Typography;
 
+type SelectedRange = {
+  start: number;
+  end: number;
+};
+
+function renderOriginalText(text: string, selectedRange?: SelectedRange | null): React.ReactNode {
+  if (
+    !selectedRange ||
+    selectedRange.start < 0 ||
+    selectedRange.end > text.length ||
+    selectedRange.start >= selectedRange.end
+  ) {
+    return text;
+  }
+
+  return (
+    <>
+      {text.slice(0, selectedRange.start)}
+      <span className="lookup-selected-word">
+        {text.slice(selectedRange.start, selectedRange.end)}
+      </span>
+      {text.slice(selectedRange.end)}
+    </>
+  );
+}
+
 export default function SentenceItem({
   sentence,
   idx,
+  selectedRange,
   onDelete,
   onReorder,
   onEdit,
 }: {
   sentence: Sentence;
   idx: number;
+  selectedRange?: SelectedRange | null;
   onDelete?: (sentenceIdx: number, lemma: string, pos: string) => void;
   onReorder?: (sentenceIdx: number, newVocab: VocabItem[]) => void;
   onEdit?: (sentenceIdx: number, vocabItem: VocabItem) => void;
@@ -38,7 +66,7 @@ export default function SentenceItem({
           <div>
             <span className="lookup-original-text" data-original-text="true">
               <Text strong style={{ fontSize: "1.25rem" }}>
-                {sentence.original}
+                {renderOriginalText(sentence.original, selectedRange)}
               </Text>
             </span>
             <div className="select-none">
