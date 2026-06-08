@@ -1,21 +1,21 @@
 # NoteEnglish Backend
 
-FastAPI service for translations and vocabulary enrichment.
+FastAPI service for translations, vocabulary enrichment, session storage, and token usage tracking. For features and usage, see the [root README](../README.md).
 
 ## Prerequisites
-- Python 3.10–3.12 (spaCy wheels don't support 3.13 yet)
+- Python 3.10–3.12 (spaCy wheels don't support 3.13+)
 - Poetry
-- Gemini API key (for translation/vocab endpoints)
+- Gemini API key
 
 ## Setup
-1) Install dependencies (includes spaCy model + Google GenAI client):
 ```
 poetry install
 ```
-2) Create `.env` in `backend/`:
+
+Create `backend/.env`:
 ```
 GEMINI_API_KEY=your_key_here
-FRONTEND_ORIGINS=http://localhost:5173  # comma-separated when needed
+FRONTEND_ORIGINS=http://localhost:5173
 GEMINI_MODEL=gemini-2.5-flash           # optional override
 SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
@@ -28,11 +28,9 @@ poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ## Deploy to Render
-This repo includes a root-level `render.yaml` that deploys the FastAPI backend from `backend/`.
-
-Set these Render environment variables before the first deploy:
+A root-level `render.yaml` deploys the backend from `backend/`. Set these environment variables before the first deploy:
 ```
-FRONTEND_ORIGINS=https://note-english-gbysku9hc-lisas-projects-8870c4b9.vercel.app
+FRONTEND_ORIGINS=https://<your-vercel-domain>
 GEMINI_API_KEY=your_key_here
 SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
@@ -40,31 +38,37 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ```
 
 Notes:
-- `PYTHON_VERSION` is pinned in `render.yaml` because this app requires Python 3.10-3.12.
-- `FRONTEND_ORIGINS` supports multiple origins as a comma-separated list.
-- In production, keep `FRONTEND_ORIGINS` limited to your real frontend domain. Use `backend/.env` for local `http://localhost:5173`.
-- Render health check path should be `/api/health`.
+- `PYTHON_VERSION` is pinned in `render.yaml` (3.10–3.12).
+- `FRONTEND_ORIGINS` accepts a comma-separated list for multiple origins.
+- Render health check path: `/api/health`.
+
+## API Endpoints
+
+All endpoints except `/api/health` require a Supabase Bearer token (`Authorization: Bearer <token>`). In Swagger UI, use the `Authorize` button to set it.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/health` | Health check (no auth) |
+| `POST` | `/api/translate` | Split and translate text, return base vocab |
+| `POST` | `/api/vocab/detail` | Enrich selected vocab (with in-memory cache) |
+| `POST` | `/api/profile/ensure` | Create or verify user profile |
+| `GET` | `/api/sessions` | List sessions (supports `limit` / `offset`) |
+| `GET` | `/api/sessions/{id}` | Load a single session |
+| `POST` | `/api/sessions/save` | Save or overwrite a session |
+| `PATCH` | `/api/sessions/{id}/title` | Rename a session |
+| `DELETE` | `/api/sessions/{id}` | Delete a session |
+| `GET` | `/api/usage` | Gemini token usage stats (hourly / daily / monthly) |
 
 ## Quick checks
-- Health: `curl http://localhost:8000/api/health`
-  > **Note:** `app/routes/test.py` contains the health and debug/split routes but is not registered in `main.py`. Register `test_router` there to re-enable these endpoints.
-- Translate (requires auth token):
-```
+```bash
+# Health
+curl http://localhost:8000/api/health
+
+# Translate (requires auth token)
 curl -X POST http://localhost:8000/api/translate \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <supabase_access_token>" \
   -d '{"text":"I like apples.","target_lang":"zh-TW","mode":"normal"}'
 ```
 
-## Authenticated APIs
-All non-health endpoints require a Supabase access token in `Authorization: Bearer <token>`.
-- `POST /api/translate`
-- `POST /api/vocab/detail`
-- `POST /api/profile/ensure`
-- `GET /api/sessions`
-- `GET /api/sessions/{id}`
-- `POST /api/sessions/save`
-- `PATCH /api/sessions/{id}/title`
-- `DELETE /api/sessions/{id}`
-
-In Swagger UI, use the `Authorize` button and paste only the Supabase access token. Swagger will send it as a Bearer token automatically.
+> **Note:** `app/routes/test.py` contains health and debug/split routes but is not registered in `main.py` by default. Register `test_router` there to re-enable them.
