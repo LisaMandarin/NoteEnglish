@@ -38,7 +38,7 @@ export default function TranslationsList(): React.ReactElement {
           <span className="text-xs text-gray-400 animate-pulse">儲存中...</span>
         </div>
       )}
-      <ol className="list-decimal pl-5 space-y-8">
+      <ol className="list-decimal space-y-8">
         {sentences.map((s, idx) => (
           <SentenceItem
             key={idx}
