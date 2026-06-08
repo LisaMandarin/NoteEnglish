@@ -47,7 +47,7 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || `HTTP ${response.status}`);
+    throw new Error(`HTTP ${response.status}${text ? `: ${text}` : ""}`);
   }
 
   if (response.status === 204) return null;

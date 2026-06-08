@@ -97,9 +97,11 @@ export function useVocabLookup(
         alert("登入狀態已失效，請重新整理頁面後再試。");
       } else if (msg.includes("429")) {
         alert("查詢次數過多，請稍等幾秒後再試。");
+      } else if (msg.includes("503")) {
+        alert("AI 服務暫時忙碌，請稍後再試。");
       } else if (e instanceof TypeError) {
         alert("網路連線異常，請確認網路後再試。");
-      } else if (msg.includes("5") && /HTTP 5\d\d/.test(msg)) {
+      } else if (/HTTP 5\d\d/.test(msg)) {
         alert("伺服器暫時無法使用，請稍後再試。");
       } else {
         alert("查詢失敗，請稍後再試。");
