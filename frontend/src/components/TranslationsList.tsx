@@ -16,7 +16,7 @@ export default function TranslationsList(): React.ReactElement {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const vocab = useVocabLookup(sentences, updateSentenceVocab, currentSession?.id ?? null);
-  const { menuOpen, menuPos, handleMouseUp, closeMenu, clearSelection } =
+  const { menuOpen, menuPos, handleMouseUp, handleTouchEnd, closeMenu, clearSelection } =
     useSelectionMenu({ containerRef, vocab });
 
   async function onLookUp(): Promise<void> {
@@ -32,7 +32,7 @@ export default function TranslationsList(): React.ReactElement {
   }
 
   return (
-    <div ref={containerRef} onMouseUp={handleMouseUp} className="relative">
+    <div ref={containerRef} onMouseUp={handleMouseUp} onTouchEnd={handleTouchEnd} className="relative">
       {saving && (
         <div className="absolute inset-0 z-10 rounded-lg bg-white/50 backdrop-blur-[1px] flex items-start justify-end pr-3 pt-2 pointer-events-auto">
           <span className="text-xs text-gray-400 animate-pulse">儲存中...</span>

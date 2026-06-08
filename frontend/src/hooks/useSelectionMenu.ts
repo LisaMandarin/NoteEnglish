@@ -48,6 +48,7 @@ export function useSelectionMenu({ containerRef, vocab }: {
   menuOpen: boolean;
   menuPos: { x: number; y: number };
   handleMouseUp: () => void;
+  handleTouchEnd: () => void;
   closeMenu: () => void;
   clearSelection: () => void;
 } {
@@ -89,14 +90,26 @@ export function useSelectionMenu({ containerRef, vocab }: {
     setMenuOpen(true);
   }
 
+  function handleTouchEnd(): void {
+    setTimeout(handleMouseUp, 50);
+  }
+
   useEffect(() => {
     function onDocMouseDown(e: MouseEvent): void {
       if (!menuOpen) return;
       if (!containerRef.current?.contains(e.target as Node)) closeMenu();
     }
+    function onDocTouchStart(e: TouchEvent): void {
+      if (!menuOpen) return;
+      if (!containerRef.current?.contains(e.target as Node)) closeMenu();
+    }
     document.addEventListener("mousedown", onDocMouseDown);
-    return () => document.removeEventListener("mousedown", onDocMouseDown);
+    document.addEventListener("touchstart", onDocTouchStart);
+    return () => {
+      document.removeEventListener("mousedown", onDocMouseDown);
+      document.removeEventListener("touchstart", onDocTouchStart);
+    };
   }, [menuOpen]);
 
-  return { menuOpen, menuPos, handleMouseUp, closeMenu, clearSelection };
+  return { menuOpen, menuPos, handleMouseUp, handleTouchEnd, closeMenu, clearSelection };
 }
