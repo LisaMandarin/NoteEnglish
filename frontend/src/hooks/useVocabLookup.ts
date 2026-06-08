@@ -92,7 +92,18 @@ export function useVocabLookup(
       return true;
     } catch (e: unknown) {
       console.error(e);
-      alert("查詢失敗，請再試一次");
+      const msg = e instanceof Error ? e.message : "";
+      if (msg === "Not authenticated." || msg.includes("401")) {
+        alert("登入狀態已失效，請重新整理頁面後再試。");
+      } else if (msg.includes("429")) {
+        alert("查詢次數過多，請稍等幾秒後再試。");
+      } else if (e instanceof TypeError) {
+        alert("網路連線異常，請確認網路後再試。");
+      } else if (msg.includes("5") && /HTTP 5\d\d/.test(msg)) {
+        alert("伺服器暫時無法使用，請稍後再試。");
+      } else {
+        alert("查詢失敗，請稍後再試。");
+      }
       return false;
     } finally {
       setLoading(false);
