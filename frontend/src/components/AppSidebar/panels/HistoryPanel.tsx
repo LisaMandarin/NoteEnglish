@@ -84,20 +84,20 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
           </Tooltip>
         </div>
         {saving && (
-          <p className="mt-3 m-0 text-sm text-black/70">Saving current session...</p>
+          <p className="mt-3 m-0 text-sm text-black/70">正在儲存目前的學習紀錄⋯⋯</p>
         )}
         {sessionLoading && (
-          <p className="mt-3 m-0 text-sm text-black/70">Opening saved session...</p>
+          <p className="mt-3 m-0 text-sm text-black/70">正在開啟已儲存的學習紀錄⋯⋯</p>
         )}
         {historyLoading && (
-          <p className="mt-3 m-0 text-sm text-black/70">Loading session history...</p>
+          <p className="mt-3 m-0 text-sm text-black/70">正在載入學習紀錄⋯⋯</p>
         )}
         {historyError && (
           <p className="mt-3 m-0 text-sm text-red-600">{historyError}</p>
         )}
         {!historyLoading && !historyError && historyItems.length === 0 && (
           <p className="mt-3 m-0 text-sm text-black/70">
-            No saved sessions for this account yet.
+            目前還沒有任何學習紀錄。
           </p>
         )}
         {!historyLoading && !historyError && historyItems.length > 0 && (
