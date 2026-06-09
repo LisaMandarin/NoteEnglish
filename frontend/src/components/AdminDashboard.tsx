@@ -5,7 +5,7 @@ import { Button } from "antd";
 import AdminSidebar from "./AdminSidebar";
 import UserDetailView from "./UserDetailView";
 import UserManagementView from "./UserManagementView";
-import { listAdminUsers } from "../lib/api";
+import { checkAdminAccess, listAdminUsers } from "../lib/api";
 import type { AdminUser } from "../lib/api";
 
 type AdminView = "overview" | "profile" | "management";
@@ -111,14 +111,22 @@ export default function AdminDashboard({
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const username = getDisplayName(user);
 
   useEffect(() => {
+    checkAdminAccess()
+      .then(() => setIsAdmin(true))
+      .catch(() => setIsAdmin(false));
+  }, []);
+
+  useEffect(() => {
+    if (!isAdmin) return;
     listAdminUsers()
       .then(setUsers)
       .catch(() => {})
       .finally(() => setUsersLoading(false));
-  }, []);
+  }, [isAdmin]);
 
   const nonAdminCount = users.filter((u) => u.role !== "admin").length;
 
@@ -136,16 +144,32 @@ export default function AdminDashboard({
   }
 
   return (
-    <div className="min-h-screen w-full px-6 pb-10 pt-6 sm:px-10">
+    <div className="min-h-screen w-full px-6 pb-10 pt-20 sm:px-10 lg:py-10">
       <div className="mx-auto flex max-w-7xl gap-5">
         <AdminSidebar
           onSignOut={onSignOut}
           activeView={activeView}
           onSetView={handleSetView}
+          isAdmin={isAdmin === true}
         />
 
-        <main className="min-h-[calc(100vh-3rem)] flex-1 rounded-[30px] border-4 border-(--card-border) bg-(--card-bg) shadow-md">
-          {activeView === "overview" && (
+        <main className="min-h-[calc(100vh-7.5rem)] lg:min-h-[calc(100vh-5rem)] flex-1 rounded-[30px] border-4 border-(--card-border) bg-(--card-bg) shadow-md">
+          {isAdmin === false && (
+            <div className="flex h-full min-h-[calc(100vh-7.5rem)] lg:min-h-[calc(100vh-5rem)] items-center justify-center px-8 py-10 text-center">
+              <div>
+                <p
+                  className="mb-2 text-2xl font-semibold"
+                  style={{ color: "var(--accent)" }}
+                >
+                  權限不足
+                </p>
+                <p className="text-base text-black/60">
+                  您沒有權限瀏覽此頁面，請使用管理員帳號登入。
+                </p>
+              </div>
+            </div>
+          )}
+          {isAdmin === true && activeView === "overview" && (
             <OverviewSection
               username={username}
               email={user?.email ?? ""}
@@ -153,17 +177,17 @@ export default function AdminDashboard({
               loading={usersLoading}
             />
           )}
-          {activeView === "profile" && (
+          {isAdmin === true && activeView === "profile" && (
             <ProfileSection
               username={username}
               email={user?.email ?? ""}
               onSignOut={onSignOut}
             />
           )}
-          {activeView === "management" && !selectedUser && (
+          {isAdmin === true && activeView === "management" && !selectedUser && (
             <UserManagementView onSelectUser={handleSelectUser} />
           )}
-          {activeView === "management" && selectedUser && (
+          {isAdmin === true && activeView === "management" && selectedUser && (
             <UserDetailView user={selectedUser} onBack={handleBackToManagement} />
           )}
         </main>

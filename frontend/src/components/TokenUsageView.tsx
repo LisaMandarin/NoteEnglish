@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Spin } from "antd";
+import { Progress, Spin } from "antd";
 import {
   Bar,
   BarChart,
@@ -131,6 +131,49 @@ function SectionHeader({ label, total }: { label: string; total: number }): Reac
   );
 }
 
+const LIMITS = {
+  last12h: 5_000,
+  week: 25_000,
+  quarter: 70_000,
+};
+
+function UsageProgressSection({
+  label,
+  total,
+  limit,
+}: {
+  label: string;
+  total: number;
+  limit: number;
+}): React.ReactElement {
+  const pct = Math.min(Math.round((total / limit) * 100), 100);
+  const strokeColor =
+    pct >= 90 ? "#ef4444" : pct >= 70 ? "#f97316" : "var(--accent)";
+  return (
+    <section>
+      <div className="flex items-baseline gap-2 mb-2">
+        <span className="text-xs font-semibold uppercase tracking-widest text-(--accent)">
+          {label}
+        </span>
+        <span className="text-2xl font-bold">{formatTokens(total)}</span>
+        <span className="text-sm text-black/40">
+          / {formatTokens(limit)} tokens
+        </span>
+      </div>
+      <Progress
+        percent={pct}
+        strokeColor={strokeColor}
+        styles={{ rail: { background: "var(--card-border)" } }}
+        showInfo={true}
+        size={["100%", 10]}
+        format={(p) => (
+          <span className="text-xs text-(--text-main) opacity-60">{p}%</span>
+        )}
+      />
+    </section>
+  );
+}
+
 const DAY_LABELS = ["日", "一", "二", "三", "四", "五", "六"];
 
 export default function TokenUsageView({ userId }: { userId?: string }): React.ReactElement {
@@ -196,7 +239,7 @@ export default function TokenUsageView({ userId }: { userId?: string }): React.R
           <p className="text-sm text-red-500">無法載入使用量資料：{error}</p>
         )}
 
-        {data && (
+        {data && userId && (
           <div className="flex flex-col gap-10">
             <section>
               <SectionHeader label="近12小時" total={data.last_12_hours.total} />
@@ -221,6 +264,26 @@ export default function TokenUsageView({ userId }: { userId?: string }): React.R
                 description="近三個月每月 Token 使用量"
               />
             </section>
+          </div>
+        )}
+
+        {data && !userId && (
+          <div className="flex flex-col gap-8">
+            <UsageProgressSection
+              label="近12小時"
+              total={data.last_12_hours.total}
+              limit={LIMITS.last12h}
+            />
+            <UsageProgressSection
+              label="本週"
+              total={data.week.total}
+              limit={LIMITS.week}
+            />
+            <UsageProgressSection
+              label="本季"
+              total={data.months.total}
+              limit={LIMITS.quarter}
+            />
           </div>
         )}
       </div>
