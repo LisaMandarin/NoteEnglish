@@ -43,6 +43,7 @@ export default function SessionItem({
     session.source_text?.trim()?.slice(0, 80) ||
     "Untitled session";
 
+  // Card container — accent border + tinted bg when active; fades out while deleting
   return (
     <div
       className={`group relative w-full rounded-2xl border p-3 text-left transition-all duration-200 ${
@@ -59,7 +60,9 @@ export default function SessionItem({
       }}
     >
       {isEditing ? (
+        // Edit mode — inline rename row replacing the title
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          {/* Rename text input */}
           <input
             ref={editInputRef}
             value={editValue}
@@ -71,6 +74,7 @@ export default function SessionItem({
             disabled={editSaving}
             className="min-w-0 flex-1 rounded-lg border border-black/20 bg-white px-2 py-0.5 text-sm font-semibold text-black/85 outline-none focus:border-(--accent)"
           />
+          {/* Confirm rename button (checkmark) */}
           <button
             type="button"
             onClick={(e) => onConfirmEdit(session.id, title, e)}
@@ -79,6 +83,7 @@ export default function SessionItem({
           >
             <CheckOutlined style={{ fontSize: 10 }} />
           </button>
+          {/* Cancel rename button (×) */}
           <button
             type="button"
             onClick={onCancelEdit}
@@ -90,25 +95,30 @@ export default function SessionItem({
         </div>
       ) : (
         <>
+          {/* ── View mode ── clickable area that loads the session */}
           <button
             type="button"
             onClick={() => { if (!isCurrent) onLoad(session.id); }}
             disabled={sessionLoading || saving}
             className={`w-full pr-5 text-left ${!isCurrent && !sessionLoading && !saving ? "cursor-pointer" : "cursor-default"}`}
           >
+            {/* Session title (or first 80 chars of source text as fallback) */}
             <p className="m-0 text-base font-semibold text-black/85">{title}</p>
-            <div className="mt-2 text-xs leading-tight text-black/55">
+            {/* Last-updated timestamp */}
+            <div className="text-xs leading-tight text-black/55">
               {formatUpdatedAt(session.updated_at)}
             </div>
           </button>
+          {/* Edit icon — hidden until hover, top-right corner */}
           <button
             type="button"
             onClick={(e) => onStartEdit(session.id, title, e)}
-            className="absolute right-2 top-2 cursor-pointer text-black/25 opacity-0 transition-opacity group-hover:opacity-100 hover:text-blue-500"
+            className="absolute right-2 top-2 cursor-pointer rounded-md p-0.5 text-black/25 opacity-0 transition-all duration-150 group-hover:opacity-100 hover:scale-110 hover:bg-blue-50 hover:text-blue-500"
             aria-label="Edit session title"
           >
             <EditOutlined style={{ fontSize: 13 }} />
           </button>
+          {/* Delete icon — hidden until hover, bottom-right corner */}
           <button
             type="button"
             onClick={(e) => onDelete(session.id, isCurrent, e)}
