@@ -9,7 +9,7 @@ import {
   YAxis,
 } from "recharts";
 import type { TooltipContentProps } from "recharts";
-import { getTokenUsage } from "../lib/api";
+import { getAdminUserTokenUsage, getTokenUsage } from "../lib/api";
 import type { TokenUsageData } from "../types";
 
 const tokenNumberFormatter = new Intl.NumberFormat("zh-TW");
@@ -133,17 +133,18 @@ function SectionHeader({ label, total }: { label: string; total: number }): Reac
 
 const DAY_LABELS = ["日", "一", "二", "三", "四", "五", "六"];
 
-export default function TokenUsageView(): React.ReactElement {
+export default function TokenUsageView({ userId }: { userId?: string }): React.ReactElement {
   const [data, setData] = useState<TokenUsageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getTokenUsage()
+    const fetch = userId ? getAdminUserTokenUsage(userId) : getTokenUsage();
+    fetch
       .then((d) => setData(d))
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [userId]);
 
   const hourlyChartItems: UsageChartDatum[] = (
     data?.last_12_hours.hourly ?? []

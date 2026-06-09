@@ -46,7 +46,11 @@ const COLUMNS: ColumnsType<AdminUser> = [
   },
 ];
 
-export default function UserManagementView(): React.ReactElement {
+export default function UserManagementView({
+  onSelectUser,
+}: {
+  onSelectUser: (user: AdminUser) => void;
+}): React.ReactElement {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -67,7 +71,7 @@ export default function UserManagementView(): React.ReactElement {
     <div className="w-full m-0 px-8 py-10 box-border sm:px-12">
       <h2 className="mb-1 text-3xl font-semibold">User Management</h2>
       <p className="mb-8 text-base text-black/60">
-        All registered accounts.
+        所有已註冊的帳號。點擊一行以查看詳情。
       </p>
 
       {error ? (
@@ -89,6 +93,10 @@ export default function UserManagementView(): React.ReactElement {
           pagination={{ pageSize: 20 }}
           size="middle"
           scroll={{ x: "max-content" }}
+          onRow={(record) => ({
+            onClick: () => onSelectUser(record),
+            style: { cursor: "pointer" },
+          })}
         />
       )}
     </div>

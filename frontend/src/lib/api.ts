@@ -84,6 +84,10 @@ export async function getTokenUsage(): Promise<TokenUsageData> {
   return apiFetch("/api/usage") as Promise<TokenUsageData>;
 }
 
+export async function getAdminUserTokenUsage(userId: string): Promise<TokenUsageData> {
+  return apiFetch(`/api/admin/users/${userId}/usage`) as Promise<TokenUsageData>;
+}
+
 export type AdminUser = {
   id: string;
   email: string | null;

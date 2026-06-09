@@ -1,7 +1,9 @@
 import { useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import AdminSidebar from "./AdminSidebar";
+import UserDetailView from "./UserDetailView";
 import UserManagementView from "./UserManagementView";
+import type { AdminUser } from "../lib/api";
 
 type AdminView = "management";
 
@@ -21,7 +23,21 @@ export default function AdminDashboard({
   onSignOut: () => void;
 }): React.ReactElement {
   const [activeView, setActiveView] = useState<AdminView>("management");
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const username = getDisplayName(user);
+
+  function handleSelectUser(adminUser: AdminUser): void {
+    setSelectedUser(adminUser);
+  }
+
+  function handleBackToManagement(): void {
+    setSelectedUser(null);
+  }
+
+  function handleSetView(view: AdminView): void {
+    setSelectedUser(null);
+    setActiveView(view);
+  }
 
   return (
     <div className="min-h-screen w-full px-6 pb-10 pt-20 sm:px-10 lg:py-10">
@@ -33,11 +49,16 @@ export default function AdminDashboard({
           email={user?.email ?? ""}
           onSignOut={onSignOut}
           activeView={activeView}
-          onSetView={setActiveView}
+          onSetView={handleSetView}
         />
 
         <main className="rounded-[30px] border-4 border-(--card-border) bg-(--card-bg) shadow-md">
-          {activeView === "management" && <UserManagementView />}
+          {activeView === "management" && !selectedUser && (
+            <UserManagementView onSelectUser={handleSelectUser} />
+          )}
+          {activeView === "management" && selectedUser && (
+            <UserDetailView user={selectedUser} onBack={handleBackToManagement} />
+          )}
         </main>
       </div>
     </div>
