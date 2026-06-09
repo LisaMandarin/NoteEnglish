@@ -133,8 +133,7 @@ function SectionHeader({ label, total }: { label: string; total: number }): Reac
 
 const LIMITS = {
   last12h: 5_000,
-  week: 25_000,
-  quarter: 70_000,
+  month: 100_000,
 };
 
 function UsageProgressSection({
@@ -275,14 +274,13 @@ export default function TokenUsageView({ userId }: { userId?: string }): React.R
               limit={LIMITS.last12h}
             />
             <UsageProgressSection
-              label="本週"
-              total={data.week.total}
-              limit={LIMITS.week}
-            />
-            <UsageProgressSection
-              label="本季"
-              total={data.months.total}
-              limit={LIMITS.quarter}
+              label="本月"
+              total={
+                data.months.monthly.find(
+                  (m) => m.month === new Date().toISOString().slice(0, 7)
+                )?.tokens ?? 0
+              }
+              limit={LIMITS.month}
             />
           </div>
         )}
