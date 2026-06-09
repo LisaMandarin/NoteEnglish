@@ -468,6 +468,30 @@ def get_usage_stats(user_id: str) -> dict:
     }
 
 
+def list_all_users(page: int = 1, per_page: int = 50) -> list[dict]:
+    query = parse.urlencode({"page": page, "per_page": per_page})
+    data = _request_json(
+        "GET",
+        f"{settings.supabase_url}/auth/v1/admin/users?{query}",
+        headers={
+            "apikey": settings.supabase_service_role_key,
+            "Authorization": f"Bearer {settings.supabase_service_role_key}",
+        },
+    )
+    users = (data or {}).get("users") or []
+    return [
+        {
+            "id": u["id"],
+            "email": u.get("email"),
+            "display_name": (u.get("user_metadata") or {}).get("display_name"),
+            "role": (u.get("app_metadata") or {}).get("role"),
+            "created_at": u.get("created_at"),
+            "last_sign_in_at": u.get("last_sign_in_at"),
+        }
+        for u in users
+    ]
+
+
 def delete_session(user_id: str, session_id: str) -> None:
     _delete_session_children(user_id, session_id)
     query = parse.urlencode({"id": f"eq.{session_id}", "user_id": f"eq.{user_id}"})

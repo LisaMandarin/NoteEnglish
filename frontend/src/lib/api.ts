@@ -84,6 +84,23 @@ export async function getTokenUsage(): Promise<TokenUsageData> {
   return apiFetch("/api/usage") as Promise<TokenUsageData>;
 }
 
+export type AdminUser = {
+  id: string;
+  email: string | null;
+  display_name: string | null;
+  role: string | null;
+  created_at: string | null;
+  last_sign_in_at: string | null;
+};
+
+export async function checkAdminAccess(): Promise<{ ok: boolean; user_id: string }> {
+  return apiFetch("/api/admin/check") as Promise<{ ok: boolean; user_id: string }>;
+}
+
+export async function listAdminUsers(page = 1, perPage = 50): Promise<AdminUser[]> {
+  return apiFetch(`/api/admin/users?page=${page}&per_page=${perPage}`) as Promise<AdminUser[]>;
+}
+
 export async function saveSession({ sessionId, text, sentences }: {
   sessionId: string | null;
   text: string;

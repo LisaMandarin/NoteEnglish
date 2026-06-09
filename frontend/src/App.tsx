@@ -6,6 +6,8 @@ import AppSidebar from "./components/AppSidebar";
 import SummaryWindow from "./components/SummaryWindow";
 import VocabPrintWindow from "./components/VocabPrintWindow";
 import LoginPage from "./components/LoginPage";
+import AdminLoginPage from "./components/AdminLoginPage";
+import AdminDashboard from "./components/AdminDashboard";
 import { supabase } from "./lib/supabase";
 import { ensureProfile as ensureProfileApi } from "./lib/api";
 
@@ -80,6 +82,7 @@ export default function App(): React.ReactElement {
   const params = new URLSearchParams(window.location.search);
   const isSummaryView = params.get("view") === "summary";
   const isVocabPrintView = params.get("view") === "vocab-print";
+  const isAdminDashboard = window.location.pathname === "/admin-dashboard";
 
   useEffect(() => {
     let mounted = true;
@@ -139,6 +142,13 @@ export default function App(): React.ReactElement {
           </div>
         </div>
       </div>
+    );
+  }
+
+  if (isAdminDashboard) {
+    if (!user) return <AdminLoginPage />;
+    return (
+      <AdminDashboard user={user} onSignOut={() => supabase.auth.signOut()} />
     );
   }
 
