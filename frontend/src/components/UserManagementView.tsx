@@ -88,6 +88,7 @@ export default function UserManagementView(): React.ReactElement {
           loading={loading}
           pagination={{ pageSize: 20 }}
           size="middle"
+          scroll={{ x: "max-content" }}
         />
       )}
     </div>
