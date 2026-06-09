@@ -26,7 +26,7 @@ export default function AdminDashboard({
   return (
     <div className="min-h-screen w-full px-6 pb-10 pt-20 sm:px-10 lg:py-10">
       <div
-        className="mx-auto max-w-7xl gap-5 transition-[grid-template-columns] duration-300 lg:grid lg:grid-cols-[88px_minmax(0,1fr)]"
+        className="mx-auto max-w-7xl gap-5 transition-[grid-template-columns] duration-300 lg:grid lg:grid-cols-[auto_minmax(0,1fr)]"
       >
         <AdminSidebar
           username={username}

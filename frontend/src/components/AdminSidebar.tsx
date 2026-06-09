@@ -3,7 +3,7 @@ import {
   CloseOutlined,
   LogoutOutlined,
   MenuOutlined,
-  TeamOutlined,
+  ToolOutlined,
   UserOutlined,
 } from "@ant-design/icons";
 import { Button, Tooltip } from "antd";
@@ -137,7 +137,7 @@ export default function AdminSidebar({
             onClick={() => togglePanel("profile")}
           />
           <IconButton
-            icon={TeamOutlined}
+            icon={ToolOutlined}
             ariaLabel="Manage users"
             isActive={activeView === "management"}
             onClick={() => { onSetView("management"); closeMobileMenu(); }}
@@ -181,7 +181,7 @@ export default function AdminSidebar({
               onClick={() => togglePanel("profile")}
             />
             <IconButton
-              icon={TeamOutlined}
+              icon={ToolOutlined}
               ariaLabel="Manage users"
               isActive={activeView === "management"}
               onClick={() => onSetView("management")}
