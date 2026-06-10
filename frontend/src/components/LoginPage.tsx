@@ -3,7 +3,7 @@ import { Button, Input } from "antd";
 import { supabase } from "../lib/supabase";
 
 const PASSWORD_RULES_TEXT =
-  "Use only letters and numbers, with at least 5 characters.";
+  "密碼只能使用英文字母和數字，且至少需要 5 個字元。";
 const DEMO_CREDENTIALS = {
   email: "testuser@example.com",
   password: "test1234",
@@ -15,19 +15,19 @@ function validatePassword(password) {
 
 function getValidationError({ mode, displayName, email, password, confirmPassword }) {
   if (mode === "sign_up" && !displayName.trim()) {
-    return "Display name is required.";
+    return "請輸入顯示名稱。";
   }
 
   if (!email.trim()) {
-    return "Email is required.";
+    return "請輸入電子郵件。";
   }
 
   if (!password.trim()) {
-    return "Password is required.";
+    return "請輸入密碼。";
   }
 
   if (mode === "sign_up" && !confirmPassword.trim()) {
-    return "Confirm password is required.";
+    return "請再次輸入密碼。";
   }
 
   if (mode === "sign_up" && !validatePassword(password)) {
@@ -35,7 +35,7 @@ function getValidationError({ mode, displayName, email, password, confirmPasswor
   }
 
   if (mode === "sign_up" && password !== confirmPassword) {
-    return "Passwords do not match.";
+    return "兩次輸入的密碼不一致。";
   }
 
   return "";
@@ -94,7 +94,7 @@ export default function LoginPage() {
         setConfirmPassword("");
         setMode("sign_in");
         setMessage(
-          "Account created. Check your email for the confirmation link before signing in."
+          "帳號已建立。請查收電子郵件中的確認連結，確認後即可登入。"
         );
         return;
       }
@@ -106,7 +106,7 @@ export default function LoginPage() {
 
       if (signInError) throw signInError;
     } catch (authError) {
-      setError(authError?.message || "Authentication failed.");
+      setError(authError?.message || "驗證失敗，請再試一次。");
     } finally {
       setLoading(false);
     }
@@ -120,8 +120,8 @@ export default function LoginPage() {
             <h1 className="mb-2 text-4xl">NoteEnglish</h1>
             <p className="mb-8 text-base text-black/70">
               {mode === "sign_in"
-                ? "Sign in to continue your saved sessions."
-                : "Create an account to save translations and vocabulary notes."}
+                ? "登入以繼續您儲存的學習進度。"
+                : "建立帳號，儲存您的翻譯與單字筆記。"}
             </p>
 
             {mode === "sign_in" ? (
@@ -129,19 +129,22 @@ export default function LoginPage() {
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                   <div className="space-y-1">
                     <p className="m-0 text-sm font-semibold uppercase tracking-[0.18em] text-black/55">
-                      Demo Access
+                      示範帳號
                     </p>
                     <p className="m-0 text-sm text-black/75">
-                      Try the product with the demo account.
+                      使用示範帳號體驗產品功能。
+                    </p>
+                    <p className="m-0 text-sm text-amber-700">
+                      注意：示範帳號為公開帳號，任何測試者均可存取其中的內容。若您希望保有私人的學習記錄，請使用自己的電子郵件註冊專屬帳號。
                     </p>
                     <p className="m-0 text-sm text-black/75">
-                      Email:{" "}
+                      電子郵件：{" "}
                       <span className="font-semibold">
                         {DEMO_CREDENTIALS.email}
                       </span>
                     </p>
                     <p className="m-0 text-sm text-black/75">
-                      Password:{" "}
+                      密碼：{" "}
                       <span className="font-semibold">
                         {DEMO_CREDENTIALS.password}
                       </span>
@@ -153,7 +156,7 @@ export default function LoginPage() {
                     disabled={loading}
                     onClick={fillDemoCredentials}
                   >
-                    Use demo account
+                    使用示範帳號
                   </Button>
                 </div>
               </div>
@@ -162,13 +165,13 @@ export default function LoginPage() {
             <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
               {mode === "sign_up" ? (
                 <label className="flex flex-col gap-2 text-[0.95rem] font-semibold">
-                  <span>Display Name</span>
+                  <span>顯示名稱</span>
                   <Input
                     allowClear
                     className="rounded-2xl border border-black/15 bg-white text-inherit transition"
                     value={displayName}
                     onChange={(event) => setDisplayName(event.target.value)}
-                    placeholder="How should your name appear?"
+                    placeholder="您希望顯示什麼名稱？"
                     autoComplete="name"
                     size="large"
                   />
@@ -176,13 +179,13 @@ export default function LoginPage() {
               ) : null}
 
               <label className="flex flex-col gap-2 text-[0.95rem] font-semibold">
-                <span>Email</span>
+                <span>電子郵件</span>
                 <Input
                   allowClear
                   className="rounded-2xl border border-black/15 bg-white text-inherit transition"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  placeholder="Enter your email"
+                  placeholder="請輸入電子郵件"
                   autoComplete="email"
                   type="email"
                   size="large"
@@ -190,13 +193,13 @@ export default function LoginPage() {
               </label>
 
               <label className="flex flex-col gap-2 text-[0.95rem] font-semibold">
-                <span>Password</span>
+                <span>密碼</span>
                 <Input.Password
                   allowClear
                   className="rounded-2xl border border-black/15 bg-white text-inherit transition"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Enter your password"
+                  placeholder="請輸入密碼"
                   autoComplete={
                     mode === "sign_in" ? "current-password" : "new-password"
                   }
@@ -207,7 +210,7 @@ export default function LoginPage() {
               {mode === "sign_up" ? (
                 <>
                   <label className="flex flex-col gap-2 text-[0.95rem] font-semibold">
-                    <span>Confirm Password</span>
+                    <span>確認密碼</span>
                     <Input.Password
                       allowClear
                       className="rounded-2xl border border-black/15 bg-white text-inherit transition"
@@ -215,7 +218,7 @@ export default function LoginPage() {
                       onChange={(event) =>
                         setConfirmPassword(event.target.value)
                       }
-                      placeholder="Re-enter your password"
+                      placeholder="請再次輸入密碼"
                       autoComplete="new-password"
                       size="large"
                     />
@@ -243,7 +246,7 @@ export default function LoginPage() {
                   height: "3.5rem",
                 }}
               >
-                {mode === "sign_in" ? "Sign in" : "Create account"}
+                {mode === "sign_in" ? "登入" : "建立帳號"}
               </Button>
 
               <Button
@@ -262,8 +265,8 @@ export default function LoginPage() {
                 }}
               >
                 {mode === "sign_in"
-                  ? "Need an account? Sign up"
-                  : "Already registered? Sign in"}
+                  ? "還沒有帳號？立即註冊"
+                  : "已有帳號？前往登入"}
               </Button>
             </form>
           </div>
