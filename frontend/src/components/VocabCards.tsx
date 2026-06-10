@@ -411,7 +411,7 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: 
   );
 }
 
-export default function VocabCards({ vocab, sentenceIdx, onDelete, onReorder, onEdit }: { vocab: VocabItem[]; sentenceIdx: number; onDelete?: (sentenceIdx: number, lemma: string, pos: string) => void; onReorder?: (sentenceIdx: number, newVocab: VocabItem[]) => void; onEdit?: (sentenceIdx: number, vocabItem: VocabItem) => void }): React.ReactElement | null {
+export default function VocabCards({ vocab, sentenceIdx, hideHint, onDelete, onReorder, onEdit }: { vocab: VocabItem[]; sentenceIdx: number; hideHint?: boolean; onDelete?: (sentenceIdx: number, lemma: string, pos: string) => void; onReorder?: (sentenceIdx: number, newVocab: VocabItem[]) => void; onEdit?: (sentenceIdx: number, vocabItem: VocabItem) => void }): React.ReactElement | null {
   const items = useMemo(() => {
     const list = Array.isArray(vocab) ? vocab : [];
     return list.filter((v) =>
@@ -445,7 +445,15 @@ export default function VocabCards({ vocab, sentenceIdx, onDelete, onReorder, on
     onReorder?.(sentenceIdx, next);
   }
 
-  if (items.length === 0) return null;
+  if (items.length === 0) {
+    if (hideHint) return null;
+    return (
+      <div className="mt-3 flex items-center gap-1.5 text-sm" style={{ color: "var(--accent)", opacity: 0.55 }}>
+        <span className="inline-block animate-bounce">↑</span>
+        <span>選取上方英文字詞來查詢單字</span>
+      </div>
+    );
+  }
 
   return (
     <DndContext

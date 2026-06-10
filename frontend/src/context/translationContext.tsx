@@ -50,7 +50,7 @@ type TranslationContextValue = {
 const TranslationContext = createContext<TranslationContextValue | null>(null);
 
 const initialState: AppState = {
-  text: "I like apples.  I like bananas.\nThis is a new sentence.",
+  text: "",
   translating: false,
   sessionLoading: false,
   saving: false,

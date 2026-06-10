@@ -34,6 +34,7 @@ function renderOriginalText(text: string, selectedRange?: SelectedRange | null):
 export default function SentenceItem({
   sentence,
   idx,
+  hideHint,
   selectedRange,
   onDelete,
   onReorder,
@@ -41,6 +42,7 @@ export default function SentenceItem({
 }: {
   sentence: Sentence;
   idx: number;
+  hideHint?: boolean;
   selectedRange?: SelectedRange | null;
   onDelete?: (sentenceIdx: number, lemma: string, pos: string) => void;
   onReorder?: (sentenceIdx: number, newVocab: VocabItem[]) => void;
@@ -78,6 +80,7 @@ export default function SentenceItem({
         <VocabCards
           vocab={sentence.vocab}
           sentenceIdx={idx}
+          hideHint={hideHint}
           onDelete={onDelete}
           onReorder={onReorder}
           onEdit={onEdit}

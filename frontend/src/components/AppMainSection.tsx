@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import AppTitle from "./AppTitle";
 import AppTextarea from "./AppTextarea";
 import TranslationsList from "./TranslationsList";
@@ -11,12 +11,13 @@ export default function AppMainSection({
 }: {
   mainView: "translate" | "usage";
 }): React.ReactElement {
-  const { state: { sessionLoading, currentSession, sentences } } = useTranslation();
-  const [showTip, setShowTip] = useState(true);
+  const { state: { sessionLoading, sentences } } = useTranslation();
+  const [showTip, setShowTip] = useState(() => localStorage.getItem("ne_lookup_tip") !== "1");
 
-  useEffect(() => {
-    setShowTip(true);
-  }, [currentSession?.id]);
+  function handleDismissTip(): void {
+    localStorage.setItem("ne_lookup_tip", "1");
+    setShowTip(false);
+  }
 
   if (mainView === "usage") {
     return <TokenUsageView />;
@@ -39,7 +40,7 @@ export default function AppMainSection({
             {showTip && sentences.length > 0 && (
               <TipBox
                 message="小技巧：選取英文字詞來查詢"
-                onDismiss={() => setShowTip(false)}
+                onDismiss={handleDismissTip}
               />
             )}
           </div>

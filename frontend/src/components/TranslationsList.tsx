@@ -41,6 +41,8 @@ export default function TranslationsList(): React.ReactElement {
     return <Text type="secondary">No translations yet.</Text>;
   }
 
+  const hasAnyVocab = sentences.some((s) => Array.isArray(s.vocab) && s.vocab.length > 0);
+
   return (
     <div
       ref={containerRef}
@@ -62,6 +64,7 @@ export default function TranslationsList(): React.ReactElement {
             key={idx}
             sentence={s}
             idx={idx}
+            hideHint={hasAnyVocab}
             selectedRange={
               selectedHighlight?.sentenceIdx === idx
                 ? { start: selectedHighlight.start, end: selectedHighlight.end }
@@ -73,15 +76,6 @@ export default function TranslationsList(): React.ReactElement {
           />
         ))}
       </ol>
-      <div className="mt-2 bg-(--bg-main) rounded-2xl p-4 shadow-lg">
-        <Text strong>How to look up怎麼查詢:</Text>
-        <ol className="list-decimal pl-5 mt-1">
-          <li><Text>Select text in the Original sentence.選英文字</Text></li>
-          <li><Text>Wait for the menu to pop up.等選單出現</Text></li>
-          <li><Text>Tick the boxes you want.勾選要的項目</Text></li>
-          <li><Text>Click Look Up.按「查詢」</Text></li>
-        </ol>
-      </div>
       <SummaryExportBar sentences={sentences} sessionTitle={currentSession?.title ?? ""} />
       <div
         onMouseUp={(e) => e.stopPropagation()}
