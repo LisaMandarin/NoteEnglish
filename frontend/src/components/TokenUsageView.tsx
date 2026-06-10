@@ -132,8 +132,8 @@ function SectionHeader({ label, total }: { label: string; total: number }): Reac
 }
 
 const LIMITS = {
-  last12h: 5_000,
-  month: 100_000,
+  last12h: 10_000,
+  month: 200_000,
 };
 
 function UsageProgressSection({

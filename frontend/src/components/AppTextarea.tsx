@@ -32,8 +32,8 @@ function parseApiError(raw: string): ParsedError {
   return { message: "翻譯失敗，請稍後再試。", technical: detail };
 }
 
-const MAX_CHARS = 1300
-const WARN_THRESHOLD = 1000
+const MAX_CHARS = 1500
+const WARN_THRESHOLD = 1300
 
 export default function AppTextarea() {
     const {
