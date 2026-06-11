@@ -3,14 +3,14 @@ import { Button, Input } from "antd";
 import { supabase } from "../lib/supabase";
 
 const PASSWORD_RULES_TEXT =
-  "密碼只能使用英文字母和數字，且至少需要 5 個字元。";
+  "密碼只能使用英文字母和數字，且至少需要 6 個字元。";
 const DEMO_CREDENTIALS = {
   email: "testuser@example.com",
   password: "test1234",
 };
 
 function validatePassword(password) {
-  return /^[A-Za-z0-9]{5,}$/.test(password);
+  return /^[A-Za-z0-9]{6,}$/.test(password);
 }
 
 function getValidationError({ mode, displayName, email, password, confirmPassword }) {
@@ -47,7 +47,6 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState("sign_in");
 
@@ -55,14 +54,12 @@ export default function LoginPage() {
     setEmail(DEMO_CREDENTIALS.email);
     setPassword(DEMO_CREDENTIALS.password);
     setError("");
-    setMessage("");
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
     setLoading(true);
     setError("");
-    setMessage("");
 
     try {
       const validationError = getValidationError({
@@ -93,9 +90,6 @@ export default function LoginPage() {
         setPassword("");
         setConfirmPassword("");
         setMode("sign_in");
-        setMessage(
-          "帳號已建立。請查收電子郵件中的確認連結，確認後即可登入。"
-        );
         return;
       }
 
@@ -230,9 +224,6 @@ export default function LoginPage() {
               ) : null}
 
               {error ? <p className="m-0 text-sm text-red-600">{error}</p> : null}
-              {message ? (
-                <p className="m-0 text-sm text-emerald-700">{message}</p>
-              ) : null}
 
               <Button
                 block
@@ -256,7 +247,6 @@ export default function LoginPage() {
                 disabled={loading}
                 onClick={() => {
                   setError("");
-                  setMessage("");
                   setPassword("");
                   setConfirmPassword("");
                   setMode((currentMode) =>
