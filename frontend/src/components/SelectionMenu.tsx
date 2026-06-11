@@ -20,10 +20,10 @@ export default function SelectionMenu({ open, x, y, options, setOptions, onLookU
   }
 
   const items = [
-    { value: "zh", label: "中文" },
-    { value: "en", label: "英文" },
-    { value: "ex", label: "例句" },
-    { value: "level", label: "程度" },
+    { value: "zh", label: "中文意思" },
+    { value: "en", label: "英英解釋" },
+    { value: "ex", label: "造句範例" },
+    { value: "level", label: "字彙等級" },
   ];
 
   return (
