@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 import os
+import re
 from fastapi import HTTPException
 import json
 from app.models.vocab import VocabOptions
@@ -85,6 +86,51 @@ def ai_translate_list(sentences: list[str], target_lang: str = "zh-TW", mode: st
     for i in range(len(sentences)):
         fixed.append(translations[i] if i < len(translations) else "")
     return fixed, usage
+
+# Collapse hard line wraps from print layouts: join single newlines within a
+# paragraph into spaces, keep blank lines as paragraph breaks, and rejoin
+# words hyphenated across lines. The OCR prompt asks Gemini to do this, but
+# the model does not reliably comply, so normalize deterministically.
+def _normalize_ocr_text(text: str) -> str:
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(r"(\w)-\n(\w)", r"\1\2", text)
+    paragraphs = re.split(r"\n\s*\n", text)
+    return "\n\n".join(
+        " ".join(p.split()) for p in paragraphs if p.strip()
+    )
+
+
+# Extract text from an image (OCR) using Gemini vision.
+def ai_ocr_image(image_bytes: bytes, mime_type: str) -> tuple[str, dict]:
+    prompt = (
+        "Extract all visible text from this image exactly as written. "
+        "Preserve paragraph breaks (use a blank line between paragraphs). "
+        "Join lines that were wrapped mid-sentence into a single line. "
+        "Do not translate, summarize, correct, or add any commentary. "
+        "If the image contains no readable text, return an empty string. "
+        "Return plain text only."
+    )
+
+    try:
+        response = client.models.generate_content(
+            model=settings.gemini_model,
+            contents=[
+                types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                prompt,
+            ],
+            config={
+                "temperature": 0,
+                "thinking_config": {"thinking_budget": 0},
+            }
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Gemini API request failed: {e}"
+        )
+
+    text = _normalize_ocr_text(response.text) if response.text else ""
+    return text, _extract_usage(response)
 
 _POS_MAP = {
     "noun": "n.",

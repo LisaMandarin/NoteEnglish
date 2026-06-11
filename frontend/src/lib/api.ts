@@ -80,6 +80,13 @@ export async function deleteSession(sessionId: string): Promise<unknown> {
   return apiFetch(`/api/sessions/${sessionId}`, { method: "DELETE" });
 }
 
+export async function ocrImage(imageBase64: string, mimeType: string): Promise<{ text: string }> {
+  return apiFetch("/api/ocr", {
+    method: "POST",
+    body: JSON.stringify({ image_base64: imageBase64, mime_type: mimeType }),
+  }) as Promise<{ text: string }>;
+}
+
 export async function getTokenUsage(): Promise<TokenUsageData> {
   return apiFetch("/api/usage") as Promise<TokenUsageData>;
 }
