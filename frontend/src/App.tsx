@@ -52,9 +52,9 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
 
   return (
     <TranslationProvider>
-      <div className="min-h-screen w-full px-6 pb-10 pt-20 sm:px-10 lg:py-10">
+      <div className="flex min-h-screen w-full flex-col px-6 pb-10 pt-20 sm:px-10 lg:py-10">
         <div
-          className="mx-auto max-w-7xl gap-5 transition-[grid-template-columns] duration-300 lg:grid lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)]"
+          className="mx-auto w-full max-w-7xl flex-1 gap-5 transition-[grid-template-columns] duration-300 lg:grid lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)]"
           style={{
             "--sidebar-width": isSidebarOpen ? "408px" : "88px",
           } as React.CSSProperties}
@@ -71,6 +71,10 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
           />
           <AppMainSection mainView={mainView} />
         </div>
+        <footer className="mx-auto mt-10 max-w-7xl text-center text-sm text-(--text-main) opacity-60">
+          <p className="m-0">© {new Date().getFullYear()} NoteEnglish. All rights reserved.</p>
+          <p className="m-0">Created by Min-ting (Lisa) Chuang.</p>
+        </footer>
       </div>
     </TranslationProvider>
   );

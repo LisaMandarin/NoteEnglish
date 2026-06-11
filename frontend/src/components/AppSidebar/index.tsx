@@ -133,7 +133,7 @@ export default function AppSidebar({
       </div>
 
       {/* ===== DESKTOP (lg+) ===== */}
-      <aside className="hidden lg:flex min-h-[calc(100vh-5rem)] overflow-hidden rounded-[28px] bg-[color-mix(in_srgb,var(--accent)_16%,white)] shadow-sm">
+      <aside className="hidden lg:flex overflow-hidden rounded-[28px] bg-[color-mix(in_srgb,var(--accent)_16%,white)] shadow-sm">
         <div className="flex w-22 shrink-0 flex-col items-center justify-between px-4 py-5">
           <div className="flex flex-col gap-3">
             {SIDEBAR_BUTTONS.map((button) => (

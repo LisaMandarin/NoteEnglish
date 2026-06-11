@@ -23,8 +23,21 @@ npm run dev
 
 Open the printed localhost URL (usually `http://localhost:5173`).
 
+## App routes
+The app is a single page with view switching via path and query params:
+
+| URL | View |
+|-----|------|
+| `/` | Main study page (login if unauthenticated) |
+| `/?view=summary` | Printable summary window (original + translation or vocab notes) |
+| `/?view=vocab-print` | Printable vocab cards window |
+| `/admin-dashboard` | Admin dashboard (admin login + access check) |
+
 ## Build for production
 ```
 npm run build
 npm run preview   # serve the build locally
 ```
+
+## Deploy to Vercel
+`vercel.json` rewrites all URLs to `index.html` so the path-based views above work on direct navigation. Set `VITE_API_BASE` in the Vercel project settings to your deployed backend URL.

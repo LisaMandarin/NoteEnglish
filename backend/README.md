@@ -1,6 +1,6 @@
 # NoteEnglish Backend
 
-FastAPI service for translations, vocabulary enrichment, session storage, and token usage tracking. For features and usage, see the [root README](../README.md).
+FastAPI service for translations, vocabulary enrichment, image-to-text (OCR), session storage, token usage tracking, and admin stats. For features and usage, see the [root README](../README.md).
 
 ## Prerequisites
 - Python 3.10–3.12 (spaCy wheels don't support 3.13+)
@@ -44,13 +44,15 @@ Notes:
 
 ## API Endpoints
 
-All endpoints except `/api/health` require a Supabase Bearer token (`Authorization: Bearer <token>`). In Swagger UI, use the `Authorize` button to set it.
+All endpoints except `/api/health` and `/api/debug/*` require a Supabase Bearer token (`Authorization: Bearer <token>`). The `/api/admin/*` endpoints additionally require the token to belong to an admin user. In Swagger UI, use the `Authorize` button to set the token.
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/api/health` | Health check (no auth) |
+| `POST` | `/api/debug/split` | Sentence-split text without translating (no auth) |
 | `POST` | `/api/translate` | Split and translate text, return base vocab |
 | `POST` | `/api/vocab/detail` | Enrich selected vocab (with in-memory cache) |
+| `POST` | `/api/ocr` | Extract text from a base64 image via Gemini vision (JPEG/PNG/WebP, max 8 MB) |
 | `POST` | `/api/profile/ensure` | Create or verify user profile |
 | `GET` | `/api/sessions` | List sessions (supports `limit` / `offset`) |
 | `GET` | `/api/sessions/{id}` | Load a single session |
@@ -58,6 +60,9 @@ All endpoints except `/api/health` require a Supabase Bearer token (`Authorizati
 | `PATCH` | `/api/sessions/{id}/title` | Rename a session |
 | `DELETE` | `/api/sessions/{id}` | Delete a session |
 | `GET` | `/api/usage` | Gemini token usage stats (hourly / daily / monthly) |
+| `GET` | `/api/admin/check` | Verify the caller has admin access |
+| `GET` | `/api/admin/users` | List all users (supports `page` / `per_page`) |
+| `GET` | `/api/admin/users/{user_id}/usage` | Token usage stats for a single user |
 
 ## Quick checks
 ```bash
@@ -70,5 +75,3 @@ curl -X POST http://localhost:8000/api/translate \
   -H "Authorization: Bearer <supabase_access_token>" \
   -d '{"text":"I like apples.","target_lang":"zh-TW","mode":"normal"}'
 ```
-
-> **Note:** `app/routes/test.py` contains health and debug/split routes but is not registered in `main.py` by default. Register `test_router` there to re-enable them.
