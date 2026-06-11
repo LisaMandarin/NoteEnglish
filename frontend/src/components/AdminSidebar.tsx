@@ -111,18 +111,20 @@ export default function AdminSidebar({
             disabled={!isAdmin}
             onClick={() => handleSetView("management")}
           />
-          <Button
-            aria-label="Sign out"
-            onClick={onSignOut}
-            icon={<LogoutOutlined aria-hidden="true" />}
-            shape="circle"
-            size="large"
-            className="flex h-12 w-12 items-center justify-center border-0 text-xl shadow-sm transition"
-            style={{
-              backgroundColor: "rgb(255 255 255 / 0.8)",
-              color: "var(--accent)",
-            }}
-          />
+          <Tooltip title="Sign out" placement="bottom">
+            <Button
+              aria-label="Sign out"
+              onClick={onSignOut}
+              icon={<LogoutOutlined aria-hidden="true" />}
+              shape="circle"
+              size="large"
+              className="flex h-12 w-12 items-center justify-center border-0 text-xl shadow-sm transition"
+              style={{
+                backgroundColor: "rgb(255 255 255 / 0.8)",
+                color: "var(--accent)",
+              }}
+            />
+          </Tooltip>
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { Button } from "antd";
+import { Button, Tooltip } from "antd";
 
 type SidebarButtonConfig = {
   key: string;
@@ -15,19 +15,21 @@ export default function SidebarIconButton({ button, isActive, username, ariaCont
   onClick: () => void;
 }): React.ReactElement {
   return (
-    <Button
-      aria-label={button.ariaLabel(username)}
-      aria-expanded={isActive}
-      aria-controls={ariaControls}
-      onClick={onClick}
-      icon={<button.icon aria-hidden="true" />}
-      shape="circle"
-      size="large"
-      className="flex h-12 w-12 items-center justify-center border-0 text-xl shadow-sm transition"
-      style={{
-        backgroundColor: isActive ? "var(--accent)" : "rgb(255 255 255 / 0.8)",
-        color: isActive ? "#ffffff" : "var(--accent)",
-      }}
-    />
+    <Tooltip title={button.ariaLabel(username)} placement="right">
+      <Button
+        aria-label={button.ariaLabel(username)}
+        aria-expanded={isActive}
+        aria-controls={ariaControls}
+        onClick={onClick}
+        icon={<button.icon aria-hidden="true" />}
+        shape="circle"
+        size="large"
+        className="flex h-12 w-12 items-center justify-center border-0 text-xl shadow-sm transition"
+        style={{
+          backgroundColor: isActive ? "var(--accent)" : "rgb(255 255 255 / 0.8)",
+          color: isActive ? "#ffffff" : "var(--accent)",
+        }}
+      />
+    </Tooltip>
   );
 }
