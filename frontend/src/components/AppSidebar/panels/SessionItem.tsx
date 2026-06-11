@@ -109,21 +109,21 @@ export default function SessionItem({
               {formatUpdatedAt(session.updated_at)}
             </div>
           </button>
-          {/* Edit icon — hidden until hover, top-right corner */}
+          {/* Edit icon — always visible on touch, hover-only on desktop */}
           <button
             type="button"
             onClick={(e) => onStartEdit(session.id, title, e)}
-            className="absolute right-2 top-2 cursor-pointer rounded-md p-0.5 text-black/25 opacity-0 transition-all duration-150 group-hover:opacity-100 hover:scale-110 hover:bg-blue-50 hover:text-blue-500"
+            className="absolute right-2 top-2 cursor-pointer rounded-md p-0.5 text-black/25 transition-all duration-150 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 hover:scale-110 hover:bg-blue-50 hover:text-blue-500"
             aria-label="Edit session title"
           >
             <EditOutlined style={{ fontSize: 13 }} />
           </button>
-          {/* Delete icon — hidden until hover, bottom-right corner */}
+          {/* Delete icon — always visible on touch, hover-only on desktop */}
           <button
             type="button"
             onClick={(e) => onDelete(session.id, isCurrent, e)}
             disabled={isDeleting}
-            className="absolute bottom-2 right-2 cursor-pointer text-black/25 opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-500"
+            className="absolute bottom-2 right-2 cursor-pointer text-black/25 transition-opacity opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 hover:text-red-500"
             aria-label="Delete session"
           >
             <DeleteOutlined style={{ fontSize: 13 }} />
