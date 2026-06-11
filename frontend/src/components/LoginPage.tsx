@@ -13,6 +13,35 @@ function validatePassword(password) {
   return /^[A-Za-z0-9]{6,}$/.test(password);
 }
 
+function translateAuthError(message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes("invalid login credentials") || lower.includes("invalid credentials")) {
+    return "電子郵件或密碼錯誤，請再試一次。";
+  }
+  if (lower.includes("email not confirmed")) {
+    return "電子郵件尚未驗證，請確認您的信箱後再登入。";
+  }
+  if (lower.includes("user already registered") || lower.includes("already been registered")) {
+    return "此電子郵件已被註冊，請直接登入。";
+  }
+  if (lower.includes("password should be at least")) {
+    return "密碼至少需要 6 個字元。";
+  }
+  if (lower.includes("unable to validate email") || lower.includes("invalid format")) {
+    return "電子郵件格式無效，請重新輸入。";
+  }
+  if (lower.includes("signup is disabled")) {
+    return "目前不開放新用戶註冊。";
+  }
+  if (lower.includes("too many requests") || lower.includes("rate limit")) {
+    return "嘗試次數過多，請稍後再試。";
+  }
+  if (lower.includes("network") || lower.includes("fetch")) {
+    return "網路連線異常，請檢查網路後再試。";
+  }
+  return "驗證失敗，請再試一次。";
+}
+
 function getValidationError({ mode, displayName, email, password, confirmPassword }) {
   if (mode === "sign_up" && !displayName.trim()) {
     return "請輸入顯示名稱。";
@@ -100,7 +129,8 @@ export default function LoginPage() {
 
       if (signInError) throw signInError;
     } catch (authError) {
-      setError(authError?.message || "驗證失敗，請再試一次。");
+      const raw = authError instanceof Error ? authError.message : "";
+      setError(translateAuthError(raw));
     } finally {
       setLoading(false);
     }
