@@ -67,12 +67,14 @@ export default function SentenceItem({
           </div>
           <div>
             <span className="lookup-original-text" data-original-text="true">
-              <Text strong style={{ fontSize: "1.25rem" }}>
+              <Text strong style={{ fontSize: "1.25rem", whiteSpace: "pre-wrap" }}>
                 {renderOriginalText(sentence.original, selectedRange)}
               </Text>
             </span>
             <div className="select-none">
-              <Text type="secondary">{sentence.translation}</Text>
+              <Text type="secondary" style={{ whiteSpace: "pre-wrap" }}>
+                {sentence.translation}
+              </Text>
             </div>
           </div>
         </div>

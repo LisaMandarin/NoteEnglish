@@ -83,10 +83,10 @@ export default function SummaryWindow() {
                   <div className="space-y-1">
                     <div>
                       <span className="font-semibold">原文:</span>{" "}
-                      {row.original}
+                      <span style={{ whiteSpace: "pre-wrap" }}>{row.original}</span>
                     </div>
                     {data.includeTranslation && (
-                      <div className="space-y-1 mt-1">
+                      <div className="space-y-1 mt-1" style={{ whiteSpace: "pre-wrap" }}>
                         {(row.translation ?? "")
                           .split(/(?<=。)|(?<=\. )/)
                           .map((s: string) => s.trim())

@@ -9,24 +9,46 @@ def _get_nlp():
         _nlp = spacy.load("en_core_web_sm")
     return _nlp
 
-# Clean up whitespace and normalize newlines.
-def normalize_text(text:str) -> str:
-    """Collapse non-breaking spaces, Windows line endings, and runs of whitespace into single spaces."""
-    text = text.replace("\u00a0", " ")
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
 
-    text = re.sub(r"\s+", " ", text)
+# Matches a single multiple-choice option marker, e.g. "(A)", "（B）", "C.", "D)".
+# Covers bracketed forms anywhere, and letter+delimiter forms at a word boundary.
+_OPTION_MARKER = re.compile(
+    r"[(（\[]\s*[A-Ja-j]\s*[)）\]]"
+    r"|(?:^|\s)[A-Ja-j][.．。、)](?=\s|$)"
+)
 
-    return text.strip()
+# Matches an option marker sitting at the very start of a line (e.g. "A.", "(B)").
+_OPTION_LINE_START = re.compile(r"^[(（\[]?\s*[A-Ja-j]\s*[)）\].．。、]")
+
+
+# Split one prose line into sentences, keeping leading numeric labels attached.
+def _split_line(nlp, line: str, pending: str = "") -> tuple[list[str], str]:
+    """Run spaCy sentence detection on a single line. A fragment with no letters
+    (e.g. a question number like "114.") is held and prepended to the next real
+    sentence. The remaining fragment is returned so it can cross a line break."""
+    out: list[str] = []
+    for sent in nlp(line).sents:
+        sentence = sent.text.strip()
+        if not sentence:
+            continue
+        if re.search(r"[a-zA-Z]", sentence):
+            out.append(f"{pending} {sentence}".strip() if pending else sentence)
+            pending = ""
+        else:
+            # Numeric / punctuation-only fragment: carry it to the next sentence.
+            pending = f"{pending} {sentence}".strip()
+    return out, pending
 
 
 # Split a block of text into sentences using spaCy.
 def split_sentences(text: str) -> list[str]:
-    """Return a list of non-empty sentences from `text` using spaCy's sentence boundary detection.
+    """Return a list of non-empty sentences from `text` using spaCy's sentence
+    boundary detection.
 
     Preserves paragraph structure by treating each newline-delimited line as a
     separate unit before running spaCy, so quoted paragraphs are not merged.
-    Filters out trivial tokens (pure punctuation / ellipsis) that carry no text.
+    Multiple-choice option rows ("(A) ... (B) ...") are kept intact and merged
+    into the preceding question stem so the whole question stays one unit.
     """
     if not text:
         return []
@@ -39,14 +61,52 @@ def split_sentences(text: str) -> list[str]:
     lines = [re.sub(r" +", " ", ln.strip()) for ln in text.splitlines() if ln.strip()]
 
     nlp = _get_nlp()
-    sentences = []
+    sentences: list[str] = []
+    pending = ""
 
     for line in lines:
-        doc = nlp(line)
-        for sent in doc.sents:
-            sentence = sent.text.strip()
-            # Skip tokens that contain no word characters (e.g. bare "\u2026" or "...").
-            if sentence and re.search(r"[a-zA-Z]", sentence):
-                sentences.append(sentence)
+        option_markers = list(_OPTION_MARKER.finditer(line))
+
+        if _OPTION_LINE_START.match(line):
+            # Attach the option row to the question stem above it (one card),
+            # unless a question label is waiting from the preceding line.
+            if pending:
+                sentences.append(f"{pending}\n{line}")
+                pending = ""
+            elif sentences:
+                sentences[-1] = f"{sentences[-1]}\n{line}"
+            else:
+                sentences.append(line)
+            continue
+
+        if len(option_markers) >= 2:
+            # A question stem followed by packed inline options is a new item,
+            # not an option-only row belonging to the preceding question.
+            first_marker = option_markers[0].start()
+            stem = line[:first_marker].rstrip()
+            options = line[first_marker:].strip()
+            stem_sentences, pending = _split_line(nlp, stem, pending)
+            sentences.extend(stem_sentences)
+            if pending and not re.search(r"\w", pending):
+                pending = ""
+
+            if pending:
+                sentences.append(f"{pending}\n{options}")
+                pending = ""
+            elif sentences:
+                sentences[-1] = f"{sentences[-1]}\n{options}"
+            else:
+                sentences.append(options)
+            continue
+
+        line_sentences, pending = _split_line(nlp, line, pending)
+        sentences.extend(line_sentences)
+        if pending and not re.search(r"\w", pending):
+            pending = ""
+
+    # Preserve a meaningful trailing number/label while continuing to discard
+    # punctuation-only fragments such as a bare ellipsis.
+    if pending and re.search(r"\w", pending):
+        sentences.append(pending)
 
     return sentences

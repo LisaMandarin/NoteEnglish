@@ -23,9 +23,28 @@ def _extract_usage(response) -> dict:
     }
 
 
+def _strip_echoed_indices(translations: list[str]) -> list[str]:
+    """Remove model-added list indices only when the whole batch has them.
+
+    Requiring at least two aligned prefixes and whitespace after each period
+    avoids treating legitimate values such as "0.5" as echoed indices.
+    """
+    if len(translations) < 2:
+        return translations
+
+    patterns = [re.compile(rf"^\s*{i}\.\s+") for i in range(len(translations))]
+    if not all(pattern.match(value) for pattern, value in zip(patterns, translations)):
+        return translations
+
+    return [
+        pattern.sub("", value, count=1)
+        for pattern, value in zip(patterns, translations)
+    ]
+
+
 def ai_translate_list(sentences: list[str], target_lang: str = "zh-TW", mode: str = "normal") -> tuple[list[str], dict]:
     if not sentences:
-        return []
+        return [], {"prompt_tokens": 0, "response_tokens": 0, "total_tokens": 0}
     
     # Adjust prompt style based on mode.
     style_hint = (
@@ -36,17 +55,18 @@ def ai_translate_list(sentences: list[str], target_lang: str = "zh-TW", mode: st
         "Avoid omitting subjects or connectors."
     )
 
-    # Build prompt with numbered sentences to keep order.
+    # JSON input keeps item boundaries without adding numeric prefixes that the
+    # model can accidentally copy into its translations.
+    input_json = json.dumps(sentences, ensure_ascii=False)
     prompt = (
         f"Translate each sentence into {target_lang}. "
         f"{style_hint}"
         "Return ONLY a JSON array of strings. "
         "The array length and order MUST match the input. "
+        "Preserve line breaks within each string. "
         "No explanation, no markdown.\n\n"
+        f"Input JSON array:\n{input_json}"
         )
-    
-    for i, s in enumerate(sentences):
-        prompt += f"{i}. {s}\n"
 
     try:
         response = client.models.generate_content(
@@ -81,11 +101,22 @@ def ai_translate_list(sentences: list[str], target_lang: str = "zh-TW", mode: st
             detail="Gemini output is not a JSON array."
         )
 
-    # Ensure output list matches input length.
-    fixed = []
-    for i in range(len(sentences)):
-        fixed.append(translations[i] if i < len(translations) else "")
-    return fixed, usage
+    if len(translations) != len(sentences):
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Gemini output length does not match input length: "
+                f"expected {len(sentences)}, got {len(translations)}."
+            )
+        )
+
+    if not all(isinstance(translation, str) for translation in translations):
+        raise HTTPException(
+            status_code=502,
+            detail="Gemini output array must contain only strings."
+        )
+
+    return _strip_echoed_indices(translations), usage
 
 # Collapse hard line wraps from print layouts: join single newlines within a
 # paragraph into spaces, keep blank lines as paragraph breaks, and rejoin
