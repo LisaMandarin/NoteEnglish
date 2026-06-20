@@ -11,7 +11,7 @@ const { Text } = Typography;
 export default function TranslationsList(): React.ReactElement {
   const {
     state: { sentences, saving, currentSession },
-    actions: { updateSentenceVocab, removeSentenceVocab, reorderSentenceVocab },
+    actions: { updateSentenceVocab, removeSentenceVocab, reorderSentenceVocab, updateSentenceNote },
   } = useTranslation();
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -73,6 +73,7 @@ export default function TranslationsList(): React.ReactElement {
             onDelete={removeSentenceVocab}
             onReorder={reorderSentenceVocab}
             onEdit={updateSentenceVocab}
+            onNoteChange={updateSentenceNote}
           />
         ))}
       </ol>

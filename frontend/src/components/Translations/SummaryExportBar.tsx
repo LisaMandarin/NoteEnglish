@@ -25,6 +25,7 @@ function collectVocab(sentences: Sentence[]): VocabItem[] {
 export default function SummaryExportBar({ sentences, sessionTitle }: { sentences: Sentence[]; sessionTitle: string }): React.ReactElement {
   const [includeTranslation, setIncludeTranslation] = useState(true);
   const [includeVocab, setIncludeVocab] = useState(true);
+  const [includeNote, setIncludeNote] = useState(true);
 
   function openVocabPrintWindow(): void {
     const vocab = collectVocab(sentences);
@@ -36,17 +37,19 @@ export default function SummaryExportBar({ sentences, sessionTitle }: { sentence
   }
 
   function openSummaryWindow() {
-    if (!includeTranslation && !includeVocab) return;
+    if (!includeTranslation && !includeVocab && !includeNote) return;
 
     const payload = {
       createdAt: Date.now(),
       sessionTitle,
       includeTranslation,
       includeVocab,
+      includeNote,
       rows: sentences.map((s, idx) => ({
         idx,
         original: s.original ?? "",
         translation: s.translation ?? "",
+        note: s.note ?? "",
         vocab: s.vocab ?? [],
       })),
     };
@@ -75,10 +78,18 @@ export default function SummaryExportBar({ sentences, sessionTitle }: { sentence
           單字筆記
         </Checkbox>
       </div>
+      <div className="flex items-center">
+        <Checkbox
+          checked={includeNote}
+          onChange={(e) => setIncludeNote(e.target.checked)}
+        >
+          我的筆記
+        </Checkbox>
+      </div>
       <div>
         <Button
           icon={<PrinterOutlined />}
-          disabled={!includeTranslation && !includeVocab}
+          disabled={!includeTranslation && !includeVocab && !includeNote}
           onClick={openSummaryWindow}
           className="transition-colors"
         >

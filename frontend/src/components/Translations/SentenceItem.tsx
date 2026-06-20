@@ -1,5 +1,6 @@
-import { Typography } from "antd";
-import { SoundOutlined } from "@ant-design/icons";
+import { useState } from "react";
+import { Input, Typography } from "antd";
+import { FormOutlined, SoundOutlined } from "@ant-design/icons";
 import type { Sentence, VocabItem } from "../../types";
 import VocabCards from "../Vocab/VocabCards";
 import { speak } from "../../lib/speech";
@@ -39,6 +40,7 @@ export default function SentenceItem({
   onDelete,
   onReorder,
   onEdit,
+  onNoteChange,
 }: {
   sentence: Sentence;
   idx: number;
@@ -47,7 +49,26 @@ export default function SentenceItem({
   onDelete?: (sentenceIdx: number, lemma: string, pos: string) => void;
   onReorder?: (sentenceIdx: number, newVocab: VocabItem[]) => void;
   onEdit?: (sentenceIdx: number, vocabItem: VocabItem) => void;
+  onNoteChange?: (sentenceIdx: number, note: string) => void;
 }): React.ReactElement {
+  const note = sentence.note ?? "";
+  const hasNote = note.trim().length > 0;
+  const [editingNote, setEditingNote] = useState(false);
+  const [draftNote, setDraftNote] = useState(note);
+
+  function openNoteEditor(): void {
+    setDraftNote(note);
+    setEditingNote(true);
+  }
+
+  function saveNote(): void {
+    setEditingNote(false);
+    const next = draftNote.trim();
+    if (next !== note.trim()) {
+      onNoteChange?.(idx, next);
+    }
+  }
+
   return (
     <li data-idx={idx} className="flex flex-col gap-1 sm:flex-row sm:gap-4">
       <div className="w-7 h-7 rounded-full bg-(--accent) text-white flex items-center justify-center shrink-0 font-bold text-sm sm:mt-0.5">
@@ -55,7 +76,7 @@ export default function SentenceItem({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex flex-row items-baseline gap-2">
-          <div>
+          <div className="flex flex-col items-center gap-2">
             <button
               type="button"
               onClick={() => speak(sentence.original)}
@@ -64,8 +85,19 @@ export default function SentenceItem({
             >
               <SoundOutlined />
             </button>
+            <button
+              type="button"
+              onClick={openNoteEditor}
+              className={`transition-colors cursor-pointer hover:text-(--accent) ${
+                hasNote ? "text-(--accent)" : "text-gray-400"
+              }`}
+              aria-label="Add note"
+              title="自訂筆記"
+            >
+              <FormOutlined />
+            </button>
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <span className="lookup-original-text" data-original-text="true">
               <Text strong style={{ fontSize: "1.25rem", whiteSpace: "pre-wrap" }}>
                 {renderOriginalText(sentence.original, selectedRange)}
@@ -76,6 +108,28 @@ export default function SentenceItem({
                 {sentence.translation}
               </Text>
             </div>
+
+            {editingNote ? (
+              <div className="mt-2">
+                <Input.TextArea
+                  value={draftNote}
+                  onChange={(e) => setDraftNote(e.target.value)}
+                  onBlur={saveNote}
+                  autoFocus
+                  autoSize={{ minRows: 2 }}
+                  placeholder="輸入筆記…（換行會原樣顯示）"
+                />
+              </div>
+            ) : (
+              hasNote && (
+                <div
+                  onClick={openNoteEditor}
+                  className="mt-2 cursor-text rounded-md border border-(--card-border) bg-(--card-bg) px-3 py-2"
+                >
+                  <Text style={{ whiteSpace: "pre-wrap" }}>{note}</Text>
+                </div>
+              )
+            )}
           </div>
         </div>
 

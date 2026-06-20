@@ -29,6 +29,7 @@ type Action =
   | { type: "update_sentence_vocab"; payload: { sentenceIdx: number; vocabItem: VocabItem } }
   | { type: "remove_sentence_vocab"; payload: { sentenceIdx: number; lemma: string; pos: string } }
   | { type: "reorder_sentence_vocab"; payload: { sentenceIdx: number; newVocab: VocabItem[] } }
+  | { type: "update_sentence_note"; payload: { sentenceIdx: number; note: string } }
   | { type: "update_current_session_title"; payload: string };
 
 type TranslationActions = {
@@ -39,6 +40,7 @@ type TranslationActions = {
   updateSentenceVocab: (sentenceIdx: number, vocabItem: VocabItem) => Promise<void>;
   removeSentenceVocab: (sentenceIdx: number, lemma: string, pos: string) => Promise<void>;
   reorderSentenceVocab: (sentenceIdx: number, newVocab: VocabItem[]) => Promise<void>;
+  updateSentenceNote: (sentenceIdx: number, note: string) => Promise<void>;
   updateCurrentSessionTitle: (title: string) => void;
 };
 
@@ -224,6 +226,16 @@ function reducer(state: AppState, action: Action): AppState {
       const s = nextSentences[sentenceIdx];
       if (!s) return state;
       nextSentences[sentenceIdx] = { ...s, vocab: newVocab };
+      return { ...state, sentences: nextSentences, saveError: "", updatedAt: null };
+    }
+
+    case "update_sentence_note": {
+      const { sentenceIdx, note } = action.payload;
+      if (sentenceIdx == null) return state;
+      const nextSentences = [...state.sentences];
+      const s = nextSentences[sentenceIdx];
+      if (!s) return state;
+      nextSentences[sentenceIdx] = { ...s, note };
       return { ...state, sentences: nextSentences, saveError: "", updatedAt: null };
     }
 
@@ -469,6 +481,25 @@ export function TranslationProvider({ children }: { children: React.ReactNode })
       });
     }
 
+    async function updateSentenceNote(sentenceIdx: number, note: string): Promise<void> {
+      if (sentenceIdx == null) return;
+      const s = state.sentences[sentenceIdx];
+      if (!s) return;
+
+      const nextSentences = state.sentences.map((sentence, idx) =>
+        idx === sentenceIdx ? { ...sentence, note } : sentence
+      );
+
+      dispatch({ type: "update_sentence_note", payload: { sentenceIdx, note } });
+
+      await saveGeneratedProgress({
+        text: state.text,
+        sentences: nextSentences,
+        dispatch,
+        existingSession: state.currentSession,
+      });
+    }
+
     function updateCurrentSessionTitle(title: string): void {
       dispatch({ type: "update_current_session_title", payload: title });
     }
@@ -481,6 +512,7 @@ export function TranslationProvider({ children }: { children: React.ReactNode })
       updateSentenceVocab,
       removeSentenceVocab,
       reorderSentenceVocab,
+      updateSentenceNote,
       updateCurrentSessionTitle,
     };
   }, [state.currentSession, state.text, state.sentences]);

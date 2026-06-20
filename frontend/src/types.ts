@@ -17,6 +17,7 @@ export type Sentence = {
   original: string;
   translation: string;
   vocab: VocabItem[];
+  note?: string;
 };
 
 export type Session = {

@@ -154,7 +154,7 @@ def get_session_detail(user_id: str, session_id: str) -> dict:
         {
             "session_id": f"eq.{session_id}",
             "user_id": f"eq.{user_id}",
-            "select": "sentence_index,original_text,translated_text",
+            "select": "sentence_index,original_text,translated_text,note",
             "order": "sentence_index.asc",
         }
     )
@@ -210,6 +210,7 @@ def get_session_detail(user_id: str, session_id: str) -> dict:
             "id": idx,
             "original": sentence["original_text"],
             "translation": sentence["translated_text"],
+            "note": sentence.get("note") or "",
             "vocab": merged_vocab,
         })
 
@@ -263,6 +264,7 @@ def _insert_session_children(user_id: str, session_id: str, sentences: list[dict
             "sentence_index": idx,
             "original_text": sentence.get("original", ""),
             "translated_text": sentence.get("translation", ""),
+            "note": sentence.get("note", "") or "",
         }
         for idx, sentence in enumerate(sentences)
     ]

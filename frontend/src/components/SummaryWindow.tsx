@@ -9,6 +9,7 @@ type SummaryRow = {
   idx: number;
   original: string;
   translation: string;
+  note?: string;
   vocab: VocabItem[];
 };
 
@@ -17,6 +18,7 @@ type SummaryData = {
   sessionTitle?: string;
   includeTranslation: boolean;
   includeVocab: boolean;
+  includeNote?: boolean;
   rows: SummaryRow[];
 };
 
@@ -37,6 +39,7 @@ export default function SummaryWindow() {
     const parts = ["原文"];
     if (data.includeTranslation) parts.push("翻譯");
     if (data.includeVocab) parts.push("單字筆記");
+    if (data.includeNote) parts.push("我的筆記");
     return parts.join(" + ");
   }, [data]);
 
@@ -97,6 +100,15 @@ export default function SummaryWindow() {
                       </div>
                     )}
                   </div>
+
+                  {data.includeNote && (row.note ?? "").trim() && (
+                    <div className="mt-3">
+                      <div className="font-semibold">我的筆記:</div>
+                      <div className="mt-1" style={{ whiteSpace: "pre-wrap" }}>
+                        {row.note}
+                      </div>
+                    </div>
+                  )}
 
                   {data.includeVocab &&
                     (() => {

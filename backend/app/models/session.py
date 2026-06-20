@@ -21,6 +21,7 @@ class SessionSentence(BaseModel):
     original: str
     translation: str
     vocab: list[SessionVocabItem] = Field(default_factory=list)
+    note: str = ""
 
 
 class SaveSessionRequest(BaseModel):
