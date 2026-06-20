@@ -21,17 +21,17 @@ type SidebarButtonConfig = {
 const SIDEBAR_BUTTONS: SidebarButtonConfig[] = [
   {
     key: "profile",
-    ariaLabel: (username: string) => `${username} profile`,
+    ariaLabel: (username: string) => `${username} 個人檔案`,
     icon: UserOutlined,
   },
   {
     key: "settings",
-    ariaLabel: () => "Settings",
+    ariaLabel: () => "設定",
     icon: SettingOutlined,
   },
   {
     key: "history",
-    ariaLabel: () => "Session history folders",
+    ariaLabel: () => "歷史學習紀錄",
     icon: FolderOpenOutlined,
   },
 ];
