@@ -67,7 +67,7 @@ export default function SummaryExportBar({ sentences, sessionTitle }: { sentence
           checked={includeTranslation}
           onChange={(e) => setIncludeTranslation(e.target.checked)}
         >
-          翻譯
+          中文翻譯
         </Checkbox>
       </div>
       <div className="flex items-center">

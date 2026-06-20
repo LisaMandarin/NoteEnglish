@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Input, Typography } from "antd";
+import { Input, Tooltip, Typography } from "antd";
 import { FormOutlined, SoundOutlined } from "@ant-design/icons";
 import type { Sentence, VocabItem } from "../../types";
 import VocabCards from "../Vocab/VocabCards";
@@ -85,17 +85,18 @@ export default function SentenceItem({
             >
               <SoundOutlined />
             </button>
-            <button
-              type="button"
-              onClick={openNoteEditor}
-              className={`transition-colors cursor-pointer hover:text-(--accent) ${
-                hasNote ? "text-(--accent)" : "text-gray-400"
-              }`}
-              aria-label="Add note"
-              title="自訂筆記"
-            >
-              <FormOutlined />
-            </button>
+            <Tooltip title="自訂筆記">
+              <button
+                type="button"
+                onClick={openNoteEditor}
+                className={`transition-colors cursor-pointer hover:text-(--accent) ${
+                  hasNote ? "text-(--accent)" : "text-gray-400"
+                }`}
+                aria-label="Add note"
+              >
+                <FormOutlined />
+              </button>
+            </Tooltip>
           </div>
           <div className="min-w-0 flex-1">
             <span className="lookup-original-text" data-original-text="true">
