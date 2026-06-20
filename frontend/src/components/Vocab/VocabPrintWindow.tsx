@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Button } from "antd";
 import type { VocabItem } from "../../types";
 
@@ -84,6 +84,10 @@ const CARDS_PER_PAGE = 12;
 
 export default function VocabPrintWindow(): React.ReactElement {
   const data = useMemo(() => readVocabPrintData(), []);
+
+  useEffect(() => {
+    document.title = data?.sessionTitle?.trim().slice(0, 25) || "NoteEnglish 單字卡";
+  }, [data]);
 
   const pages = useMemo(() => {
     if (!data?.vocab?.length) return [];
