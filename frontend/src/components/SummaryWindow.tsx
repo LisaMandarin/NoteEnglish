@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { Button, Typography } from "antd";
 import type { VocabItem } from "../types";
-import { VocabCard } from "./VocabCards";
+import { VocabCard } from "./Vocab/VocabCards";
 
 const { Text } = Typography;
 

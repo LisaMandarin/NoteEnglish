@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { VocabItem } from "../types";
+import type { VocabItem } from "../../types";
 import { CheckOutlined, DeleteTwoTone, EditTwoTone, MinusCircleOutlined, PlusCircleOutlined, QuestionCircleOutlined, SoundOutlined } from '@ant-design/icons';
-import { speak } from "../lib/speech";
+import { speak } from "../../lib/speech";
 import { Modal, Tooltip } from 'antd';
 import {
   DndContext,

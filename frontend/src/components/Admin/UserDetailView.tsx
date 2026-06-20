@@ -1,7 +1,7 @@
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { Button, Tag, Typography } from "antd";
-import type { AdminUser } from "../lib/api";
-import TokenUsageView from "./TokenUsageView";
+import type { AdminUser } from "../../lib/api";
+import TokenUsageView from "../shared/TokenUsageView";
 
 const { Text } = Typography;
 

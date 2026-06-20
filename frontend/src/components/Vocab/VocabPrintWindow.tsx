@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Button } from "antd";
-import type { VocabItem } from "../types";
+import type { VocabItem } from "../../types";
 
 type VocabPrintData = {
   sessionTitle?: string;

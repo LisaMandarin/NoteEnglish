@@ -1,10 +1,10 @@
 import { useState } from "react";
 import AppTitle from "./AppTitle";
 import AppTextarea from "./AppTextarea";
-import TranslationsList from "./TranslationsList";
+import TranslationsList from "../Translations";
 import TipBox from "./TipBox";
-import TokenUsageView from "./TokenUsageView";
-import { useTranslation } from "../context/translationContext";
+import TokenUsageView from "../shared/TokenUsageView";
+import { useTranslation } from "../../context/translationContext";
 
 export default function AppMainSection({
   mainView,

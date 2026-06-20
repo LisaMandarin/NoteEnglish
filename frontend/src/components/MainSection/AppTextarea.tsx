@@ -1,10 +1,10 @@
 import { useRef, useState } from "react"
 import { Typography, Input, Button, Alert, Modal } from "antd"
-import { useTranslation } from "../context/translationContext"
-import { formatUpdatedAt } from "../lib/formatUpdatedAt"
-import { ocrImage } from "../lib/api"
-import { fileToCompressedBase64 } from "../lib/image"
-import sampleArticles from "../data/sampleArticles"
+import { useTranslation } from "../../context/translationContext"
+import { formatUpdatedAt } from "../../lib/formatUpdatedAt"
+import { ocrImage } from "../../lib/api"
+import { fileToCompressedBase64 } from "../../lib/image"
+import sampleArticles from "../../data/sampleArticles"
 const { Text } = Typography
 const { TextArea } = Input
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button, Checkbox } from "antd";
 import { PrinterOutlined } from "@ant-design/icons";
-import type { Sentence, VocabItem } from "../types";
+import type { Sentence, VocabItem } from "../../types";
 
 function collectVocab(sentences: Sentence[]): VocabItem[] {
   const seen = new Set<string>();

@@ -5,8 +5,8 @@ import { Button } from "antd";
 import AdminSidebar from "./AdminSidebar";
 import UserDetailView from "./UserDetailView";
 import UserManagementView from "./UserManagementView";
-import { checkAdminAccess, listAdminUsers } from "../lib/api";
-import type { AdminUser } from "../lib/api";
+import { checkAdminAccess, listAdminUsers } from "../../lib/api";
+import type { AdminUser } from "../../lib/api";
 
 type AdminView = "overview" | "profile" | "management";
 

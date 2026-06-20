@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Result, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { listAdminUsers } from "../lib/api";
-import type { AdminUser } from "../lib/api";
+import { listAdminUsers } from "../../lib/api";
+import type { AdminUser } from "../../lib/api";
 
 const { Text } = Typography;
 

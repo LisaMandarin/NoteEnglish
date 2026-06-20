@@ -1,8 +1,8 @@
 import { Typography } from "antd";
 import { SoundOutlined } from "@ant-design/icons";
-import type { Sentence, VocabItem } from "../types";
-import VocabCards from "./VocabCards";
-import { speak } from "../lib/speech";
+import type { Sentence, VocabItem } from "../../types";
+import VocabCards from "../Vocab/VocabCards";
+import { speak } from "../../lib/speech";
 const { Text } = Typography;
 
 type SelectedRange = {

@@ -1,9 +1,9 @@
 import { useRef } from "react";
 import { Typography } from "antd";
-import { useTranslation } from "../context/translationContext";
+import { useTranslation } from "../../context/translationContext";
 import SelectionMenu from "./SelectionMenu";
-import { useVocabLookup } from "../hooks/useVocabLookup";
-import { useSelectionMenu } from "../hooks/useSelectionMenu";
+import { useVocabLookup } from "../../hooks/useVocabLookup";
+import { useSelectionMenu } from "../../hooks/useSelectionMenu";
 import SentenceItem from "./SentenceItem";
 import SummaryExportBar from "./SummaryExportBar";
 const { Text } = Typography;

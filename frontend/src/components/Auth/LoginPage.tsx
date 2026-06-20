@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Input } from "antd";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../../lib/supabase";
 
 const PASSWORD_RULES_TEXT =
   "密碼只能使用英文字母和數字，且至少需要 6 個字元。";

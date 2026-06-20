@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button, Input } from "antd";
-import { supabase } from "../lib/supabase";
-import { checkAdminAccess } from "../lib/api";
+import { supabase } from "../../lib/supabase";
+import { checkAdminAccess } from "../../lib/api";
 
 export default function AdminLoginPage(): React.ReactElement {
   const [email, setEmail] = useState("");

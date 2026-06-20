@@ -9,8 +9,8 @@ import {
   YAxis,
 } from "recharts";
 import type { TooltipContentProps } from "recharts";
-import { getAdminUserTokenUsage, getTokenUsage } from "../lib/api";
-import type { TokenUsageData } from "../types";
+import { getAdminUserTokenUsage, getTokenUsage } from "../../lib/api";
+import type { TokenUsageData } from "../../types";
 
 const tokenNumberFormatter = new Intl.NumberFormat("zh-TW");
 const localHourFormatter = new Intl.DateTimeFormat("zh-TW", {

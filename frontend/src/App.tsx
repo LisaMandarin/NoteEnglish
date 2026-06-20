@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { TranslationProvider } from "./context/translationContext";
-import AppMainSection from "./components/AppMainSection";
+import AppMainSection from "./components/MainSection";
 import AppSidebar from "./components/AppSidebar";
 import SummaryWindow from "./components/SummaryWindow";
-import VocabPrintWindow from "./components/VocabPrintWindow";
-import LoginPage from "./components/LoginPage";
-import AdminLoginPage from "./components/AdminLoginPage";
-import AdminDashboard from "./components/AdminDashboard";
+import VocabPrintWindow from "./components/Vocab/VocabPrintWindow";
+import LoginPage from "./components/Auth/LoginPage";
+import AdminLoginPage from "./components/Auth/AdminLoginPage";
+import AdminDashboard from "./components/Admin";
 import { supabase } from "./lib/supabase";
 import { ensureProfile as ensureProfileApi } from "./lib/api";
 
