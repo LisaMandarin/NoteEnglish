@@ -1,3 +1,7 @@
+// Dependency-parse token from the backend POST /api/parse (spaCy):
+// token.text / token.dep_ / token.head.i. head = index of the governing token; ROOT points to itself.
+export type SyntaxToken = { text: string; dep: string; head: number };
+
 export type VocabItem = {
   text: string;
   lemma: string;

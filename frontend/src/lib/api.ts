@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { Sentence, SessionPage, TokenUsageData } from "../types";
+import type { Sentence, SessionPage, SyntaxToken, TokenUsageData } from "../types";
 
 type ApiSessionShape = {
   id: string;
@@ -89,6 +89,14 @@ export async function ocrImage(imageBase64: string, mimeType: string): Promise<{
 
 export async function getTokenUsage(): Promise<TokenUsageData> {
   return apiFetch("/api/usage") as Promise<TokenUsageData>;
+}
+
+export async function parseSentence(sentence: string): Promise<SyntaxToken[]> {
+  const res = (await apiFetch("/api/parse", {
+    method: "POST",
+    body: JSON.stringify({ sentence }),
+  })) as { tokens: SyntaxToken[] };
+  return res.tokens;
 }
 
 export async function getAdminUserTokenUsage(userId: string): Promise<TokenUsageData> {

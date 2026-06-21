@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Input, Tooltip, Typography } from "antd";
-import { FormOutlined, SoundOutlined } from "@ant-design/icons";
+import { ApartmentOutlined, FormOutlined, SoundOutlined } from "@ant-design/icons";
 import type { Sentence, VocabItem } from "../../types";
 import VocabCards from "../Vocab/VocabCards";
 import { speak } from "../../lib/speech";
+import { useSentenceStructure } from "../../hooks/useSentenceStructure";
+import SentenceStructure from "../SentenceStructure/SentenceStructure";
 const { Text } = Typography;
 
 type SelectedRange = {
@@ -55,6 +57,7 @@ export default function SentenceItem({
   const hasNote = note.trim().length > 0;
   const [editingNote, setEditingNote] = useState(false);
   const [draftNote, setDraftNote] = useState(note);
+  const structure = useSentenceStructure(sentence.original);
 
   function openNoteEditor(): void {
     setDraftNote(note);
@@ -97,6 +100,19 @@ export default function SentenceItem({
                 <FormOutlined />
               </button>
             </Tooltip>
+            <Tooltip title="句構分析">
+              <button
+                type="button"
+                onClick={structure.toggle}
+                className={`transition-colors cursor-pointer hover:text-(--accent) ${
+                  structure.visible ? "text-(--accent)" : "text-gray-400"
+                }`}
+                aria-label="Toggle sentence structure"
+                aria-pressed={structure.visible}
+              >
+                <ApartmentOutlined />
+              </button>
+            </Tooltip>
           </div>
           <div className="min-w-0 flex-1">
             <span className="lookup-original-text" data-original-text="true">
@@ -109,6 +125,26 @@ export default function SentenceItem({
                 {sentence.translation}
               </Text>
             </div>
+
+            {structure.visible && (
+              <div className="mt-2">
+                {structure.loading && (
+                  <Text type="secondary" style={{ fontSize: "0.8rem" }}>
+                    分析中…
+                  </Text>
+                )}
+                {structure.error && (
+                  <Text type="secondary" style={{ fontSize: "0.8rem" }}>
+                    句構分析失敗，請稍後再試
+                  </Text>
+                )}
+                {structure.tokens && (
+                  <div className="rounded-md border border-(--card-border) bg-(--card-bg) px-3 py-2">
+                    <SentenceStructure tokens={structure.tokens} />
+                  </div>
+                )}
+              </div>
+            )}
 
             {editingNote ? (
               <div className="mt-2">

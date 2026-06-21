@@ -10,6 +10,62 @@ def _get_nlp():
     return _nlp
 
 
+# In-memory cache of dependency parses keyed by the raw sentence. spaCy parsing
+# is deterministic, so a sentence always maps to the same tokens; the cache just
+# avoids re-running the pipeline. Resets on restart (same as the vocab cache).
+_PARSE_CACHE: dict[str, list[dict]] = {}
+
+# Leading question number, e.g. "120." / "12)" / "3、".
+_QUESTION_NUMBER = re.compile(r"^\s*\d+\s*[.)、．。]\s*")
+# Start of a multiple-choice option block, e.g. "(A)" / "（B）" / "[C]".
+_OPTION_BLOCK_START = re.compile(r"[(（\[]\s*[A-Ja-j]\s*[)）\]]")
+
+
+def _extract_stem(text: str) -> str:
+    """Return just the question stem: drop a leading question number and anything
+    from the first multiple-choice option marker onward. spaCy otherwise merges
+    the options into the sentence and mis-roots the dependency tree."""
+    match = _OPTION_BLOCK_START.search(text)
+    if match:
+        text = text[: match.start()]
+    text = _QUESTION_NUMBER.sub("", text, count=1)
+    return text.strip()
+
+
+def parse_dependencies(sentence: str) -> list[dict]:
+    """Dependency-parse the main clause of a sentence into {text, dep, head} dicts.
+
+    The input may be a test-style item with a leading question number and/or
+    trailing multiple-choice options (e.g. "114. <stem>. (A) ... (B) ..."). spaCy
+    splits that into several sentences, so we keep the main one — preferring a
+    sentence whose root is a (finite) verb, otherwise the longest — and re-index
+    its tokens to 0-based. head is then the local index of the governing token;
+    the ROOT token's head is itself. Shape matches the frontend SyntaxToken
+    contract (token.text / token.dep_ / token.head.i)."""
+    sentence = sentence.strip()
+    if not sentence:
+        return []
+    cached = _PARSE_CACHE.get(sentence)
+    if cached is not None:
+        return cached
+
+    doc = _get_nlp()(_extract_stem(sentence) or sentence)
+    sents = list(doc.sents)
+    if not sents:
+        _PARSE_CACHE[sentence] = []
+        return []
+
+    # If the stem still splits into multiple sentences, keep the main clause:
+    # prefer one whose root is a verb, otherwise the longest.
+    verbal = [s for s in sents if s.root.pos_ in ("VERB", "AUX")]
+    main = max(verbal or sents, key=len)
+
+    start = main.start
+    tokens = [{"text": t.text, "dep": t.dep_, "head": t.head.i - start} for t in main]
+    _PARSE_CACHE[sentence] = tokens
+    return tokens
+
+
 # Matches a single multiple-choice option marker, e.g. "(A)", "（B）", "C.", "D)".
 # Covers bracketed forms anywhere, and letter+delimiter forms at a word boundary.
 _OPTION_MARKER = re.compile(

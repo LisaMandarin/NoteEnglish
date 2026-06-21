@@ -15,6 +15,13 @@
   --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   /* Serif font for headings */
   --font-heading: "Playfair Display", serif;
+  /* Sentence-structure syntax-function colors (skeleton-fold view) */
+  --c-subj: #2f6db4;
+  --c-pred: #b5731a;
+  --c-comp: #137a5e;
+  --c-pp: #c0512c;
+  --c-conj: #6a5bb0;
+  --c-mod: #8a8780;
   color: var(--text-main);
 
   font-synthesis: none;
@@ -321,6 +328,110 @@ h1, h2, h3 {
 .vpc-dot-empty {
   border: 1px solid #aaa;
   background: transparent;
+}
+
+/* ── Sentence Structure (skeleton fold) ──────────────────────────────────────── */
+
+.syntax-skel {
+  line-height: 2.3;
+}
+
+.syntax-word {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  display: inline-block;
+  padding: 1px 2px;
+  border-radius: 4px;
+  color: var(--text-main);
+}
+.syntax-word.cat-subj { color: var(--c-subj); }
+.syntax-word.cat-pred { color: var(--c-pred); font-weight: 500; }
+.syntax-word.cat-comp { color: var(--c-comp); }
+.syntax-word.cat-pp { color: var(--c-pp); }
+.syntax-word.cat-conj { color: var(--c-conj); }
+.syntax-word.cat-mod { color: var(--text-main); }
+.syntax-word.cat-punct { color: color-mix(in srgb, var(--text-main) 40%, transparent); }
+
+.syntax-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  border: 1px dashed;
+  border-radius: 20px;
+  padding: 2px 11px 3px;
+  margin: 0 2px;
+  cursor: pointer;
+  vertical-align: middle;
+  background: transparent;
+  transition: background 0.12s;
+}
+.syntax-pill__dep {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10px;
+  opacity: 0.85;
+}
+.syntax-pill__preview {
+  color: color-mix(in srgb, var(--text-main) 55%, transparent);
+  font-size: 12px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.syntax-pill.cat-pp { border-color: var(--c-pp); color: var(--c-pp); }
+.syntax-pill.cat-conj { border-color: var(--c-conj); color: var(--c-conj); }
+.syntax-pill.cat-mod { border-color: var(--c-mod); color: var(--c-mod); }
+.syntax-pill.cat-pp:hover { background: color-mix(in srgb, var(--c-pp) 8%, var(--card-bg)); }
+.syntax-pill.cat-conj:hover { background: color-mix(in srgb, var(--c-conj) 8%, var(--card-bg)); }
+.syntax-pill.cat-mod:hover { background: color-mix(in srgb, var(--c-mod) 8%, var(--card-bg)); }
+
+.syntax-group {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  border-radius: 8px;
+  padding: 0 2px;
+  margin: 0 1px;
+  vertical-align: middle;
+  border: 1px solid transparent;
+}
+.syntax-group.cat-pp {
+  color: var(--c-pp);
+  border-color: color-mix(in srgb, var(--c-pp) 35%, transparent);
+  background: color-mix(in srgb, var(--c-pp) 6%, var(--card-bg));
+}
+.syntax-group.cat-conj {
+  color: var(--c-conj);
+  border-color: color-mix(in srgb, var(--c-conj) 35%, transparent);
+  background: color-mix(in srgb, var(--c-conj) 6%, var(--card-bg));
+}
+.syntax-group.cat-mod {
+  color: var(--c-mod);
+  border-color: color-mix(in srgb, var(--c-mod) 35%, transparent);
+  background: color-mix(in srgb, var(--c-mod) 7%, var(--card-bg));
+}
+
+.syntax-close {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10px;
+  cursor: pointer;
+  padding: 0 5px;
+  align-self: center;
+  opacity: 0.7;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+.syntax-close:hover {
+  opacity: 1;
+}
+
+.syntax-pill:focus-visible,
+.syntax-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 @media print {

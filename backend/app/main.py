@@ -9,6 +9,7 @@ from app.routes.test import router as test_router
 from app.routes.usage import router as usage_router
 from app.routes.admin import router as admin_router
 from app.routes.ocr import router as ocr_router
+from app.routes.parse import router as parse_router
 from app.core.config import settings
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -35,3 +36,4 @@ app.include_router(test_router, prefix="/api")
 app.include_router(usage_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(ocr_router, prefix="/api")
+app.include_router(parse_router, prefix="/api")

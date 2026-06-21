@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>句句通 · 句構分析</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FBFAF6; --ink:#23211C; --muted:#6B6760; --faint:#9C988F;
+    --line:#E6E2D8; --line2:#D8D3C7; --card:#FFFFFF;
+    --c-subj:#2F6DB4; --c-pred:#B5731A; --c-comp:#137A5E;
+    --c-pp:#C0512C;   --c-conj:#6A5BB0; --c-mod:#8A8780;
+    --serif:'Newsreader',Georgia,serif;
+    --sans:'Noto Sans TC',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+    --r:8px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --paper:#16150F; --ink:#ECE9E0; --muted:#A6A299; --faint:#74716A;
+      --line:#2E2C24; --line2:#3A3830; --card:#1E1C16;
+      --c-subj:#6FA8E0; --c-pred:#E3A24E; --c-comp:#46BF98;
+      --c-pp:#E58559;   --c-conj:#A294E0; --c-mod:#9F9B91;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--paper); color:var(--ink); font-family:var(--sans);
+    line-height:1.6; -webkit-font-smoothing:antialiased; padding:28px 18px 60px;
+  }
+  .wrap{max-width:860px;margin:0 auto}
+  header{border-bottom:1px solid var(--line2);padding-bottom:18px;margin-bottom:22px}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--c-pred);margin:0 0 6px}
+  h1{font-family:var(--serif);font-weight:500;font-size:30px;letter-spacing:-.01em;margin:0 0 8px;line-height:1.15}
+  .lede{color:var(--muted);font-size:14.5px;max-width:600px;margin:0}
+  .lede b{color:var(--ink);font-weight:500}
+
+  .controls{margin:22px 0 6px}
+  .ctl-label{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin:0 0 8px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .sbtn{
+    border:1px solid var(--line2);background:var(--card);color:var(--ink);
+    border-radius:var(--r);padding:9px 13px;cursor:pointer;text-align:left;
+    font-family:var(--sans);transition:border-color .15s,background .15s;max-width:100%;
+  }
+  .sbtn:hover{border-color:var(--c-subj)}
+  .sbtn .num{font-family:var(--mono);font-size:11px;color:var(--faint);display:block}
+  .sbtn .feat{font-size:12.5px;color:var(--muted);display:block;margin-top:2px}
+  .sbtn.on{border-color:var(--c-subj);background:color-mix(in srgb,var(--c-subj) 9%,var(--card))}
+  .sbtn.on .num{color:var(--c-subj)}
+
+  .modebar{display:flex;gap:4px;margin-top:18px;background:color-mix(in srgb,var(--ink) 5%,var(--paper));border:1px solid var(--line);border-radius:10px;padding:4px;width:fit-content;max-width:100%;flex-wrap:wrap}
+  .mbtn{border:0;background:transparent;color:var(--muted);font-family:var(--sans);font-size:13.5px;padding:8px 14px;border-radius:7px;cursor:pointer;white-space:nowrap}
+  .mbtn.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06);font-weight:500}
+
+  .sentence{font-family:var(--serif);font-size:19px;line-height:1.7;margin:24px 0 8px;color:var(--ink)}
+  .sentence .w{transition:color .12s}
+
+  .legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:14px 0 4px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r);background:var(--card)}
+  .lg{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted)}
+  .lg i{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+  .stage{margin-top:18px;border:1px solid var(--line);border-radius:12px;background:var(--card);padding:20px 18px;overflow:auto}
+  .hint{font-size:12.5px;color:var(--faint);margin:10px 2px 0;font-family:var(--sans)}
+  .hint code{font-family:var(--mono);font-size:11.5px;background:color-mix(in srgb,var(--ink) 7%,var(--paper));padding:1px 5px;border-radius:4px}
+
+  /* token chip shared */
+  .tok{display:inline-flex;flex-direction:column;align-items:flex-start;gap:1px;
+    padding:4px 9px 5px;border-radius:6px;line-height:1.15}
+  .tok .en{font-family:var(--serif);font-size:16px;color:var(--ink)}
+  .tok .dp{font-family:var(--mono);font-size:10px;letter-spacing:.02em}
+  .tok .zh{font-size:11px;color:var(--muted)}
+  .cat-subj{background:color-mix(in srgb,var(--c-subj) 13%,var(--card))} .cat-subj .dp{color:var(--c-subj)}
+  .cat-pred{background:color-mix(in srgb,var(--c-pred) 15%,var(--card))} .cat-pred .dp{color:var(--c-pred)}
+  .cat-comp{background:color-mix(in srgb,var(--c-comp) 13%,var(--card))} .cat-comp .dp{color:var(--c-comp)}
+  .cat-pp{background:color-mix(in srgb,var(--c-pp) 13%,var(--card))} .cat-pp .dp{color:var(--c-pp)}
+  .cat-conj{background:color-mix(in srgb,var(--c-conj) 14%,var(--card))} .cat-conj .dp{color:var(--c-conj)}
+  .cat-mod{background:color-mix(in srgb,var(--c-mod) 14%,var(--card))} .cat-mod .dp{color:var(--c-mod)}
+  .cat-punct{opacity:.5}
+
+  /* A: tree */
+  .tree{font-size:0}
+  .trow{display:flex;align-items:stretch;margin:3px 0}
+  .guides{display:flex;flex-shrink:0}
+  .guide{width:22px;position:relative}
+  .guide.v::before{content:"";position:absolute;left:10px;top:0;bottom:0;border-left:1px solid var(--line2)}
+  .guide.b::before{content:"";position:absolute;left:10px;top:0;bottom:0;border-left:1px solid var(--line2)}
+  .guide.b::after{content:"";position:absolute;left:10px;top:50%;width:11px;border-top:1px solid var(--line2)}
+  .guide.l::before{content:"";position:absolute;left:10px;top:0;height:50%;border-left:1px solid var(--line2)}
+  .guide.l::after{content:"";position:absolute;left:10px;top:50%;width:11px;border-top:1px solid var(--line2)}
+  .trow .tok{margin:1px 0}
+
+  /* B: arcs */
+  .arcbox{position:relative;min-width:100%;padding-top:4px}
+  .arcwords{display:flex;gap:0;white-space:nowrap;position:relative;z-index:1}
+  .arcwords .aw{display:inline-flex;flex-direction:column;align-items:center;padding:0 11px}
+  .arcwords .aw .en{font-family:var(--serif);font-size:16px}
+  .arcwords .aw .dp{font-family:var(--mono);font-size:9.5px;margin-top:2px}
+  .arcsvg{position:absolute;left:0;top:0;z-index:0;overflow:visible}
+  .arclabel{font-family:var(--mono);font-size:9.5px;fill:var(--muted)}
+
+  /* C: skeleton */
+  .skel{font-size:0;line-height:2.4}
+  .skel .word{font-family:var(--serif);font-size:18px;display:inline-block;padding:2px 3px;border-radius:4px;color:var(--ink)}
+  .skel .word.c-subj{color:var(--c-subj)} .skel .word.c-pred{color:var(--c-pred);font-weight:500}
+  .skel .word.c-comp{color:var(--c-comp)} .skel .word.c-pp{color:var(--c-pp)}
+  .skel .word.c-conj{color:var(--c-conj)} .skel .word.c-mod{color:var(--ink)} .skel .word.c-punct{color:var(--faint)}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--sans);font-size:13px;
+    border:1px dashed;border-radius:20px;padding:2px 11px 3px;margin:0 2px;cursor:pointer;
+    vertical-align:middle;background:transparent;transition:background .12s}
+  .pill .pdp{font-family:var(--mono);font-size:10px;opacity:.8}
+  .pill .ppv{color:var(--muted);font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pill.open{border-style:solid}
+  .pill.pp{border-color:var(--c-pp);color:var(--c-pp)} .pill.pp.open{background:color-mix(in srgb,var(--c-pp) 8%,var(--card))}
+  .pill.mod{border-color:var(--c-mod);color:var(--c-mod)} .pill.mod.open{background:color-mix(in srgb,var(--c-mod) 8%,var(--card))}
+  .pill.conj{border-color:var(--c-conj);color:var(--c-conj)} .pill.conj.open{background:color-mix(in srgb,var(--c-conj) 8%,var(--card))}
+  .grp{display:inline-flex;align-items:center;flex-wrap:wrap;gap:0;border-radius:8px;padding:0 2px;margin:0 1px;
+    vertical-align:middle;border:1px solid transparent}
+  .grp.pp{border-color:color-mix(in srgb,var(--c-pp) 35%,transparent);background:color-mix(in srgb,var(--c-pp) 6%,var(--card))}
+  .grp.mod{border-color:color-mix(in srgb,var(--c-mod) 35%,transparent);background:color-mix(in srgb,var(--c-mod) 7%,var(--card))}
+  .grp.conj{border-color:color-mix(in srgb,var(--c-conj) 35%,transparent);background:color-mix(in srgb,var(--c-conj) 6%,var(--card))}
+  .grp .gclose{font-family:var(--mono);font-size:10px;cursor:pointer;padding:0 5px;align-self:center;opacity:.7}
+  .toolbar{display:flex;gap:8px;margin-bottom:14px}
+  .tb{font-family:var(--sans);font-size:12.5px;border:1px solid var(--line2);background:var(--card);color:var(--muted);border-radius:6px;padding:5px 10px;cursor:pointer}
+  .tb:hover{color:var(--ink);border-color:var(--c-subj)}
+
+  @media print{
+    body{padding:0} .controls,.modebar,.toolbar,.hint{display:none}
+    .stage{border:0;overflow:visible}
+    .pill{display:none!important}
+    .grp.collapsed .grpfull{display:inline!important}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="kicker">句句通 NoteEnglish · 句構分析</p>
+    <h1>一份依存標註，三種視圖</h1>
+    <p class="lede">同一句的語法骨架與修飾關係，用三種方式呈現給<b>進階學習者</b>：分層樹看層次、依存弧線看連結、骨架摺疊先抓主幹再逐層展開。顏色固定對應句子成分——這套色彩分類在三種模式裡都不變。</p>
+  </header>
+
+  <div class="controls">
+    <p class="ctl-label">選擇句子</p>
+    <div class="chips" id="sentPicker"></div>
+  </div>
+
+  <div class="modebar" id="modebar">
+    <button class="mbtn on" data-mode="tree">分層樹</button>
+    <button class="mbtn" data-mode="arc">依存弧線</button>
+    <button class="mbtn" data-mode="skel">骨架摺疊</button>
+  </div>
+
+  <p class="sentence" id="sentence"></p>
+
+  <div class="legend" id="legend"></div>
+
+  <div class="stage" id="stage"></div>
+  <p class="hint" id="hint"></p>
+</div>
+
+<script>
+/* ---------- 依存標籤 → 繁中 + 分類 ---------- */
+const DEP = {
+  ROOT:['主要動詞','pred'], nsubj:['主詞','subj'], nsubjpass:['被動主詞','subj'],
+  csubj:['子句主詞','subj'], expl:['形式主詞','subj'],
+  aux:['助動詞','pred'], auxpass:['被動助動詞','pred'], cop:['連繫動詞','pred'],
+  attr:['主詞補語(名詞)','comp'], acomp:['主詞補語(形容詞)','comp'], dobj:['受詞','comp'],
+  dative:['間接受詞','comp'], oprd:['受詞補語','comp'], ccomp:['子句補語','comp'], xcomp:['開放補語','comp'],
+  pcomp:['介詞補語(子句)','comp'],
+  prep:['介系詞','pp'], pobj:['介系詞受詞','pp'], agent:['動作者 by','pp'], case:['所有格標記','pp'],
+  det:['限定詞','mod'], amod:['形容詞修飾','mod'], advmod:['副詞修飾','mod'], nummod:['數量修飾','mod'],
+  npadvmod:['名詞作副詞','mod'], poss:['所有格','mod'], compound:['複合名詞','mod'], neg:['否定詞','mod'],
+  mark:['從屬連接詞','mod'], advcl:['副詞子句','mod'], acl:['名詞後位子句','mod'], relcl:['關係子句','mod'],
+  appos:['同位語','mod'], prt:['動詞質詞','mod'], punct:['標點','punct'],
+  cc:['對等連接詞','conj'], conj:['對等成分','conj'], preconj:['前置關聯詞','conj']
+};
+const CAT_ZH={subj:'主詞',pred:'述語/動詞',comp:'受詞/補語',pp:'介系詞結構',conj:'並列',mod:'修飾語'};
+const CAT_VAR={subj:'--c-subj',pred:'--c-pred',comp:'--c-comp',pp:'--c-pp',conj:'--c-conj',mod:'--c-mod'};
+function depZh(d){return (DEP[d]||[d,'mod'])[0];}
+function cat(d){return (DEP[d]||[d,'mod'])[1];}
+
+/* 骨架核心關係（其餘為可摺疊修飾） */
+const CORE=new Set(['ROOT','nsubj','nsubjpass','csubj','csubjpass','expl','aux','auxpass','cop',
+ 'dobj','dative','attr','acomp','oprd','prt','neg','det','poss','amod','nummod','advmod','compound',
+ 'case','punct','cc','preconj','pobj','mark','npadvmod']);
+
+/* ---------- 句子資料 [text, dep, head] ---------- */
+const SENTS=[
+ {feat:'形式主詞 + 雙層時間從句', toks:[
+  ['It','nsubj',2],['has','aux',2],['been','ROOT',2],['18','nummod',4],['months','attr',2],
+  ['since','mark',9],['the','det',8],['United','compound',8],['States','nsubj',9],['reopened','advcl',2],
+  ['its','poss',11],['embassy','dobj',9],['in','prep',9],['Victoria','pobj',12],[',','punct',13],
+  ['Seychelles','appos',13],[',','punct',13],['27','nummod',18],['years','npadvmod',19],['after','mark',21],
+  ['Washington','nsubj',21],['left','advcl',9],['the','det',24],['island','compound',24],['nation','dobj',21],['.','punct',2]
+ ]},
+ {feat:'主補結構 + 分詞與並列後位修飾', toks:[
+  ['Seychelles','nsubj',1],['is','ROOT',1],['an','det',3],['archipelago','attr',1],['of','prep',3],
+  ['115','nummod',6],['islands','pobj',4],['strategically','advmod',8],['located','acl',6],['in','prep',8],
+  ['the','det',12],['Indian','compound',12],['Ocean','pobj',9],['at','prep',8],['the','det',15],
+  ['confluence','pobj',13],['of','prep',15],['Africa','pobj',16],[',','punct',17],['South','compound',20],
+  ['Asia','conj',17],['and','cc',17],['the','det',24],['Gulf','compound',24],['states','conj',17],['.','punct',1]
+ ]},
+ {feat:'not only … but also 對等關聯', toks:[
+  ['The','det',3],['small','amod',3],['African','amod',3],['country','nsubj',4],['is','ROOT',4],
+  ['not','neg',7],['only','advmod',7],['attractive','acomp',4],['to','prep',7],['the','det',10],
+  ['U.S.','pobj',8],['for','prep',7],['its','poss',16],['trade','compound',16],['and','cc',13],
+  ['investment','conj',13],['potential','pobj',11],['but','cc',4],['is','conj',4],['also','advmod',18],
+  ['a','det',21],['place','attr',18],['of','prep',21],['importance','pobj',22],['to','prep',23],
+  ['U.S.','compound',27],['foreign','amod',27],['policy','pobj',24],[',','punct',18],['given','prep',18],
+  ['its','poss',32],['open','amod',32],['sea-lanes','pobj',29],[',','punct',32],['fisheries','conj',32],
+  ['and','cc',32],['the','det',38],['marine','amod',38],['environment','conj',32],[',','punct',18],
+  ['according','prep',18],['to','prep',40],['the','det',44],['U.S.','compound',44],['Embassy','pobj',41],['.','punct',4]
+ ]},
+ {feat:'With 獨立結構 + as 副詞子句', toks:[
+  ['With','prep',14],['the','det',2],['U.S.','nsubj',3],['reestablishing','pcomp',0],['a','det',6],
+  ['diplomatic','amod',6],['presence','dobj',3],['in','prep',3],['the','det',9],['country','pobj',7],
+  [',','punct',14],['it','nsubj',14],['has','aux',14],['also','advmod',14],['become','ROOT',14],
+  ['a','det',18],['geopolitical','amod',18],['playing','compound',18],['field','attr',14],['for','prep',18],
+  ['Washington','pobj',19],['and','cc',20],['Beijing','conj',20],['as','mark',25],['they','nsubj',25],
+  ['compete','advcl',14],['for','prep',25],['influence','pobj',26],['in','prep',25],['Africa','pobj',28],
+  ['and','cc',29],['the','det',32],['world','conj',29],['.','punct',14]
+ ]},
+ {feat:'對等動詞 + 介系詞片語狀語', toks:[
+  ['In','prep',6],['Washington','poss',3],["'s",'case',1],['absence','pobj',0],[',','punct',6],
+  ['China','nsubj',6],['filled','ROOT',6],['the','det',8],['void','dobj',6],['and','cc',6],
+  ['gained','conj',6],['influence','dobj',10],['in','prep',10],['the','det',15],['island','compound',15],
+  ['nation','pobj',12],['through','prep',10],['construction','compound',18],['projects','pobj',16],[',','punct',18],
+  ['education','compound',21],['initiatives','conj',18],['and','cc',18],['other','amod',26],['soft','amod',26],
+  ['power','compound',26],['ventures','conj',18],['.','punct',6]
+ ]}
+];
+SENTS.forEach(s=>{ s.text=s.toks.map(t=>t[0]).join(' ').replace(/ ([,.])/g,'$1').replace(/ 's/g,"'s"); });
+
+/* ---------- 工具 ---------- */
+let SI=0, MODE='tree';
+function T(){return SENTS[SI].toks;}
+function childrenOf(i){const r=[];T().forEach((t,j)=>{if(t[2]===j) return; if(t[2]===i) r.push(j);});return r;}
+function rootIdx(){return T().findIndex(t=>t[1]==='ROOT');}
+const stMemo={};
+function subtree(i){ if(stMemo[i])return stMemo[i]; const out=[i]; childrenOf(i).forEach(c=>{subtree(c).forEach(x=>out.push(x));}); const u=[...new Set(out)].sort((a,b)=>a-b); stMemo[i]=u; return u;}
+function clearMemo(){for(const k in stMemo)delete stMemo[k];}
+function isPunct(i){return T()[i][1]==='punct';}
+
+function tokChip(i,withZh=true){
+  const [w,d]=T()[i]; const c=cat(d);
+  const div=document.createElement('span'); div.className='tok cat-'+c+(d==='punct'?' cat-punct':'');
+  const en=document.createElement('span'); en.className='en'; en.textContent=w; div.appendChild(en);
+  const dp=document.createElement('span'); dp.className='dp'; dp.textContent=d; div.appendChild(dp);
+  if(withZh){const zh=document.createElement('span'); zh.className='zh'; zh.textContent=depZh(d); div.appendChild(zh);}
+  return div;
+}
+
+/* ---------- 上方原句 ---------- */
+function renderSentence(){
+  const el=document.getElementById('sentence'); el.innerHTML='';
+  T().forEach((t,i)=>{
+    const sp=document.createElement('span'); sp.className='w'; sp.textContent=t[0];
+    sp.style.color='var('+CAT_VAR[cat(t[1])]+')';
+    if(t[1]==='punct') sp.style.color='var(--faint)';
+    el.appendChild(sp);
+    if(!(i+1<T().length && T()[i+1][1]==='punct')) el.appendChild(document.createTextNode(' '));
+  });
+}
+
+/* ========== 模式 A：分層樹 ========== */
+function renderTree(){
+  const stage=document.getElementById('stage'); stage.innerHTML='';
+  const box=document.createElement('div'); box.className='tree';
+  function rowChild(i,parentAnc,isLast){
+    const r=document.createElement('div'); r.className='trow';
+    const g=document.createElement('div'); g.className='guides';
+    parentAnc.forEach(flag=>{const gd=document.createElement('div'); gd.className='guide '+(flag?'':'v'); g.appendChild(gd);});
+    const conn=document.createElement('div'); conn.className='guide '+(isLast?'l':'b'); g.appendChild(conn);
+    r.appendChild(g); r.appendChild(tokChip(i)); box.appendChild(r);
+    const ch=childrenOf(i).sort((a,b)=>a-b);
+    ch.forEach((c,k)=> rowChild(c, parentAnc.concat([isLast]), k===ch.length-1));
+  }
+  const root=rootIdx();
+  const rr=document.createElement('div'); rr.className='trow';
+  const gg=document.createElement('div'); gg.className='guides'; rr.appendChild(gg);
+  rr.appendChild(tokChip(root)); box.appendChild(rr);
+  childrenOf(root).sort((a,b)=>a-b).forEach((c,k,arr)=> rowChild(c,[],k===arr.length-1));
+  stage.appendChild(box);
+  document.getElementById('hint').innerHTML='縮排深度＝依存層級。最上層是主要動詞，往下每一層都是它的修飾或補語。整棵樹列印時會完整展開，適合做講義。';
+}
+
+/* ========== 模式 B：依存弧線 ========== */
+function renderArc(){
+  const stage=document.getElementById('stage'); stage.innerHTML='';
+  const box=document.createElement('div'); box.className='arcbox';
+  const wrow=document.createElement('div'); wrow.className='arcwords';
+  T().forEach((t,i)=>{
+    const c=cat(t[1]);
+    const aw=document.createElement('div'); aw.className='aw'; aw.dataset.i=i;
+    const en=document.createElement('span'); en.className='en'; en.textContent=t[0];
+    en.style.color = t[1]==='punct'?'var(--faint)':'var('+CAT_VAR[c]+')';
+    const dp=document.createElement('span'); dp.className='dp'; dp.textContent=t[1];
+    dp.style.color='var('+CAT_VAR[c]+')';
+    aw.appendChild(en); aw.appendChild(dp); wrow.appendChild(aw);
+  });
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'); svg.setAttribute('class','arcsvg');
+  box.appendChild(svg); box.appendChild(wrow); stage.appendChild(box);
+
+  requestAnimationFrame(()=>{
+    const baseRect=box.getBoundingClientRect();
+    const centers=[...wrow.children].map(aw=>{const r=aw.getBoundingClientRect(); return {x:r.left-baseRect.left + r.width/2, top:r.top-baseRect.top};});
+    const arcs=[];
+    T().forEach((t,i)=>{ if(t[1]==='ROOT'||t[1]==='punct')return; const h=t[2]; arcs.push({c:i,h:h,a:Math.min(i,h),b:Math.max(i,h),dep:t[1]}); });
+    arcs.sort((p,q)=>(p.b-p.a)-(q.b-q.a));
+    const levels=[];
+    arcs.forEach(arc=>{ let L=0; while(true){ const used=levels[L]||[]; if(used.some(o=> !(arc.b<=o.a||arc.a>=o.b))){L++;continue;} (levels[L]=levels[L]||[]).push(arc); arc.L=L; break; } });
+    const maxL=levels.length; const lh=24; const topPad=18; const areaH=topPad+maxL*lh;
+    const wordTop=centers.length?centers[0].top:areaH;
+    wrow.style.marginTop=(areaH - wordTop + 4)+'px';
+    const totalW=box.scrollWidth; const totalH=areaH+ (wrow.getBoundingClientRect().height)+10;
+    svg.setAttribute('width',totalW); svg.setAttribute('height',totalH); svg.style.height=totalH+'px';
+    const baseY=areaH;
+    arcs.forEach(arc=>{
+      const x1=centers[arc.h].x, x2=centers[arc.c].x;
+      const apexY=areaH-topPad-arc.L*lh;
+      const col='var('+CAT_VAR[cat(arc.dep)]+')';
+      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+      const d=`M ${x1} ${baseY-2} C ${x1} ${apexY}, ${x2} ${apexY}, ${x2} ${baseY-2}`;
+      path.setAttribute('d',d); path.setAttribute('fill','none'); path.setAttribute('stroke',col);
+      path.setAttribute('stroke-width','1.4'); path.setAttribute('opacity','.85'); svg.appendChild(path);
+      const tri=document.createElementNS('http://www.w3.org/2000/svg','path');
+      tri.setAttribute('d',`M ${x2-4} ${baseY-7} L ${x2+4} ${baseY-7} L ${x2} ${baseY-1} Z`);
+      tri.setAttribute('fill',col); svg.appendChild(tri);
+      const lab=document.createElementNS('http://www.w3.org/2000/svg','text');
+      lab.setAttribute('x',(x1+x2)/2); lab.setAttribute('y',apexY-3); lab.setAttribute('text-anchor','middle');
+      lab.setAttribute('class','arclabel'); lab.textContent=arc.dep; svg.appendChild(lab);
+    });
+  });
+  document.getElementById('hint').innerHTML='箭頭由<b>支配詞</b>指向<b>被支配詞</b>，標籤是依存關係（spaCy / displaCy 體系）。句子較長時可橫向捲動。';
+}
+
+/* ========== 模式 C：骨架摺疊 ========== */
+function skeletonSet(head){
+  const set=new Set([head]); const q=[head];
+  while(q.length){const h=q.shift(); childrenOf(h).forEach(c=>{ if(CORE.has(T()[c][1]) && !set.has(c)){set.add(c);q.push(c);} });}
+  return set;
+}
+function buildClause(head){
+  const frag=document.createElement('span'); frag.style.display='inline';
+  const skel=skeletonSet(head);
+  const subs=subtree(head);
+  const triggers=subs.filter(m=> m!==head && skel.has(T()[m][2]) && !CORE.has(T()[m][1]));
+  const units=[];
+  skel.forEach(idx=> units.push({type:'word',idx,sort:idx}));
+  triggers.forEach(m=>{ const st=subtree(m); units.push({type:'chip',head:m,sort:st[0]}); });
+  units.sort((a,b)=>a.sort-b.sort);
+  units.forEach((u,k)=>{
+    if(u.type==='word'){
+      const t=T()[u.idx];
+      const sp=document.createElement('span'); sp.className='word c-'+cat(t[1]); sp.textContent=t[0];
+      sp.title=depZh(t[1])+' ('+t[1]+')'; frag.appendChild(sp);
+      if(!(k+1<units.length && units[k+1].type==='word' && T()[units[k+1].idx][1]==='punct'))
+        frag.appendChild(document.createTextNode(' '));
+    } else {
+      frag.appendChild(makePill(u.head));
+      frag.appendChild(document.createTextNode(' '));
+    }
+  });
+  return frag;
+}
+function makePill(head){
+  const dep=T()[head][1]; const c=cat(dep);
+  const pclass = c==='pp'?'pp':(c==='conj'?'conj':'mod');
+  const st=subtree(head);
+  const preview=st.map(i=>T()[i][0]).join(' ').replace(/ ([,.])/g,'$1').replace(/ 's/g,"'s");
+  const pv = preview.length>34? preview.slice(0,32)+'…':preview;
+  const btn=document.createElement('button'); btn.className='pill '+pclass;
+  btn.innerHTML='<span class="pdp">＋ '+depZh(dep)+'</span><span class="ppv">'+pv+'</span>';
+  btn.onclick=()=>{
+    const grp=document.createElement('span'); grp.className='grp '+pclass;
+    const close=document.createElement('span'); close.className='gclose'; close.textContent='－ '+depZh(dep)+' ✕';
+    close.title='收合'; close.onclick=()=>{ grp.replaceWith(makePill(head)); };
+    grp.appendChild(buildClause(head)); grp.appendChild(close);
+    btn.replaceWith(grp);
+  };
+  return btn;
+}
+function renderSkel(){
+  const stage=document.getElementById('stage'); stage.innerHTML='';
+  const tb=document.createElement('div'); tb.className='toolbar';
+  const eAll=document.createElement('button'); eAll.className='tb'; eAll.textContent='全部展開';
+  const cAll=document.createElement('button'); cAll.className='tb'; cAll.textContent='只看主幹';
+  tb.appendChild(eAll); tb.appendChild(cAll); stage.appendChild(tb);
+  const host=document.createElement('div'); host.className='skel';
+  host.appendChild(buildClause(rootIdx())); stage.appendChild(host);
+  eAll.onclick=()=>{ let n=0; do{ n=0; host.querySelectorAll('.pill').forEach(p=>{p.click();n++;}); }while(n>0); };
+  cAll.onclick=()=> renderSkel();
+  document.getElementById('hint').innerHTML='預設只顯示<b>句子主幹</b>（主詞・動詞・受詞/補語）。點虛線膠囊展開修飾，再點 <code>✕</code> 收合。先抓骨架、再逐層拆解。';
+}
+
+/* ---------- 控制 ---------- */
+function renderLegend(){
+  const el=document.getElementById('legend'); el.innerHTML='';
+  Object.keys(CAT_ZH).forEach(c=>{
+    const lg=document.createElement('span'); lg.className='lg';
+    const i=document.createElement('i'); i.style.background='var('+CAT_VAR[c]+')';
+    const tx=document.createElement('span'); tx.textContent=CAT_ZH[c];
+    lg.appendChild(i); lg.appendChild(tx); el.appendChild(lg);
+  });
+}
+function renderPicker(){
+  const el=document.getElementById('sentPicker'); el.innerHTML='';
+  SENTS.forEach((s,i)=>{
+    const b=document.createElement('button'); b.className='sbtn'+(i===SI?' on':'');
+    b.innerHTML='<span class="num">句 '+(i+1)+'</span><span class="feat">'+s.feat+'</span>';
+    b.onclick=()=>{ SI=i; clearMemo(); renderAll(); };
+    el.appendChild(b);
+  });
+}
+function renderStage(){
+  if(MODE==='tree')renderTree(); else if(MODE==='arc')renderArc(); else renderSkel();
+}
+function renderAll(){ renderPicker(); renderSentence(); renderStage(); }
+document.getElementById('modebar').addEventListener('click',e=>{
+  const b=e.target.closest('.mbtn'); if(!b)return;
+  MODE=b.dataset.mode;
+  [...document.querySelectorAll('.mbtn')].forEach(x=>x.classList.toggle('on',x===b));
+  renderStage();
+});
+window.addEventListener('resize',()=>{ if(MODE==='arc')renderArc(); });
+renderLegend(); renderAll();
+</script>
+</body>
+</html>
