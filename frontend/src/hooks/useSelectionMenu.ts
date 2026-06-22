@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import type { RefObject, TouchEvent as ReactTouchEvent } from "react";
+import type {
+  MouseEvent as ReactMouseEvent,
+  RefObject,
+  TouchEvent as ReactTouchEvent,
+} from "react";
 
 type VocabController = {
   reset: () => void;
@@ -54,6 +58,12 @@ function isOriginalTextTarget(target: EventTarget | null, container: HTMLElement
   const el = getElementFromNode(target);
   const originalText = el?.closest(ORIGINAL_TEXT_SELECTOR);
   return !!originalText && container.contains(originalText);
+}
+
+function isFormControlTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Node)) return false;
+  const el = getElementFromNode(target);
+  return !!el?.closest("button, input, textarea, select, [contenteditable='true']");
 }
 
 function getSentenceIdxFromRange(range: Range): number | null {
@@ -204,7 +214,7 @@ export function useSelectionMenu({ containerRef, vocab }: {
   menuOpen: boolean;
   menuPos: { x: number; y: number };
   selectedHighlight: SelectionHighlight | null;
-  handleMouseUp: () => void;
+  handleMouseUp: (e: ReactMouseEvent<HTMLElement>) => void;
   handleTouchStart: (e: ReactTouchEvent<HTMLElement>) => void;
   handleTouchMove: (e: ReactTouchEvent<HTMLElement>) => void;
   handleTouchEnd: (e: ReactTouchEvent<HTMLElement>) => void;
@@ -217,24 +227,38 @@ export function useSelectionMenu({ containerRef, vocab }: {
   const touchStartRef = useRef<TouchStart | null>(null);
   const lastTouchLookupAtRef = useRef(0);
 
-  function closeMenu(): void {
+  function dismissMenu(clearBrowserSelection: boolean): void {
     setMenuOpen(false);
     setSelectedHighlight(null);
     vocab.reset();
-    clearSelection();
+    if (clearBrowserSelection) clearSelection();
   }
 
-  function handleMouseUp(): void {
+  function closeMenu(): void {
+    dismissMenu(true);
+  }
+
+  function handleMouseUp(e: ReactMouseEvent<HTMLElement>): void {
     if (Date.now() - lastTouchLookupAtRef.current < TOUCH_MOUSE_SUPPRESS_MS) return;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Form controls manage their own focus and text selection. Clearing the
+    // document selection here can disturb a textarea caret in some browsers.
+    if (isFormControlTarget(e.target)) {
+      dismissMenu(false);
+      return;
+    }
+
+    // Vocabulary lookup is only supported for the English source sentence.
+    if (!isOriginalTextTarget(e.target, container)) return closeMenu();
 
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed) return closeMenu();
 
     const text = sel.toString().trim();
     if (!text) return closeMenu();
-
-    const container = containerRef.current;
-    if (!container) return;
 
     const range = sel.getRangeAt(0);
     const commonAncestor = range.commonAncestorContainer;

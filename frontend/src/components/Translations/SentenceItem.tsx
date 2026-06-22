@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input, Tooltip, Typography } from "antd";
 import { ApartmentOutlined, FormOutlined, SoundOutlined } from "@ant-design/icons";
 import type { Sentence, VocabItem } from "../../types";
@@ -58,6 +58,36 @@ export default function SentenceItem({
   const [editingNote, setEditingNote] = useState(false);
   const [draftNote, setDraftNote] = useState(note);
   const structure = useSentenceStructure(sentence.original);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function clearSaveTimer(): void {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+  }
+
+  // Persist only when the trimmed value actually differs from what's stored.
+  function commitNote(value: string): void {
+    const next = value.trim();
+    if (next !== note.trim()) {
+      onNoteChange?.(idx, next);
+    }
+  }
+
+  // Auto-save safety net: blur is the normal save path, so in typical use this
+  // timer never fires (the user clicks away first) and we keep the original
+  // one-write-per-edit DB load. It only kicks in during a long uninterrupted
+  // edit, so unsaved text survives a reload or accidental navigation.
+  const NOTE_SAVE_DELAY_MS = 2000;
+  function handleDraftChange(value: string): void {
+    setDraftNote(value);
+    clearSaveTimer();
+    saveTimer.current = setTimeout(() => {
+      saveTimer.current = null;
+      commitNote(value);
+    }, NOTE_SAVE_DELAY_MS);
+  }
 
   function openNoteEditor(): void {
     setDraftNote(note);
@@ -65,12 +95,12 @@ export default function SentenceItem({
   }
 
   function saveNote(): void {
+    clearSaveTimer();
     setEditingNote(false);
-    const next = draftNote.trim();
-    if (next !== note.trim()) {
-      onNoteChange?.(idx, next);
-    }
+    commitNote(draftNote);
   }
+
+  useEffect(() => clearSaveTimer, []);
 
   return (
     <li data-idx={idx} className="flex flex-col gap-1 sm:flex-row sm:gap-4">
@@ -150,7 +180,7 @@ export default function SentenceItem({
               <div className="mt-2">
                 <Input.TextArea
                   value={draftNote}
-                  onChange={(e) => setDraftNote(e.target.value)}
+                  onChange={(e) => handleDraftChange(e.target.value)}
                   onBlur={saveNote}
                   autoFocus
                   autoSize={{ minRows: 2 }}

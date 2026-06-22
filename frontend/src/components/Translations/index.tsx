@@ -54,7 +54,11 @@ export default function TranslationsList(): React.ReactElement {
       className="relative"
     >
       {saving && (
-        <div className="absolute inset-0 z-10 rounded-lg bg-white/50 backdrop-blur-[1px] flex items-start justify-end pr-3 pt-2 pointer-events-auto">
+        <div
+          className="pointer-events-none absolute right-3 top-2 z-10 rounded-md bg-(--card-bg) px-2 py-1 shadow-sm"
+          role="status"
+          aria-live="polite"
+        >
           <span className="text-xs text-gray-400 animate-pulse">儲存中...</span>
         </div>
       )}

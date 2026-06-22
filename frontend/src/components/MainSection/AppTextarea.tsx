@@ -20,6 +20,13 @@ function parseApiError(raw: string, fallback: string = "翻譯失敗，請稍後
   }
 
   const low = detail.toLowerCase();
+  if (low.includes("does not match input length") || low.includes("not a json array") || low.includes("only strings")) {
+    return {
+      message:
+        "AI 回傳的翻譯句數與原文不符（部分句子被合併或漏掉了）。這通常發生在一次翻譯太多、或格式高度相似的題目時。請改成分段、減少句數後再翻譯一次。",
+      technical: detail,
+    };
+  }
   if (low.includes("502") || low.includes("503") || low.includes("high demand") || low.includes("unavailable")) {
     return { message: "AI 服務目前流量過大，請稍後再試。", technical: detail };
   }
