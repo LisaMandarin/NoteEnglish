@@ -5,7 +5,7 @@ import type { Sentence, VocabItem } from "../../types";
 import VocabCards from "../Vocab/VocabCards";
 import { speak } from "../../lib/speech";
 import { useSentenceStructure } from "../../hooks/useSentenceStructure";
-import SentenceStructure from "../SentenceStructure/SentenceStructure";
+import SentenceSkeleton from "../SentenceStructure/SentenceSkeleton";
 const { Text } = Typography;
 
 type SelectedRange = {
@@ -170,7 +170,11 @@ export default function SentenceItem({
                 )}
                 {structure.tokens && (
                   <div className="rounded-md border border-(--card-border) bg-(--card-bg) px-3 py-2">
-                    <SentenceStructure tokens={structure.tokens} />
+                    <SentenceSkeleton
+                      tokens={structure.tokens}
+                      previewWords={3}
+                      reliable={structure.reliable}
+                    />
                   </div>
                 )}
               </div>

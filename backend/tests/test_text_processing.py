@@ -4,9 +4,10 @@ from unittest.mock import patch
 
 from fastapi import HTTPException
 
+from app.models.vocab import VocabOptions
 from app.services import gemini
 from app.services.gemini import _strip_echoed_indices
-from app.services.nlp import split_sentences
+from app.services.nlp import parse_dependencies, split_sentences
 
 
 class SentenceSplittingTests(unittest.TestCase):
@@ -115,6 +116,136 @@ class TranslationRequestTests(unittest.TestCase):
                 },
             ),
         )
+
+
+class VocabLookupTests(unittest.TestCase):
+    def test_lookup_preserves_selected_text_and_clears_unrequested_fields(self):
+        response = SimpleNamespace(
+            text=(
+                '{"text":"changed","lemma":"run","pos":"verb",'
+                '"translation":"跑","definition":"move quickly",'
+                '"example":"I run daily.","level":"B1"}'
+            ),
+            usage_metadata=None,
+        )
+
+        with patch.object(
+            gemini.client.models,
+            "generate_content",
+            return_value=response,
+        ):
+            result, usage = gemini.ai_lookup_word(
+                "running",
+                "She is running.",
+                VocabOptions(translation=True),
+            )
+
+        self.assertEqual(result["text"], "running")
+        self.assertEqual(result["translation"], "跑")
+        self.assertEqual(result["definition"], "")
+        self.assertEqual(result["example"], "")
+        self.assertEqual(result["level"], "")
+        self.assertEqual(usage["total_tokens"], 0)
+
+    def test_lookup_invalid_level_becomes_502(self):
+        response = SimpleNamespace(
+            text=(
+                '{"text":"word","lemma":"word","pos":"noun",'
+                '"translation":"","definition":"",'
+                '"example":"","level":"B3"}'
+            ),
+            usage_metadata=None,
+        )
+
+        with (
+            patch.object(
+                gemini.client.models,
+                "generate_content",
+                return_value=response,
+            ),
+            patch.object(gemini.logger, "warning"),
+            self.assertRaises(HTTPException) as raised,
+        ):
+            gemini.ai_lookup_word(
+                "word",
+                "A word.",
+                VocabOptions(level=True),
+            )
+
+        self.assertEqual(raised.exception.status_code, 502)
+
+    def test_lookup_api_failure_becomes_502(self):
+        with (
+            patch.object(
+                gemini.client.models,
+                "generate_content",
+                side_effect=RuntimeError("provider secret"),
+            ),
+            patch.object(gemini.logger, "exception"),
+            self.assertRaises(HTTPException) as raised,
+        ):
+            gemini.ai_lookup_word(
+                "word",
+                "A word.",
+                VocabOptions(translation=True),
+            )
+
+        self.assertEqual(raised.exception.status_code, 502)
+        self.assertNotIn("provider secret", raised.exception.detail)
+
+    def test_lookup_invalid_json_becomes_502(self):
+        response = SimpleNamespace(text="not json", usage_metadata=None)
+
+        with (
+            patch.object(
+                gemini.client.models,
+                "generate_content",
+                return_value=response,
+            ),
+            patch.object(gemini.logger, "warning"),
+            self.assertRaises(HTTPException) as raised,
+        ):
+            gemini.ai_lookup_word(
+                "word",
+                "A word.",
+                VocabOptions(definition=True),
+            )
+
+        self.assertEqual(raised.exception.status_code, 502)
+        self.assertIn("invalid response", raised.exception.detail)
+
+
+class ParseReliabilityTests(unittest.TestCase):
+    """The `reliable` flag drives the structure-view warning and the Gemini
+    fallback. These run the real spaCy model (like the splitting tests above)."""
+
+    def test_clean_sentence_is_reliable(self):
+        result = parse_dependencies(
+            "China filled the void and gained influence in the island nation."
+        )
+        self.assertTrue(result["reliable"])
+
+    def test_copular_sentence_is_reliable(self):
+        # spaCy roots copular sentences on "is" (AUX) — must not be flagged.
+        result = parse_dependencies("Seychelles is an archipelago of 115 islands.")
+        self.assertTrue(result["reliable"])
+
+    def test_non_verbal_root_is_flagged(self):
+        # spaCy mis-roots this on the adjective "aware" instead of "began".
+        result = parse_dependencies(
+            "Washington, aware that Beijing had gained a foothold, began reengaging."
+        )
+        self.assertFalse(result["reliable"])
+
+    def test_duplicate_core_argument_is_flagged(self):
+        # spaCy mis-roots "cancel" as a verb with two dobj children
+        # ("experience" and "suffering"), which the duplicate-role check catches.
+        result = parse_dependencies(
+            "People who are the targets of cancel culture experience severe "
+            "emotional suffering as a result of cyberbullying, reputational harm, "
+            "and public humiliation."
+        )
+        self.assertFalse(result["reliable"])
 
 
 if __name__ == "__main__":

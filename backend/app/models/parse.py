@@ -13,6 +13,10 @@ class ParseRequest(BaseModel):
     sentence: str = Field(description="The sentence to dependency-parse")
 
 
-# Response: the sentence's tokens in order.
+# Response: the sentence's tokens in order, plus a reliability flag.
 class ParseResponse(BaseModel):
     tokens: list[ParseToken] = Field(description="Tokens in sentence order")
+    reliable: bool = Field(
+        default=True,
+        description="False when the parse looks unreliable (clause root is not a verb/aux)",
+    )

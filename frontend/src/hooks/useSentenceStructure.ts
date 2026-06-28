@@ -6,12 +6,14 @@ import type { SyntaxToken } from "../types";
 // caches it, so toggling the structure view off/on does not re-hit the API.
 export function useSentenceStructure(sentence: string): {
   tokens: SyntaxToken[] | null;
+  reliable: boolean;
   loading: boolean;
   error: boolean;
   visible: boolean;
   toggle: () => void;
 } {
   const [tokens, setTokens] = useState<SyntaxToken[] | null>(null);
+  const [reliable, setReliable] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -27,7 +29,10 @@ export function useSentenceStructure(sentence: string): {
     setLoading(true);
     setError(false);
     parseSentence(sentence)
-      .then((result) => setTokens(result))
+      .then((result) => {
+        setTokens(result.tokens);
+        setReliable(result.reliable);
+      })
       .catch((e: unknown) => {
         console.error(e);
         setError(true);
@@ -35,5 +40,5 @@ export function useSentenceStructure(sentence: string): {
       .finally(() => setLoading(false));
   }
 
-  return { tokens, loading, error, visible, toggle };
+  return { tokens, reliable, loading, error, visible, toggle };
 }

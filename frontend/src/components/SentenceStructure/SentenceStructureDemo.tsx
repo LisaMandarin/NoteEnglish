@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from "react";
-import SentenceStructure from "./SentenceStructure";
+import SentenceSkeleton from "./SentenceSkeleton";
 import { CAT_COLOR_VAR, CAT_ZH, joinTokens } from "./syntaxConfig";
 import sampleSyntax from "../../data/sampleSyntax";
 
@@ -54,7 +54,7 @@ export default function SentenceStructureDemo(): ReactElement {
         </p>
 
         <div className="rounded-xl border border-(--card-border) bg-(--card-bg) p-5">
-          <SentenceStructure key={selected} tokens={current.tokens} />
+          <SentenceSkeleton key={selected} tokens={current.tokens} previewWords={3} />
         </div>
       </div>
     </div>

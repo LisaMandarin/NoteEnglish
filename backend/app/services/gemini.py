@@ -1,17 +1,22 @@
-from dotenv import load_dotenv
+import json
+import logging
+import re
+from typing import Literal
+
+from fastapi import HTTPException
 from google import genai
 from google.genai import types
-import os
-import re
-from fastapi import HTTPException
-import json
+from pydantic import BaseModel, ConfigDict, ValidationError
+
 from app.models.vocab import VocabOptions
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 # Initialize Gemini client with the configured API key.
 client = genai.Client(api_key=settings.gemini_api_key)
 
-# Translate a list of sentences using Gemini and return aligned results.
+# Extract token usage counts from a Gemini response, defaulting missing values to zero.
 def _extract_usage(response) -> dict:
     meta = getattr(response, "usage_metadata", None)
     if meta is None:
@@ -163,6 +168,161 @@ def ai_ocr_image(image_bytes: bytes, mime_type: str) -> tuple[str, dict]:
     text = _normalize_ocr_text(response.text) if response.text else ""
     return text, _extract_usage(response)
 
+# spaCy's English dependency labels (dep_), given to the model so its output maps
+# straight onto the existing CAT/DEP tables the frontend already understands.
+_DEP_LABELS = frozenset({
+    "ROOT",
+    "nsubj",
+    "nsubjpass",
+    "csubj",
+    "expl",
+    "aux",
+    "auxpass",
+    "cop",
+    "attr",
+    "acomp",
+    "dobj",
+    "dative",
+    "oprd",
+    "ccomp",
+    "xcomp",
+    "pcomp",
+    "prep",
+    "pobj",
+    "agent",
+    "case",
+    "det",
+    "amod",
+    "advmod",
+    "nummod",
+    "npadvmod",
+    "poss",
+    "compound",
+    "neg",
+    "mark",
+    "advcl",
+    "acl",
+    "relcl",
+    "appos",
+    "prt",
+    "punct",
+    "cc",
+    "conj",
+    "preconj",
+})
+
+
+def _validate_dependency_tree(tokens: list[dict]) -> None:
+    """Require one rooted, connected, acyclic dependency tree."""
+    roots = [i for i, token in enumerate(tokens) if token["dep"] == "ROOT"]
+    if len(roots) != 1:
+        raise HTTPException(
+            status_code=502,
+            detail="Gemini reparse: must have exactly one ROOT.",
+        )
+
+    root = roots[0]
+    if tokens[root]["head"] != root:
+        raise HTTPException(
+            status_code=502,
+            detail="Gemini reparse: ROOT must point to itself.",
+        )
+
+    for start, token in enumerate(tokens):
+        if start != root and token["head"] == start:
+            raise HTTPException(
+                status_code=502,
+                detail="Gemini reparse: non-ROOT token points to itself.",
+            )
+
+        current = start
+        visited: set[int] = set()
+        while current != root:
+            if current in visited:
+                raise HTTPException(
+                    status_code=502,
+                    detail="Gemini reparse: dependency cycle detected.",
+                )
+            visited.add(current)
+            current = tokens[current]["head"]
+
+
+def ai_reparse_dependencies(tokens: list[dict]) -> tuple[list[dict], dict]:
+    """Re-assign dep + head for an already-tokenized sentence using Gemini.
+
+    Used as a fallback when spaCy's local (en_core_web_sm) parse looks unreliable.
+    Tokenization stays fixed — the model only fills in the relations — so token
+    alignment is safe. Returns corrected {text, dep, head} tokens (text preserved
+    from the input, never the model's echo) plus usage. Raises HTTPException(502)
+    if the model output is unusable, so the caller can keep the spaCy result."""
+    n = len(tokens)
+    items = [{"i": i, "text": t["text"]} for i, t in enumerate(tokens)]
+    input_json = json.dumps(items, ensure_ascii=False)
+    dep_labels = ", ".join(sorted(_DEP_LABELS))
+
+    prompt = (
+        "You are a dependency parser using spaCy's English label set. "
+        "Below is a sentence already split into tokens (do not re-tokenize). "
+        "For EACH token return its syntactic head and dependency relation.\n\n"
+        "Rules:\n"
+        f"- dep MUST be one of: {dep_labels}.\n"
+        "- head is the 0-based index ('i') of the token's governing word.\n"
+        "- Exactly one token is the main verb: its dep is \"ROOT\" and its head equals its own index.\n"
+        "- Every other token's head must point toward the ROOT (the result is a tree).\n"
+        "- Pick the finite main verb as ROOT, not an adjective/noun complement of it.\n\n"
+        "Return ONLY a JSON array, same length and order as the input, each element "
+        '{"i": <int>, "dep": <string>, "head": <int>}. No markdown, no explanation.\n\n'
+        f"Tokens:\n{input_json}"
+    )
+
+    try:
+        response = client.models.generate_content(
+            model=settings.gemini_model,
+            contents=prompt,
+            config={
+                "response_mime_type": "application/json",
+                "temperature": 0,
+                "thinking_config": {"thinking_budget": 0},
+            },
+        )
+        data = json.loads(response.text)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Gemini reparse failed: {e}")
+
+    usage = _extract_usage(response)
+
+    if not isinstance(data, list) or len(data) != n:
+        raise HTTPException(status_code=502, detail="Gemini reparse: wrong length or shape.")
+
+    # Map by reported index so a reordered response still aligns; require full cover.
+    by_index: dict[int, dict] = {}
+    for item in data:
+        if not isinstance(item, dict) or type(item.get("i")) is not int:
+            raise HTTPException(status_code=502, detail="Gemini reparse: malformed element.")
+        by_index[item["i"]] = item
+    if set(by_index) != set(range(n)):
+        raise HTTPException(status_code=502, detail="Gemini reparse: indices do not cover all tokens.")
+
+    corrected: list[dict] = []
+    for i in range(n):
+        item = by_index[i]
+        dep = item.get("dep")
+        head = item.get("head")
+        if not isinstance(dep, str) or type(head) is not int or not (0 <= head < n):
+            raise HTTPException(status_code=502, detail="Gemini reparse: bad dep/head value.")
+        if dep not in _DEP_LABELS:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Gemini reparse: unsupported dependency label {dep!r}.",
+            )
+        # Keep the original surface text; only the relations come from the model.
+        corrected.append({"text": tokens[i]["text"], "dep": dep, "head": head})
+
+    _validate_dependency_tree(corrected)
+
+    return corrected, usage
+
+
 _POS_MAP = {
     "noun": "n.",
     "pronoun": "pron.",
@@ -177,6 +337,34 @@ _POS_MAP = {
     "interjection": "interj.",
 }
 
+
+class _GeminiVocabResult(BaseModel):
+    """Strict shape expected from the vocabulary lookup prompt."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    text: str
+    lemma: str
+    pos: Literal[
+        "noun",
+        "pronoun",
+        "proper noun",
+        "verb",
+        "adjective",
+        "adverb",
+        "preposition",
+        "conjunction",
+        "auxiliary",
+        "phrase",
+        "interjection",
+        "unknown",
+    ]
+    translation: str
+    definition: str
+    example: str
+    level: Literal["", "A1", "A2", "B1", "B2", "C1", "C2"]
+
+
 def normalize_pos(raw: str) -> str:
     return _POS_MAP.get(raw.strip().lower(), "?")
 
@@ -186,7 +374,7 @@ def ai_lookup_word(selected_text: str, sentence: str, options: VocabOptions) -> 
     if options.translation:
         tasks.append("translation: Traditional Chinese (zh-TW) meaning of this word in context.")
     if options.definition:
-        tasks.append("definition: Brief English definition (10 words or fewer).")
+        tasks.append("definition: Context-appropriate English synonym or simple definition (8 words or fewer).")
     if options.example:
         tasks.append("example: One natural example sentence.")
     if options.level:
@@ -230,19 +418,46 @@ Rules:
 - "text" must be the selected word exactly as given.
 - If a field is NOT listed in tasks, return "" for that field.
 - Translation must be Traditional Chinese (zh-TW).
-- Definition must be English only, 10 words or fewer.
+- Definition must be English only and 8 words or fewer.
+- For Definition, use a context-appropriate equivalent synonym when one exists.
+- Only use a simple English description when no equivalent synonym exists.
 - Example must be ONE sentence.
 - Level must be one of: A1, A2, B1, B2, C1, C2.
 - Return ONLY valid JSON.
 """
 
-    response = client.models.generate_content(
-        model=settings.gemini_model,
-        contents=prompt,
-        config={
-            "response_mime_type": "application/json",
-            "temperature": 0.2,
-            "thinking_config": {"thinking_budget": 0},
-        }
-    )
-    return json.loads(response.text), _extract_usage(response)
+    try:
+        response = client.models.generate_content(
+            model=settings.gemini_model,
+            contents=prompt,
+            config={
+                "response_mime_type": "application/json",
+                "temperature": 0.2,
+                "thinking_config": {"thinking_budget": 0},
+            }
+        )
+        raw_result = json.loads(response.text)
+        validated = _GeminiVocabResult.model_validate(raw_result)
+    except (json.JSONDecodeError, TypeError, AttributeError, ValidationError) as e:
+        logger.warning("Gemini vocabulary lookup returned invalid data: %s", e)
+        raise HTTPException(
+            status_code=502,
+            detail="Gemini vocabulary lookup returned an invalid response.",
+        ) from e
+    except Exception as e:
+        logger.exception("Gemini vocabulary lookup request failed")
+        raise HTTPException(
+            status_code=502,
+            detail="Gemini vocabulary lookup failed.",
+        ) from e
+
+    result = validated.model_dump()
+    result["text"] = selected_text
+
+    # Never retain fields that the caller did not request, even if the model
+    # ignored the prompt and populated them anyway.
+    for field in ("translation", "definition", "example", "level"):
+        if not getattr(options, field):
+            result[field] = ""
+
+    return result, _extract_usage(response)

@@ -84,12 +84,6 @@ export const depZh = (dep: string): string => DEP[dep]?.zh ?? dep;
 
 export const cat = (dep: string): DepCategory => DEP[dep]?.cat ?? "mod";
 
-// 膠囊樣式只有三種：pp / conj / 其餘歸 mod（移植參考檔 makePill 的 pclass 邏輯）
-export const pillCat = (dep: string): "pp" | "conj" | "mod" => {
-  const c = cat(dep);
-  return c === "pp" ? "pp" : c === "conj" ? "conj" : "mod";
-};
-
 // 連接 token 文字並修正標點 / 所有格前的空白（移植參考檔的 regex）
 export const joinTokens = (texts: string[]): string =>
   texts.join(" ").replace(/ ([,.])/g, "$1").replace(/ 's/g, "'s");

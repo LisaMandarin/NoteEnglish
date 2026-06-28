@@ -336,6 +336,15 @@ h1, h2, h3 {
   line-height: 2.3;
 }
 
+/* 解析可能不準的軟提示：低調、不擋閱讀，僅提醒對照原句。 */
+.skel-warning {
+  margin: 0 0 10px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--c-pp);
+}
+
 .syntax-word {
   font-family: var(--font-heading);
   font-size: 18px;
@@ -352,87 +361,78 @@ h1, h2, h3 {
 .syntax-word.cat-mod { color: var(--text-main); }
 .syntax-word.cat-punct { color: color-mix(in srgb, var(--text-main) 40%, transparent); }
 
-.syntax-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-body);
-  font-size: 13px;
-  border: 1px dashed;
-  border-radius: 20px;
-  padding: 2px 11px 3px;
-  margin: 0 2px;
-  cursor: pointer;
-  vertical-align: middle;
-  background: transparent;
-  transition: background 0.12s;
-}
-.syntax-pill__dep {
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: 10px;
-  opacity: 0.85;
-}
-.syntax-pill__preview {
-  color: color-mix(in srgb, var(--text-main) 55%, transparent);
-  font-size: 12px;
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.syntax-pill.cat-pp { border-color: var(--c-pp); color: var(--c-pp); }
-.syntax-pill.cat-conj { border-color: var(--c-conj); color: var(--c-conj); }
-.syntax-pill.cat-mod { border-color: var(--c-mod); color: var(--c-mod); }
-.syntax-pill.cat-pp:hover { background: color-mix(in srgb, var(--c-pp) 8%, var(--card-bg)); }
-.syntax-pill.cat-conj:hover { background: color-mix(in srgb, var(--c-conj) 8%, var(--card-bg)); }
-.syntax-pill.cat-mod:hover { background: color-mix(in srgb, var(--c-mod) 8%, var(--card-bg)); }
+/* 分類 → --cat：成分色的單一入口。子元素（標籤、邊條、佔位）一律 var(--cat)，
+   不再逐類重複。.syntax-word.cat-* 自帶 color 規則，多帶一個 --cat 無害。 */
+.cat-subj { --cat: var(--c-subj); }
+.cat-pred { --cat: var(--c-pred); }
+.cat-comp { --cat: var(--c-comp); }
+.cat-pp   { --cat: var(--c-pp); }
+.cat-conj { --cat: var(--c-conj); }
+.cat-mod  { --cat: var(--c-mod); }
 
-.syntax-group {
+/* 方塊 / 膠囊內的詞：中性主色，顏色身分交給底色+邊框+標籤承擔。 */
+.skel-word-neutral {
+  font-family: var(--font-heading);
+  color: var(--text-main);
+}
+
+/* ── 模式一 inline：可摺疊子樹 = 依巢狀深度換樣式的方塊 ───────────────────────── */
+.skel-box {
   display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  vertical-align: middle;
+  font-family: var(--font-heading);
+  font-size: 18px;
+  color: var(--text-main);
+  line-height: 1.5;
   border-radius: 8px;
-  padding: 0 2px;
-  margin: 0 1px;
-  vertical-align: middle;
-  border: 1px solid transparent;
-}
-.syntax-group.cat-pp {
-  color: var(--c-pp);
-  border-color: color-mix(in srgb, var(--c-pp) 35%, transparent);
-  background: color-mix(in srgb, var(--c-pp) 6%, var(--card-bg));
-}
-.syntax-group.cat-conj {
-  color: var(--c-conj);
-  border-color: color-mix(in srgb, var(--c-conj) 35%, transparent);
-  background: color-mix(in srgb, var(--c-conj) 6%, var(--card-bg));
-}
-.syntax-group.cat-mod {
-  color: var(--c-mod);
-  border-color: color-mix(in srgb, var(--c-mod) 35%, transparent);
-  background: color-mix(in srgb, var(--c-mod) 7%, var(--card-bg));
-}
-
-.syntax-close {
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: 10px;
+  padding: 2px 9px 3px;
   cursor: pointer;
-  padding: 0 5px;
-  align-self: center;
-  opacity: 0.7;
-  border: 0;
-  background: transparent;
-  color: inherit;
+  transition: background 0.12s, border-color 0.12s;
 }
-.syntax-close:hover {
-  opacity: 1;
+/* 內容列：詞與巢狀方塊橫排換行；標籤另起一列墊在下方。 */
+.skel-box__content {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
 }
-
-.syntax-pill:focus-visible,
-.syntax-close:focus-visible {
+/* depth 0：實心淡底、無邊框。depth 1：實線框。depth ≥2：虛線框。
+   暗背景下用 7% 成分色底墊著，確保邊框與文字看得清。 */
+.skel-box--d0 {
+  background: color-mix(in srgb, var(--cat) 16%, var(--card-bg));
+  border: 1.5px solid transparent;
+}
+.skel-box--d1 {
+  background: color-mix(in srgb, var(--cat) 7%, var(--card-bg));
+  border: 1.5px solid color-mix(in srgb, var(--cat) 55%, transparent);
+}
+.skel-box--d2 {
+  background: color-mix(in srgb, var(--cat) 7%, var(--card-bg));
+  border: 1.5px dashed color-mix(in srgb, var(--cat) 55%, transparent);
+}
+.skel-box--d0:hover { background: color-mix(in srgb, var(--cat) 24%, var(--card-bg)); }
+.skel-box--d1:hover,
+.skel-box--d2:hover { border-color: var(--cat); }
+.skel-box:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* 行內小標：縮成方塊開頭的小膠囊，方塊維持接近單行高度。 */
+.skel-box__label {
+  font-family: var(--font-body);
+  font-size: 10px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  align-self: flex-start;
+  color: var(--cat);
+  background: color-mix(in srgb, var(--cat) 14%, transparent);
+  padding: 0 5px;
+  border-radius: 4px;
+}
+.skel-box__preview { font-family: var(--font-heading); color: var(--text-main); }
 
 @media print {
   .no-print {
