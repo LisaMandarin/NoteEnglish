@@ -80,13 +80,32 @@ def cache_parse(sentence: str, tokens: list[dict], reliable: bool) -> None:
 # Core argument roles that a single head can fill at most once.
 _CORE_ARG_DEPS = frozenset({"nsubj", "nsubjpass", "dobj", "csubj"})
 
+# Early-modern / King James English markers. spaCy's en models are trained on
+# modern text and badly misparse archaic forms (e.g. "Blessed art thou … for
+# flesh and blood hath not revealed it") — "art"/"hath" aren't recognised as
+# verbs and "for" gets read as a preposition. Only unambiguously-archaic tokens
+# are listed: words like "art" (artwork), "wilt" (plants wilt) or "ye" ("ye
+# olde") also occur in modern text, so they're left out to avoid false flags.
+_ARCHAIC_WORDS = frozenset({
+    "thou", "thee", "thy", "thine",
+    "hath", "hast", "hadst",
+    "doth", "dost", "didst",
+    "shalt", "canst", "wouldst", "shouldst", "couldst",
+    "wast", "wert",
+    "unto", "betwixt", "whence", "whither", "hither", "thither",
+})
 
-# A parse is suspect when either:
+
+# A parse is suspect when any of:
 #  1. The clause root is not a verb/auxiliary. spaCy's en models make even
 #     copular "be" the root, so a non-verbal root almost always means a misparse
 #     — an adjective/noun promoted over the real verb ("…, aware …, began …"
 #     rooting on "aware").
-#  2. One head has two children with the same core argument role (e.g. two dobj).
+#  2. The span contains archaic / King James English (see _ARCHAIC_WORDS).
+#     spaCy can't parse it ("Blessed art thou … for flesh and blood hath not
+#     revealed it" mis-tags the verbs and reads "for" as a preposition), and the
+#     surface checks below pass anyway because the misparse hides in a quoted clause.
+#  3. One head has two children with the same core argument role (e.g. two dobj).
 #     That is structurally impossible in a clean parse — coordinated arguments use
 #     conj, never a duplicated role — and is what spaCy produces when it mis-roots
 #     a compound as a verb ("cancel culture experience …" rooting on "cancel" with
@@ -95,6 +114,10 @@ _CORE_ARG_DEPS = frozenset({"nsubj", "nsubjpass", "dobj", "csubj"})
 # parse doesn't mislead the learner.
 def _looks_reliable(span) -> bool:
     if span.root.pos_ not in ("VERB", "AUX"):
+        return False
+    # Archaic English: spaCy can't parse it, so defer to the Gemini fallback even
+    # when the surface checks pass (the misparse is usually inside a quoted clause).
+    if any(token.text.lower() in _ARCHAIC_WORDS for token in span):
         return False
     for token in span:
         seen: set[str] = set()
