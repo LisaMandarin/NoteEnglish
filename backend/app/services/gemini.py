@@ -315,8 +315,10 @@ def ai_reparse_dependencies(tokens: list[dict]) -> tuple[list[dict], dict]:
                 status_code=502,
                 detail=f"Gemini reparse: unsupported dependency label {dep!r}.",
             )
-        # Keep the original surface text; only the relations come from the model.
-        corrected.append({"text": tokens[i]["text"], "dep": dep, "head": head})
+        # Keep the original surface text + pos; only the relations come from the model.
+        corrected.append(
+            {"text": tokens[i]["text"], "dep": dep, "head": head, "pos": tokens[i].get("pos")}
+        )
 
     _validate_dependency_tree(corrected)
 

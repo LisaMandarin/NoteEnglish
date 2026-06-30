@@ -1,6 +1,8 @@
 // Dependency-parse token from the backend POST /api/parse (spaCy):
 // token.text / token.dep_ / token.head.i. head = index of the governing token; ROOT points to itself.
-export type SyntaxToken = { text: string; dep: string; head: number };
+// pos = coarse-grained POS (spaCy pos_, e.g. NOUN/VERB/ADJ); lets a prep phrase's
+// role (modifies a noun vs a verb) be derived from its head. Optional for back-compat.
+export type SyntaxToken = { text: string; dep: string; head: number; pos?: string };
 
 // Result of POST /api/parse. `reliable` is false when the parse looks suspect
 // (clause root is not a verb/aux), so the UI can warn instead of misleading.

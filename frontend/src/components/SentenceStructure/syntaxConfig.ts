@@ -25,7 +25,7 @@ export const DEP: Record<string, { zh: string; cat: DepCategory }> = {
   dobj: { zh: "受詞", cat: "comp" },
   dative: { zh: "間接受詞", cat: "comp" },
   oprd: { zh: "受詞補語", cat: "comp" },
-  ccomp: { zh: "子句補語", cat: "comp" },
+  ccomp: { zh: "受詞子句", cat: "comp" },
   xcomp: { zh: "開放補語", cat: "comp" },
   pcomp: { zh: "介詞補語(子句)", cat: "comp" },
   prep: { zh: "介系詞", cat: "pp" },

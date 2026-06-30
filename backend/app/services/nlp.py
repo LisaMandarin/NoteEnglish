@@ -35,9 +35,9 @@ def _extract_stem(text: str) -> str:
 def parse_dependencies(sentence: str) -> dict:
     """Dependency-parse the main clause of a sentence into {tokens, reliable}.
 
-    `tokens` is a list of {text, dep, head} dicts (shape matches the frontend
-    SyntaxToken contract: token.text / token.dep_ / token.head.i, head re-indexed
-    to 0-based; the ROOT token points to itself). `reliable` is False when the
+    `tokens` is a list of {text, dep, head, pos} dicts (shape matches the frontend
+    SyntaxToken contract: token.text / token.dep_ / token.head.i / token.pos_, head
+    re-indexed to 0-based; the ROOT token points to itself). `reliable` is False when the
     parse looks suspect — see `_looks_reliable`.
 
     The input may be a test-style item with a leading question number and/or
@@ -64,7 +64,12 @@ def parse_dependencies(sentence: str) -> dict:
     main = max(verbal or sents, key=len)
 
     start = main.start
-    tokens = [{"text": t.text, "dep": t.dep_, "head": t.head.i - start} for t in main]
+    # pos (coarse-grained POS) lets the frontend tell whether a prep phrase
+    # modifies a noun (adjectival) or a verb/adj (adverbial) from its head.
+    tokens = [
+        {"text": t.text, "dep": t.dep_, "head": t.head.i - start, "pos": t.pos_}
+        for t in main
+    ]
     result = {"tokens": tokens, "reliable": _looks_reliable(main)}
     _PARSE_CACHE[sentence] = result
     return result

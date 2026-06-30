@@ -60,14 +60,35 @@ export function useSentenceTree(tokens: Token[], previewWords: number): Sentence
       return `${joinTokens(texts.slice(0, previewWords))} …`;
     };
 
-    // 方塊標籤：對等(conj)/同位(appos)額外標出對象 —— spaCy 裡這兩種關係的 head
-    // 就是它並列／同位的那個字，補在標籤後讓使用者看出「跟誰對等」。
+    // 介系詞片語的功能由它掛在哪個字（head）決定：head 是名詞 → 形容詞片語
+    // （修飾名詞，the book *on the table*）；head 是動詞/形容詞 → 副詞片語
+    // （修飾動作，read *on the table*）。優先看 head 的 pos，缺值時退回 dep 推斷。
+    const NOMINAL_POS = new Set(["NOUN", "PROPN", "PRON", "NUM", "SYM", "X"]);
+    const VERBAL_HEAD_DEPS = new Set([
+      "ROOT", "advcl", "relcl", "acl", "xcomp", "ccomp", "pcomp", "parataxis", "csubj", "csubjpass",
+    ]);
+    const prepIsAdjectival = (m: number): boolean => {
+      const head = tokens[tokens[m].head];
+      if (head?.pos) return NOMINAL_POS.has(head.pos);
+      return !VERBAL_HEAD_DEPS.has(head?.dep);
+    };
+
+    // 方塊標籤：
+    // - prep/agent：標「形容詞片語 / 副詞片語 ↔ 被修飾詞」，讓讀者看出片語在做什麼。
+    // - conj/appos：標出對等／同位的對象 —— 這兩種關係的 head 就是並列／同位的那個字。
     const blockLabel = (m: number): string => {
       const dep = tokens[m].dep;
+      if (dep === "prep" || dep === "agent") {
+        const head = tokens[tokens[m].head]?.text;
+        const role = prepIsAdjectival(m) ? "形容詞片語" : "副詞片語";
+        return head ? `${role} ↔ ${head}` : role;
+      }
       if (dep === "conj" || dep === "appos") {
         const partner = tokens[tokens[m].head]?.text;
         if (partner) return `${depZh(dep)} ↔ ${partner}`;
       }
+      // 子句作受詞時掛上 O 標記，呼應上方 SVO 句型徽章（只有 ccomp 方塊會拿到 O）。
+      if (slots.get(m) === "O") return `${depZh(dep)}（O）`;
       return depZh(dep);
     };
 

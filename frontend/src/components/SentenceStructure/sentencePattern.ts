@@ -52,6 +52,9 @@ export function classifyPattern(tokens: Token[], tree: DepTree): PatternResult {
   const hasIobj = has("dative") || has("iobj");
   const hasOprd = has("oprd");
   const hasSubjComp = has("attr") || has("acomp");
+  // that / wh 名詞子句作受詞（think *that…*、know *what…*）：UD 標 ccomp，
+  // 但在五大句型裡就是 SVO 的受詞。只在沒有名詞受詞 dobj 時才認列，避免干擾 SVOO/SVOC。
+  const hasClauseObj = !hasObj && has("ccomp");
 
   // 先判句型（成分最多往下退：SVOO / SVOC → SVO → SVC → SV），
   // 受詞標籤再依此決定：雙受詞句拆 IO/DO，單受詞句一律 O。
@@ -59,6 +62,7 @@ export function classifyPattern(tokens: Token[], tree: DepTree): PatternResult {
   if (hasObj && hasIobj) pattern = "SVOO";
   else if (hasObj && hasOprd) pattern = "SVOC";
   else if (hasObj) pattern = "SVO";
+  else if (hasClauseObj) pattern = "SVO";
   else if (hasSubjComp) pattern = "SVC";
   else pattern = "SV";
 
@@ -79,6 +83,8 @@ export function classifyPattern(tokens: Token[], tree: DepTree): PatternResult {
       slots.set(c, "V"); // 動詞群可有多個（助動詞 / 質詞），不去重。
     } else if (dep === "dobj") {
       tag(c, pattern === "SVOO" ? "DO" : "O");
+    } else if (dep === "ccomp" && hasClauseObj) {
+      tag(c, "O"); // 子句作受詞：整個子句子樹標 O（內容仍由可摺疊方塊呈現）
     } else if (dep === "dative" || dep === "iobj") {
       tag(c, "IO");
     } else {
