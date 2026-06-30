@@ -85,6 +85,39 @@ const sampleSyntax: { feat: string; tokens: Token[] }[] = [
       { text: ".", dep: "punct", head: 6 },
     ],
   },
+  {
+    feat: "but 對等子句 + 主補結構（SVC）",
+    tokens: [
+      { text: "Our", dep: "poss", head: 2 }, { text: "family", dep: "compound", head: 2 }, { text: "heritage", dep: "nsubj", head: 3 },
+      { text: "is", dep: "ROOT", head: 3 }, { text: "a", dep: "det", head: 6 }, { text: "great", dep: "amod", head: 6 },
+      { text: "blessing", dep: "attr", head: 3 }, { text: ",", dep: "punct", head: 3 }, { text: "but", dep: "cc", head: 3 },
+      { text: "it", dep: "nsubj", head: 10 }, { text: "is", dep: "conj", head: 3 }, { text: "not", dep: "neg", head: 10 },
+      { text: "a", dep: "det", head: 13 }, { text: "substitute", dep: "attr", head: 10 }, { text: "for", dep: "prep", head: 13 },
+      { text: "our", dep: "poss", head: 19 }, { text: "diligent", dep: "amod", head: 19 }, { text: "and", dep: "cc", head: 16 },
+      { text: "intentional", dep: "conj", head: 16 }, { text: "search", dep: "pobj", head: 14 }, { text: "for", dep: "prep", head: 19 },
+      { text: "a", dep: "det", head: 23 }, { text: "personal", dep: "amod", head: 23 }, { text: "testimony", dep: "pobj", head: 20 },
+      { text: "of", dep: "prep", head: 23 }, { text: "the", dep: "det", head: 28 }, { text: "Lord", dep: "compound", head: 28 },
+      { text: "Jesus", dep: "compound", head: 28 }, { text: "Christ", dep: "pobj", head: 24 }, { text: "and", dep: "cc", head: 23 },
+      { text: "the", dep: "det", head: 31 }, { text: "truths", dep: "conj", head: 23 }, { text: "of", dep: "prep", head: 31 },
+      { text: "His", dep: "poss", head: 35 }, { text: "restored", dep: "amod", head: 35 }, { text: "gospel", dep: "pobj", head: 32 },
+      { text: ".", dep: "punct", head: 10 },
+    ],
+  },
+  {
+    feat: "巢狀不定詞 + 並列範圍易誤判（spaCy 把 to act / received 接到 comes）",
+    tokens: [
+      { text: "A", dep: "det", head: 2 }, { text: "personal", dep: "amod", head: 2 }, { text: "testimony", dep: "nsubj", head: 3 },
+      { text: "comes", dep: "ROOT", head: 3 }, { text: "in", dep: "prep", head: 3 }, { text: "response", dep: "pobj", head: 4 },
+      { text: "to", dep: "prep", head: 5 }, { text: "our", dep: "poss", head: 11 }, { text: "sincere", dep: "amod", head: 11 },
+      { text: "and", dep: "cc", head: 8 }, { text: "dedicated", dep: "conj", head: 8 }, { text: "quest", dep: "pobj", head: 6 },
+      { text: "to", dep: "aux", head: 13 }, { text: "want", dep: "acl", head: 11 }, { text: "to", dep: "aux", head: 15 },
+      { text: "know", dep: "xcomp", head: 13 }, { text: "for", dep: "prep", head: 15 }, { text: "ourselves", dep: "pobj", head: 16 },
+      { text: "and", dep: "cc", head: 3 }, { text: "then", dep: "advmod", head: 21 }, { text: "to", dep: "aux", head: 21 },
+      { text: "act", dep: "conj", head: 3 }, { text: "upon", dep: "prep", head: 21 }, { text: "the", dep: "det", head: 24 },
+      { text: "impressions", dep: "pobj", head: 22 }, { text: "and", dep: "cc", head: 24 }, { text: "the", dep: "det", head: 27 },
+      { text: "knowledge", dep: "nsubj", head: 28 }, { text: "received", dep: "conj", head: 3 }, { text: ".", dep: "punct", head: 28 },
+    ],
+  },
 ];
 
 export default sampleSyntax;

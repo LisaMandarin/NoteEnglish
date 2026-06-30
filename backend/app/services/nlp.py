@@ -110,6 +110,12 @@ _ARCHAIC_WORDS = frozenset({
 #     conj, never a duplicated role — and is what spaCy produces when it mis-roots
 #     a compound as a verb ("cancel culture experience …" rooting on "cancel" with
 #     both "experience" and "suffering" as dobj).
+#  4. A non-finite verb (infinitive / participle / gerund) is coordinated directly
+#     with the clause root. Main-clause coordination is finite ("came, saw and
+#     conquered"), so a non-finite conj of the root is the tell that spaCy got the
+#     coordination scope wrong — it attaches a trailing "… and then to act …" or
+#     "… the knowledge received" to the main verb instead of to the nearer phrase
+#     it actually parallels. (A finite conj like "sang and danced" is left alone.)
 # Used to flag the structure view (and trigger the Gemini fallback) so a wrong
 # parse doesn't mislead the learner.
 def _looks_reliable(span) -> bool:
@@ -119,6 +125,12 @@ def _looks_reliable(span) -> bool:
     # when the surface checks pass (the misparse is usually inside a quoted clause).
     if any(token.text.lower() in _ARCHAIC_WORDS for token in span):
         return False
+    # Non-finite verb coordinated with the root → coordination-scope misparse.
+    for child in span.root.children:
+        if child.dep_ == "conj" and child.pos_ == "VERB":
+            verbform = child.morph.get("VerbForm")
+            if verbform and "Fin" not in verbform:
+                return False
     for token in span:
         seen: set[str] = set()
         for child in token.children:

@@ -353,6 +353,12 @@ h1, h2, h3 {
   border-radius: 4px;
   color: var(--text-main);
 }
+/* 主幹詞（已分析出成分的主要子句）：中性字，僅主要動詞加粗、標點淡化。
+   角色色彩由 S/V/O/C 底線承擔，不再逐字上色。下方 .cat-* 規則仍供解析失敗的
+   退化平鋪檢視使用。 */
+.syntax-word--root { font-weight: 600; }
+.syntax-word--muted { color: color-mix(in srgb, var(--text-main) 40%, transparent); }
+
 .syntax-word.cat-subj { color: var(--c-subj); }
 .syntax-word.cat-pred { color: var(--c-pred); font-weight: 500; }
 .syntax-word.cat-comp { color: var(--c-comp); }
@@ -369,6 +375,60 @@ h1, h2, h3 {
 .cat-pp   { --cat: var(--c-pp); }
 .cat-conj { --cat: var(--c-conj); }
 .cat-mod  { --cat: var(--c-mod); }
+
+/* 五大句型成分底線標註：整段片語畫底線，下方置中標 S/V/O/C。
+   各成分用既有成分色（S 主詞 / V 述語 / O 受詞 / C 介系詞色）區分。 */
+.syntax-skel--slotted {
+  line-height: 2.7; /* 換行時各行的垂直間距 */
+}
+/* inline-block + padding 保留標籤空間：標籤雖絕對定位，但靠 padding-bottom 撐高
+   方塊本體佔實際版面高度，換行時不會疊到下方方塊。基準線取詞行（標籤已脫離文流），
+   讓有底線的詞與未分段的詞（如 not only）對齊在同一閱讀線上。 */
+.slot-group {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 19px; /* 為下方成分標籤保留的版面高度 */
+}
+.slot-group__words {
+  display: block;
+  white-space: nowrap; /* 整段片語維持同一行，底線才連續 */
+  border-bottom: 2px solid var(--slot-color);
+  padding-bottom: 5px; /* 字與底線的間距 */
+}
+.slot-group__label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--slot-color);
+}
+.slot-group.slot-S  { --slot-color: var(--c-subj); }
+.slot-group.slot-V  { --slot-color: var(--c-pred); }
+.slot-group.slot-O  { --slot-color: var(--c-comp); }
+.slot-group.slot-DO { --slot-color: var(--c-comp); } /* 直接受詞同受詞色 */
+.slot-group.slot-IO { --slot-color: var(--c-conj); } /* 間接受詞另色區分 */
+.slot-group.slot-C  { --slot-color: var(--c-pp); }
+
+/* 句型徽章：標在主幹上方，顯示主要子句的五大句型。 */
+.pattern-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  padding: 1px 9px;
+  border-radius: 6px;
+}
 
 /* 方塊 / 膠囊內的詞：中性主色，顏色身分交給底色+邊框+標籤承擔。 */
 .skel-word-neutral {

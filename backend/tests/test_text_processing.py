@@ -247,6 +247,23 @@ class ParseReliabilityTests(unittest.TestCase):
         )
         self.assertFalse(result["reliable"])
 
+    def test_nonfinite_conj_of_root_is_flagged(self):
+        # spaCy mis-attaches the trailing non-finite verbs "to act" (infinitive)
+        # and "received" (participle) as conj of the main verb "comes" instead of
+        # to the nearer phrases they parallel — a coordination-scope misparse.
+        result = parse_dependencies(
+            "A personal testimony comes in response to our sincere and dedicated "
+            "quest to want to know for ourselves and then to act upon the "
+            "impressions and the knowledge received."
+        )
+        self.assertFalse(result["reliable"])
+
+    def test_finite_coordination_is_reliable(self):
+        # Genuine main-clause coordination is finite ("sang and danced") and must
+        # not be flagged by the non-finite-conj rule.
+        result = parse_dependencies("She sang and danced all night.")
+        self.assertTrue(result["reliable"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -18,14 +18,35 @@ type SentenceSkeletonProps = {
   reliable?: boolean;
 };
 
-// 主幹詞依六色上色、ROOT 加粗；方塊內的詞改用中性主色（neutral）。
+// 主幹詞一律中性主色（角色色彩交給 S/V/O/C 底線承擔，避免雙重上色），
+// 僅 ROOT 主要動詞加粗、標點淡化；方塊內的詞同樣中性（neutral）。
 function Word({ node, neutral }: { node: WordNode; neutral: boolean }): ReactElement {
-  const className = neutral ? "skel-word-neutral" : `syntax-word cat-${node.category}`;
+  if (neutral) {
+    return (
+      <span className="skel-word-neutral" title={`${node.token.text} · ${node.token.dep}`}>
+        {node.token.text}
+      </span>
+    );
+  }
+  const cls = ["syntax-word"];
+  if (node.isRoot) cls.push("syntax-word--root");
+  if (node.token.dep === "punct") cls.push("syntax-word--muted");
   return (
-    <span className={className} title={`${node.token.text} · ${node.token.dep}`}>
+    <span className={cls.join(" ")} title={`${node.token.text} · ${node.token.dep}`}>
       {node.token.text}
     </span>
   );
+}
+
+// 骨架單元所屬的五大句型成分；只有主幹詞會帶成分，收合方塊（後位修飾等）
+// 不納入底線標註，回傳 undefined 以中斷成分段落。
+function slotOf(node: SkeletonNode): WordNode["slot"] {
+  return node.kind === "word" ? node.slot : undefined;
+}
+
+// 節點的穩定 key（詞用 token 索引、方塊用其 head 索引）。
+function nodeKey(node: SkeletonNode): string {
+  return node.kind === "word" ? `w${node.idx}` : `b${node.head}`;
 }
 
 // 骨架摺疊（行內）：可摺疊子樹做成方塊，依巢狀深度換樣式（0 實心 / 1 實線框 / ≥2 虛線框），
@@ -63,18 +84,67 @@ export default function SentenceSkeleton({
     });
   };
 
+  // 單元後是否補空白：下一個單元是 punct 詞時不補。
+  function spaceAfter(next?: SkeletonNode): string {
+    return next && !(next.kind === "word" && next.token.dep === "punct") ? " " : "";
+  }
+
+  function renderUnit(node: SkeletonNode, neutral: boolean): ReactNode {
+    return node.kind === "word" ? <Word node={node} neutral={neutral} /> : renderBlock(node);
+  }
+
+  // 方塊展開後的子內容：平鋪渲染，不做句型底線（成分只標主要子句最外層）。
   function renderNodes(nodes: SkeletonNode[], neutral: boolean): ReactNode {
-    return nodes.map((node, k) => {
-      const next = nodes[k + 1];
-      // 標點不前置空格：下一個單元是 punct 詞時不補空白。
-      const space = next && !(next.kind === "word" && next.token.dep === "punct") ? " " : "";
-      return (
-        <Fragment key={node.kind === "word" ? `w${node.idx}` : `b${node.head}`}>
-          {node.kind === "word" ? <Word node={node} neutral={neutral} /> : renderBlock(node)}
-          {space}
-        </Fragment>
+    return nodes.map((node, k) => (
+      <Fragment key={nodeKey(node)}>
+        {renderUnit(node, neutral)}
+        {spaceAfter(nodes[k + 1])}
+      </Fragment>
+    ));
+  }
+
+  // 主要子句最外層：把相鄰且同成分的單元收進一條底線下，下方置中標 S/V/O/C。
+  function renderTopLevel(nodes: SkeletonNode[]): ReactNode {
+    const out: ReactNode[] = [];
+    let i = 0;
+    while (i < nodes.length) {
+      const slot = slotOf(nodes[i]);
+      if (!slot) {
+        out.push(
+          <Fragment key={nodeKey(nodes[i])}>
+            {renderUnit(nodes[i], false)}
+            {spaceAfter(nodes[i + 1])}
+          </Fragment>,
+        );
+        i += 1;
+        continue;
+      }
+      // 收集相鄰且成分相同的單元成一段。
+      const start = i;
+      const inner: ReactNode[] = [];
+      while (i < nodes.length && slotOf(nodes[i]) === slot) {
+        const sameNext = i + 1 < nodes.length && slotOf(nodes[i + 1]) === slot;
+        inner.push(
+          <Fragment key={nodeKey(nodes[i])}>
+            {renderUnit(nodes[i], false)}
+            {sameNext ? spaceAfter(nodes[i + 1]) : ""}
+          </Fragment>,
+        );
+        i += 1;
+      }
+      out.push(
+        <Fragment key={`g${start}`}>
+          <span className={`slot-group slot-${slot}`}>
+            <span className="slot-group__words">{inner}</span>
+            <span className="slot-group__label" aria-hidden="true">
+              {slot}
+            </span>
+          </span>
+          {spaceAfter(nodes[i])}
+        </Fragment>,
       );
-    });
+    }
+    return out;
   }
 
   function renderBlock(block: BlockNode): ReactElement {
@@ -135,15 +205,22 @@ export default function SentenceSkeleton({
           ⚠ 此句自動解析可能不準確，請對照原句判讀。
         </p>
       )}
-      <div className="mb-3 flex gap-2 no-print">
-        <Button size="small" onClick={expandAll}>
-          全部展開
-        </Button>
-        <Button size="small" onClick={collapseAll}>
-          只看主幹
-        </Button>
+      <div className="mb-3 flex items-center gap-2">
+        {data.pattern && (
+          <span className="pattern-badge" title="主要子句的五大句型（S 主詞 / V 動詞 / O 受詞 / C 補語）">
+            {data.pattern}
+          </span>
+        )}
+        <span className="flex gap-2 no-print">
+          <Button size="small" onClick={expandAll}>
+            全部展開
+          </Button>
+          <Button size="small" onClick={collapseAll}>
+            只看主幹
+          </Button>
+        </span>
       </div>
-      <div className="syntax-skel">{renderNodes(data.nodes, false)}</div>
+      <div className="syntax-skel syntax-skel--slotted">{renderTopLevel(data.nodes)}</div>
     </div>
   );
 }
