@@ -1,13 +1,21 @@
 import json
 import logging
+import ssl
 from datetime import datetime, timezone
+from typing import Any
 from urllib import error, parse, request
 
+import certifi
 from fastapi import HTTPException
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Python.org macOS installs do not always have a system CA bundle configured.
+# certifi is installed with the application and gives urllib a portable trust store.
+_SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+_REQUEST_TIMEOUT_SECONDS = 15
 
 
 def _require_supabase_config() -> None:
@@ -31,7 +39,7 @@ def _request_json(
     *,
     headers: dict[str, str] | None = None,
     payload: dict | list | None = None,
-):
+) -> Any:
     body = None
     final_headers = {"Content-Type": "application/json"}
     if headers:
@@ -43,7 +51,11 @@ def _request_json(
     req = request.Request(url, data=body, headers=final_headers, method=method)
 
     try:
-        with request.urlopen(req) as resp:
+        with request.urlopen(
+            req,
+            context=_SSL_CONTEXT,
+            timeout=_REQUEST_TIMEOUT_SECONDS,
+        ) as resp:
             raw = resp.read().decode("utf-8")
             if not raw:
                 return None
@@ -341,8 +353,8 @@ def save_session(
         if not created_rows:
             raise HTTPException(status_code=500, detail="Could not create the study session.")
         session = created_rows[0]
-        session_id = session["id"]
 
+    session_id = str(session["id"])
     _delete_session_children(user_id, session_id)
     _insert_session_children(user_id, session_id, sentences)
 
