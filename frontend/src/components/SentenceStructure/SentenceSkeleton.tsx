@@ -5,9 +5,10 @@ import {
   type ReactNode,
   type SyntheticEvent,
 } from "react";
-import { Button } from "antd";
+import { Button, Tooltip } from "antd";
 import type { Token } from "./syntaxConfig";
 import { cat, depZh } from "./syntaxConfig";
+import { SLOT_ZH, PATTERN_ZH } from "./sentencePattern";
 import { useSentenceTree, type BlockNode, type SkeletonNode, type WordNode } from "./useSentenceTree";
 
 type SentenceSkeletonProps = {
@@ -136,9 +137,9 @@ export default function SentenceSkeleton({
         <Fragment key={`g${start}`}>
           <span className={`slot-group slot-${slot}`}>
             <span className="slot-group__words">{inner}</span>
-            <span className="slot-group__label" aria-hidden="true">
-              {slot}
-            </span>
+            <Tooltip title={`${SLOT_ZH[slot]}`}>
+              <span className="slot-group__label">{slot}</span>
+            </Tooltip>
           </span>
           {spaceAfter(nodes[i])}
         </Fragment>,
@@ -207,9 +208,9 @@ export default function SentenceSkeleton({
       )}
       <div className="mb-3 flex items-center gap-2">
         {data.pattern && (
-          <span className="pattern-badge" title="主要子句的五大句型（S 主詞 / V 動詞 / O 受詞 / C 補語）">
-            {data.pattern}
-          </span>
+          <Tooltip title={`主要子句句型：${PATTERN_ZH[data.pattern]}`}>
+            <span className="pattern-badge">{data.pattern}</span>
+          </Tooltip>
         )}
         <span className="flex gap-2 no-print">
           <Button size="small" onClick={expandAll}>

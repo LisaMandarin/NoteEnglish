@@ -8,6 +8,25 @@ export type Slot = "S" | "V" | "O" | "IO" | "DO" | "C";
 // 五大基本句型。
 export type SentencePattern = "SV" | "SVC" | "SVO" | "SVOO" | "SVOC";
 
+// 各成分槽的中文意思，供 UI tooltip 補充說明。
+export const SLOT_ZH: Record<Slot, string> = {
+  S: "主詞",
+  V: "動詞",
+  O: "受詞",
+  IO: "間接受詞",
+  DO: "直接受詞",
+  C: "補語",
+};
+
+// 五大句型的中文說明，供句型徽章 tooltip 使用。
+export const PATTERN_ZH: Record<SentencePattern, string> = {
+  SV: "主詞＋動詞",
+  SVC: "主詞＋動詞＋補語",
+  SVO: "主詞＋動詞＋受詞",
+  SVOO: "主詞＋動詞＋間接受詞＋直接受詞",
+  SVOC: "主詞＋動詞＋受詞＋受詞補語",
+};
+
 // dep → 成分槽。只涵蓋直接掛在主要子句 ROOT 動詞上的核心論元；
 // 修飾語（det/amod/advmod…）與介系詞結構（prep/pobj）不屬於五大句型的成分，不標記。
 const SLOT_BY_DEP: Record<string, Slot> = {
