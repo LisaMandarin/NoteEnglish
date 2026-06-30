@@ -109,7 +109,7 @@ export default function SentenceItem({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex flex-row items-baseline gap-2">
-          <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-col items-center gap-5">
             <button
               type="button"
               onClick={() => speak(sentence.original)}
