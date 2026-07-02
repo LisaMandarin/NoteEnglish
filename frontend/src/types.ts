@@ -30,6 +30,9 @@ export type Sentence = {
   note?: string;
 };
 
+// A user-facing error with an optional technical detail (shown under 技術細節).
+export type AppError = { message: string; technical: string };
+
 export type Session = {
   id: string;
   title: string;

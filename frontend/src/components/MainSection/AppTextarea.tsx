@@ -47,12 +47,11 @@ const WARN_THRESHOLD = 1300
 
 export default function AppTextarea() {
     const {
-        state: {text, translating, sessionLoading, saving, error, saveError, updatedAt, sentences},
-        actions: {translate, setText, clear}
+        state: {text, translating, sessionLoading, saving, error, saveError, ocrError, updatedAt, sentences},
+        actions: {translate, setText, clear, setOcrError, dismissError}
     } = useTranslation()
 
     const [ocrLoading, setOcrLoading] = useState<boolean>(false)
-    const [ocrError, setOcrError] = useState<ParsedError | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const charCount = text.length
@@ -184,6 +183,7 @@ export default function AppTextarea() {
                 <Alert
                   type="error"
                   showIcon
+                  closable={{ closeIcon: true, onClose: () => dismissError("translate") }}
                   description={
                     <div>
                       <p className="m-0 font-medium">{errMsg}</p>
@@ -204,7 +204,7 @@ export default function AppTextarea() {
                 <Alert
                   type="error"
                   showIcon
-                  closable={{ onClose: () => setOcrError(null) }}
+                  closable={{ closeIcon: true, onClose: () => dismissError("ocr") }}
                   description={
                     <div>
                       <p className="m-0 font-medium">{ocrError.message}</p>
@@ -224,7 +224,8 @@ export default function AppTextarea() {
               <Alert
                 type="error"
                 showIcon
-                message="Save failed"
+                closable={{ closeIcon: true, onClose: () => dismissError("save") }}
+                title="Save failed"
                 description={saveError}
                 className="mb-4"
               />

@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, useReducer } from "react";
 import { apiFetch, getSessionDetail, saveSession } from "../lib/api";
-import type { Sentence, Session, VocabItem } from "../types";
+import type { AppError, Sentence, Session, VocabItem } from "../types";
 
 type AppState = {
   text: string;
@@ -9,6 +9,7 @@ type AppState = {
   saving: boolean;
   error: string;
   saveError: string;
+  ocrError: AppError | null;
   updatedAt: number | null;
   currentSession: Session | null;
   sentences: Sentence[];
@@ -30,7 +31,9 @@ type Action =
   | { type: "remove_sentence_vocab"; payload: { sentenceIdx: number; lemma: string; pos: string } }
   | { type: "reorder_sentence_vocab"; payload: { sentenceIdx: number; newVocab: VocabItem[] } }
   | { type: "update_sentence_note"; payload: { sentenceIdx: number; note: string } }
-  | { type: "update_current_session_title"; payload: string };
+  | { type: "update_current_session_title"; payload: string }
+  | { type: "set_ocr_error"; payload: AppError | null }
+  | { type: "dismiss_error"; payload: "translate" | "save" | "ocr" };
 
 type TranslationActions = {
   translate: () => Promise<void>;
@@ -42,6 +45,8 @@ type TranslationActions = {
   reorderSentenceVocab: (sentenceIdx: number, newVocab: VocabItem[]) => Promise<void>;
   updateSentenceNote: (sentenceIdx: number, note: string) => Promise<void>;
   updateCurrentSessionTitle: (title: string) => void;
+  setOcrError: (err: AppError | null) => void;
+  dismissError: (which: "translate" | "save" | "ocr") => void;
 };
 
 type TranslationContextValue = {
@@ -58,6 +63,7 @@ const initialState: AppState = {
   saving: false,
   error: "",
   saveError: "",
+  ocrError: null,
   updatedAt: null,
   currentSession: null,
   sentences: [],
@@ -84,6 +90,7 @@ function reducer(state: AppState, action: Action): AppState {
         text: "",
         error: "",
         saveError: "",
+        ocrError: null,
         updatedAt: null,
         currentSession: null,
         translating: false,
@@ -96,6 +103,7 @@ function reducer(state: AppState, action: Action): AppState {
         sessionLoading: true,
         error: "",
         saveError: "",
+        ocrError: null,
       };
     case "load_session_success":
       return {
@@ -120,6 +128,7 @@ function reducer(state: AppState, action: Action): AppState {
         translating: true,
         error: "",
         saveError: "",
+        ocrError: null,
         updatedAt: null,
         sentences: [],
       };
@@ -242,6 +251,17 @@ function reducer(state: AppState, action: Action): AppState {
     case "update_current_session_title":
       if (!state.currentSession) return state;
       return { ...state, currentSession: { ...state.currentSession, title: action.payload } };
+
+    case "set_ocr_error":
+      return { ...state, ocrError: action.payload };
+
+    case "dismiss_error":
+      return {
+        ...state,
+        error: action.payload === "translate" ? "" : state.error,
+        saveError: action.payload === "save" ? "" : state.saveError,
+        ocrError: action.payload === "ocr" ? null : state.ocrError,
+      };
 
     default:
       return state;
@@ -504,6 +524,14 @@ export function TranslationProvider({ children }: { children: React.ReactNode })
       dispatch({ type: "update_current_session_title", payload: title });
     }
 
+    function setOcrError(err: AppError | null): void {
+      dispatch({ type: "set_ocr_error", payload: err });
+    }
+
+    function dismissError(which: "translate" | "save" | "ocr"): void {
+      dispatch({ type: "dismiss_error", payload: which });
+    }
+
     return {
       translate,
       setText,
@@ -514,6 +542,8 @@ export function TranslationProvider({ children }: { children: React.ReactNode })
       reorderSentenceVocab,
       updateSentenceNote,
       updateCurrentSessionTitle,
+      setOcrError,
+      dismissError,
     };
   }, [state.currentSession, state.text, state.sentences]);
 
