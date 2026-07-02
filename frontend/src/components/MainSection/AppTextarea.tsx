@@ -3,7 +3,7 @@ import { Typography, Input, Button, Alert, Modal } from "antd"
 import { useTranslation } from "../../context/translationContext"
 import { formatUpdatedAt } from "../../lib/formatUpdatedAt"
 import { ocrImage } from "../../lib/api"
-import { fileToCompressedBase64 } from "../../lib/image"
+import { fileToCompressedBase64, ImagePrepError } from "../../lib/image"
 import sampleArticles from "../../data/sampleArticles"
 const { Text } = Typography
 const { TextArea } = Input
@@ -52,7 +52,7 @@ export default function AppTextarea() {
     } = useTranslation()
 
     const [ocrLoading, setOcrLoading] = useState<boolean>(false)
-    const [ocrError, setOcrError] = useState<string | null>(null)
+    const [ocrError, setOcrError] = useState<ParsedError | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const charCount = text.length
@@ -85,12 +85,14 @@ export default function AppTextarea() {
         e.target.value = ""
         if (!file) return
 
-        if (!file.type.startsWith("image/")) {
-            setOcrError("請選擇圖片檔案。")
+        // HEIC/HEIF files often report an empty MIME type, so also accept them by extension.
+        const isImage = file.type.startsWith("image/") || /\.(heic|heif)$/i.test(file.name)
+        if (!isImage) {
+            setOcrError({ message: "請選擇圖片檔案。", technical: "" })
             return
         }
         if (file.size > 10 * 1024 * 1024) {
-            setOcrError("圖片大小不可超過 10MB。")
+            setOcrError({ message: "圖片大小不可超過 10MB。", technical: "" })
             return
         }
 
@@ -101,7 +103,14 @@ export default function AppTextarea() {
             const result = await ocrImage(base64, mimeType)
             setText(result.text)
         } catch (err) {
-            setOcrError(err instanceof Error ? err.message : String(err))
+            // Local prep errors already carry an actionable message — show it as-is.
+            // Only server/network errors go through parseApiError.
+            if (err instanceof ImagePrepError) {
+                setOcrError({ message: err.message, technical: "" })
+            } else {
+                const raw = err instanceof Error ? err.message : String(err)
+                setOcrError(parseApiError(raw, "圖片辨識失敗，請稍後再試。"))
+            }
         } finally {
             setOcrLoading(false)
         }
@@ -162,7 +171,7 @@ export default function AppTextarea() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,.heic,.heif"
                 className="hidden"
                 onChange={handleImagePicked}
               />
@@ -191,28 +200,25 @@ export default function AppTextarea() {
               );
             })()}
 
-            {ocrError && (() => {
-              const { message: errMsg, technical } = parseApiError(ocrError, "圖片辨識失敗，請稍後再試。");
-              return (
+            {ocrError && (
                 <Alert
                   type="error"
                   showIcon
                   closable={{ onClose: () => setOcrError(null) }}
                   description={
                     <div>
-                      <p className="m-0 font-medium">{errMsg}</p>
-                      {technical && technical !== errMsg && (
+                      <p className="m-0 font-medium">{ocrError.message}</p>
+                      {ocrError.technical && ocrError.technical !== ocrError.message && (
                         <details className="mt-2">
                           <summary className="text-xs cursor-pointer opacity-60 select-none">技術細節</summary>
-                          <pre className="m-0 mt-1 whitespace-pre-wrap text-xs opacity-70">{technical}</pre>
+                          <pre className="m-0 mt-1 whitespace-pre-wrap text-xs opacity-70">{ocrError.technical}</pre>
                         </details>
                       )}
                     </div>
                   }
                   className="mb-4"
                 />
-              );
-            })()}
+            )}
 
             {saveError && (
               <Alert

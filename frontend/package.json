@@ -19,6 +19,7 @@
     "@tailwindcss/vite": "^4.1.18",
     "animate.css": "^4.1.1",
     "antd": "^6.1.1",
+    "heic2any": "^0.0.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-is": "^19.2.0",
