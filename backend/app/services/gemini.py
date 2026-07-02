@@ -72,56 +72,81 @@ def ai_translate_list(sentences: list[str], target_lang: str = "zh-TW", mode: st
         "No explanation, no markdown.\n\n"
         f"Input JSON array:\n{input_json}"
         )
+    # Appended on the retry: the first miss is usually the model merging or
+    # dropping items, so restate the count constraint more forcefully.
+    strict_reminder = (
+        "\n\nCRITICAL: The output array MUST contain EXACTLY "
+        f"{len(sentences)} strings, one per input item, in the same order. "
+        "Do NOT merge, split, drop, or add items."
+    )
 
-    try:
-        response = client.models.generate_content(
-            model=settings.gemini_model,
-            contents=prompt,
-            config={
-                "response_mime_type": "application/json",
-                "thinking_config": {"thinking_budget": 0},
-            }
-        )
-        text = response.text.strip()
-    except Exception as e:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Gemini API request failed: {e}"
-        )
+    # Accumulate usage across attempts so token accounting stays accurate even
+    # when a retry happens.
+    usage = {"prompt_tokens": 0, "response_tokens": 0, "total_tokens": 0}
+    last_error: HTTPException | None = None
 
-    usage = _extract_usage(response)
-
-    # Parse JSON array from model output.
-    try:
-        translations = json.loads(text)
-    except Exception as e:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Failed to parse Gemini output as JSON.  Error: {e}.  Output preview: {text[:300]}"
-        )
-
-    if not isinstance(translations, list):
-        raise HTTPException(
-            status_code=502,
-            detail="Gemini output is not a JSON array."
-        )
-
-    if len(translations) != len(sentences):
-        raise HTTPException(
-            status_code=502,
-            detail=(
-                "Gemini output length does not match input length: "
-                f"expected {len(sentences)}, got {len(translations)}."
+    # A length/shape mismatch is usually a transient model slip; one retry with a
+    # stronger count constraint recovers it without bothering the user.
+    for attempt in range(2):
+        try:
+            response = client.models.generate_content(
+                model=settings.gemini_model,
+                contents=prompt + (strict_reminder if attempt else ""),
+                config={
+                    "response_mime_type": "application/json",
+                    "thinking_config": {"thinking_budget": 0},
+                }
             )
-        )
+            text = response.text.strip()
+        except Exception as e:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Gemini API request failed: {e}"
+            )
 
-    if not all(isinstance(translation, str) for translation in translations):
-        raise HTTPException(
-            status_code=502,
-            detail="Gemini output array must contain only strings."
-        )
+        attempt_usage = _extract_usage(response)
+        for key in usage:
+            usage[key] += attempt_usage[key]
 
-    return _strip_echoed_indices(translations), usage
+        # Parse and validate; on a recoverable model-output problem, record it
+        # and let the loop retry once before surfacing the error.
+        try:
+            translations = json.loads(text)
+        except Exception as e:
+            last_error = HTTPException(
+                status_code=502,
+                detail=f"Failed to parse Gemini output as JSON.  Error: {e}.  Output preview: {text[:300]}"
+            )
+            continue
+
+        if not isinstance(translations, list):
+            last_error = HTTPException(status_code=502, detail="Gemini output is not a JSON array.")
+            continue
+
+        if len(translations) != len(sentences):
+            last_error = HTTPException(
+                status_code=502,
+                detail=(
+                    "Gemini output length does not match input length: "
+                    f"expected {len(sentences)}, got {len(translations)}."
+                )
+            )
+            continue
+
+        if not all(isinstance(translation, str) for translation in translations):
+            last_error = HTTPException(status_code=502, detail="Gemini output array must contain only strings.")
+            continue
+
+        return _strip_echoed_indices(translations), usage
+
+    raise last_error
+
+# Exam-layout annotation marks that OCR captures but that are not part of the
+# prose: circled reference markers (①-⑳), footnote superscript digits, and
+# asterisks used to flag vocabulary (e.g. "goofy*"). Left in, they pollute
+# sentence splitting, translation, and vocab lookup, so strip them.
+_ANNOTATION_MARKS = re.compile(r"[①-⑳⁰¹²³⁴-⁹*]")
+
 
 # Collapse hard line wraps from print layouts: join single newlines within a
 # paragraph into spaces, keep blank lines as paragraph breaks, and rejoin
@@ -129,6 +154,7 @@ def ai_translate_list(sentences: list[str], target_lang: str = "zh-TW", mode: st
 # the model does not reliably comply, so normalize deterministically.
 def _normalize_ocr_text(text: str) -> str:
     text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = _ANNOTATION_MARKS.sub("", text)
     text = re.sub(r"(\w)-\n(\w)", r"\1\2", text)
     paragraphs = re.split(r"\n\s*\n", text)
     return "\n\n".join(
@@ -142,6 +168,11 @@ def ai_ocr_image(image_bytes: bytes, mime_type: str) -> tuple[str, dict]:
         "Extract all visible text from this image exactly as written. "
         "Preserve paragraph breaks (use a blank line between paragraphs). "
         "Join lines that were wrapped mid-sentence into a single line. "
+        "If one sentence is split across a page or column break, join it into a "
+        "single paragraph without a blank line; but keep titles and headings on "
+        "their own line. "
+        "Ignore line numbers printed in the margin (e.g. 5, 10, 15) and reference "
+        "markers such as ①②③ or footnote superscripts — do not include them. "
         "Do not translate, summarize, correct, or add any commentary. "
         "If the image contains no readable text, return an empty string. "
         "Return plain text only."

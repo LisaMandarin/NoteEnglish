@@ -48,7 +48,7 @@ const WARN_THRESHOLD = 1300
 export default function AppTextarea() {
     const {
         state: {text, translating, sessionLoading, saving, error, saveError, ocrError, updatedAt, sentences},
-        actions: {translate, setText, clear, setOcrError, dismissError}
+        actions: {translate, setText, setOcrText, clear, setOcrError, dismissError}
     } = useTranslation()
 
     const [ocrLoading, setOcrLoading] = useState<boolean>(false)
@@ -58,6 +58,13 @@ export default function AppTextarea() {
     const isOverLimit = charCount > MAX_CHARS
     const isNearLimit = charCount > WARN_THRESHOLD
     const isEmpty = charCount === 0
+
+    // Show a reminder whenever there is text that has not been translated yet.
+    // Derived from state (not a one-shot flag) so it clears automatically once the
+    // session is translated and when the user switches to another session.
+    const isTranslated = Array.isArray(sentences) && sentences.length > 0
+    const showUntranslatedNotice =
+        !isTranslated && text.trim().length > 0 && !translating && !sessionLoading && !ocrLoading
 
     function hasVocabCards() {
         return Array.isArray(sentences) && sentences.some(
@@ -76,6 +83,34 @@ export default function AppTextarea() {
             })
         } else {
             translate()
+        }
+    }
+
+    function handleClear() {
+        if (isTranslated) {
+            Modal.confirm({
+                title: "確定要清除嗎？",
+                content: "將清除目前畫面上的文字、翻譯與單字卡。（已儲存的紀錄仍可從左側列表重新開啟）",
+                okText: "確定",
+                cancelText: "取消",
+                onOk: clear,
+            })
+        } else {
+            clear()
+        }
+    }
+
+    function handleImageButtonClick() {
+        if (isTranslated) {
+            Modal.confirm({
+                title: "確定要用圖片轉文字嗎？",
+                content: "辨識結果將取代目前文字。按「翻譯」後會以新內容覆蓋目前 session 原有的翻譯與單字卡。",
+                okText: "確定",
+                cancelText: "取消",
+                onOk: () => fileInputRef.current?.click(),
+            })
+        } else {
+            fileInputRef.current?.click()
         }
     }
 
@@ -100,7 +135,9 @@ export default function AppTextarea() {
         try {
             const { base64, mimeType } = await fileToCompressedBase64(file)
             const result = await ocrImage(base64, mimeType)
-            setText(result.text)
+            // Replace the source text but keep the current session; drop the stale
+            // translations so a later translate overwrites this session with the new text.
+            setOcrText(result.text)
         } catch (err) {
             // Local prep errors already carry an actionable message — show it as-is.
             // Only server/network errors go through parseApiError.
@@ -135,6 +172,15 @@ export default function AppTextarea() {
               </div>
             </div>
 
+            {showUntranslatedNotice && (
+              <Alert
+                type="warning"
+                showIcon
+                description="目前的文字尚未翻譯，不會存入學習紀錄。若為圖片辨識結果，請先確認內容正確，再按「翻譯」以生成並儲存。"
+                className="mb-4"
+              />
+            )}
+
             {/* Buttons */}
             <div className="flex flex-wrap gap-3 mb-4">
               <Button
@@ -146,7 +192,7 @@ export default function AppTextarea() {
                 {saving ? "儲存中..." : "翻譯"}
               </Button>
 
-              <Button onClick={clear} disabled={translating || saving || sessionLoading || isEmpty || ocrLoading}>
+              <Button onClick={handleClear} disabled={translating || saving || sessionLoading || isEmpty || ocrLoading}>
                 清除
               </Button>
 
@@ -161,7 +207,7 @@ export default function AppTextarea() {
               </Button>
 
               <Button
-                onClick={() => fileInputRef.current?.click()}
+                onClick={handleImageButtonClick}
                 loading={ocrLoading}
                 disabled={translating || saving || sessionLoading}
               >

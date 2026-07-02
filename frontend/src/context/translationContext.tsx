@@ -17,6 +17,7 @@ type AppState = {
 
 type Action =
   | { type: "set_text"; payload: string }
+  | { type: "set_ocr_text"; payload: string }
   | { type: "clear" }
   | { type: "load_session_start" }
   | { type: "load_session_success"; payload: { text: string; sentences: Sentence[]; session: Session | null; updatedAt: number | null } }
@@ -38,6 +39,7 @@ type Action =
 type TranslationActions = {
   translate: () => Promise<void>;
   setText: (value: string) => void;
+  setOcrText: (value: string) => void;
   clear: () => void;
   loadSession: (sessionId: string) => Promise<boolean>;
   updateSentenceVocab: (sentenceIdx: number, vocabItem: VocabItem) => Promise<void>;
@@ -77,6 +79,22 @@ function reducer(state: AppState, action: Action): AppState {
         text: action.payload,
         saveError: "",
         updatedAt: null,
+        currentSession: state.currentSession
+          ? {
+              ...state.currentSession,
+              title: buildSessionTitle(action.payload),
+            }
+          : null,
+      };
+    case "set_ocr_text":
+      // OCR replaces the source text of the *current* session: keep currentSession
+      // so a later translate overwrites it, but drop the now-stale translations.
+      return {
+        ...state,
+        text: action.payload,
+        saveError: "",
+        updatedAt: null,
+        sentences: [],
         currentSession: state.currentSession
           ? {
               ...state.currentSession,
@@ -368,6 +386,10 @@ export function TranslationProvider({ children }: { children: React.ReactNode })
       dispatch({ type: "set_text", payload: value });
     }
 
+    function setOcrText(value: string): void {
+      dispatch({ type: "set_ocr_text", payload: value });
+    }
+
     function clear(): void {
       dispatch({ type: "clear" });
     }
@@ -535,6 +557,7 @@ export function TranslationProvider({ children }: { children: React.ReactNode })
     return {
       translate,
       setText,
+      setOcrText,
       clear,
       loadSession,
       updateSentenceVocab,
