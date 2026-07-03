@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import ssl
 from datetime import datetime, timezone
 from typing import Any
@@ -384,6 +385,27 @@ def log_api_usage(user_id: str, endpoint: str, model: str, usage: dict) -> None:
         logger.warning("Failed to log API usage: user=%s endpoint=%s", user_id, endpoint)
 
 
+_FRACTIONAL_SECONDS_RE = re.compile(r"\.(\d+)")
+
+
+def _parse_timestamp_utc(ts: str) -> datetime:
+    """Parse an ISO 8601 timestamp into a UTC-aware datetime.
+
+    Supabase trims trailing zeros from fractional seconds, yielding values
+    like '2026-06-10T03:07:47.71418+00:00' (5 digits). Python 3.10's
+    fromisoformat only accepts 3 or 6 fractional digits, so pad to 6 first.
+    """
+    if ts.endswith("Z"):
+        ts = ts[:-1] + "+00:00"
+    ts = _FRACTIONAL_SECONDS_RE.sub(
+        lambda m: "." + m.group(1)[:6].ljust(6, "0"), ts, count=1
+    )
+    dt = datetime.fromisoformat(ts)
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 def get_usage_stats(user_id: str) -> dict:
     from datetime import timedelta
 
@@ -423,14 +445,7 @@ def get_usage_stats(user_id: str) -> dict:
     monthly: dict[str, int] = {}
 
     for row in rows:
-        ts: str = row["created_at"]
-        if ts.endswith("Z"):
-            ts = ts[:-1] + "+00:00"
-        dt = datetime.fromisoformat(ts)
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        else:
-            dt = dt.astimezone(timezone.utc)
+        dt = _parse_timestamp_utc(row["created_at"])
         tokens: int = row.get("total_tokens") or 0
 
         if dt >= today_start:

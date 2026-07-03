@@ -74,6 +74,12 @@ export default function AppSidebar({
     if (activePanel) onTogglePanel(activePanel);
   }
 
+  function handleShowUsage(): void {
+    onShowUsage();
+    setIsMobileMenuOpen(false);
+    if (activePanel) onTogglePanel(activePanel);
+  }
+
   return (
     <>
       {/* ===== MOBILE (< lg) ===== */}
@@ -152,7 +158,7 @@ export default function AppSidebar({
             username={username}
             email={email}
             onSignOut={onSignOut}
-            onShowUsage={onShowUsage}
+            onShowUsage={handleShowUsage}
             onShowTranslate={onShowTranslate}
           />
         </div>

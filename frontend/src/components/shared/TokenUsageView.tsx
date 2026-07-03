@@ -162,7 +162,9 @@ function UsageProgressSection({
       <Progress
         percent={pct}
         strokeColor={strokeColor}
-        styles={{ rail: { background: "var(--card-border)" } }}
+        styles={{
+          rail: { background: "color-mix(in srgb, var(--accent) 14%, white)" },
+        }}
         showInfo={true}
         size={["100%", 10]}
         format={(p) => (
