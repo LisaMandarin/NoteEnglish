@@ -2,6 +2,28 @@ import { useState } from "react";
 import { parseSentence } from "../lib/api";
 import type { SyntaxToken } from "../types";
 
+type SentenceStructureState = {
+  sentence: string;
+  requestId: number;
+  tokens: SyntaxToken[] | null;
+  reliable: boolean;
+  loading: boolean;
+  error: boolean;
+  visible: boolean;
+};
+
+function initialState(sentence: string, requestId = 0): SentenceStructureState {
+  return {
+    sentence,
+    requestId,
+    tokens: null,
+    reliable: true,
+    loading: false,
+    error: false,
+    visible: false,
+  };
+}
+
 // Lazily fetches a sentence's dependency parse the first time it is revealed and
 // caches it, so toggling the structure view off/on does not re-hit the API.
 export function useSentenceStructure(sentence: string): {
@@ -12,48 +34,74 @@ export function useSentenceStructure(sentence: string): {
   visible: boolean;
   toggle: () => void;
 } {
-  const [tokens, setTokens] = useState<SyntaxToken[] | null>(null);
-  const [reliable, setReliable] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
-  const [visible, setVisible] = useState(false);
-  const [prevSentence, setPrevSentence] = useState(sentence);
+  const [state, setState] = useState<SentenceStructureState>(() =>
+    initialState(sentence)
+  );
 
-  // The list item that owns this hook is reused across sessions (same list
-  // index, same React key), so state doesn't reset on its own when the
-  // underlying sentence changes. Detect that here and clear the stale parse
-  // synchronously, before paint, so a new sentence never shows a previous
-  // session's cached structure.
-  if (sentence !== prevSentence) {
-    setPrevSentence(sentence);
-    setTokens(null);
-    setReliable(true);
-    setLoading(false);
-    setError(false);
-    setVisible(false);
+  // SentenceItem instances are keyed by list index and can be reused across
+  // sessions. Reset synchronously so a reused item cannot render a stale parse.
+  // Incrementing requestId also invalidates any parse still in flight.
+  if (sentence !== state.sentence) {
+    setState(initialState(sentence, state.requestId + 1));
   }
 
   function toggle(): void {
-    if (visible) {
-      setVisible(false);
+    if (state.visible) {
+      setState((current) =>
+        current.sentence === sentence ? { ...current, visible: false } : current
+      );
       return;
     }
-    setVisible(true);
-    if (tokens || loading) return; // already fetched or fetching — just reveal.
 
-    setLoading(true);
-    setError(false);
+    if (state.tokens || state.loading) {
+      setState((current) =>
+        current.sentence === sentence ? { ...current, visible: true } : current
+      );
+      return;
+    }
+
+    const requestId = state.requestId + 1;
+    setState((current) =>
+      current.sentence === sentence
+        ? { ...current, requestId, visible: true, loading: true, error: false }
+        : current
+    );
+
     parseSentence(sentence)
       .then((result) => {
-        setTokens(result.tokens);
-        setReliable(result.reliable);
+        setState((current) =>
+          current.sentence === sentence && current.requestId === requestId
+            ? {
+                ...current,
+                tokens: result.tokens,
+                reliable: result.reliable,
+              }
+            : current
+        );
       })
       .catch((e: unknown) => {
         console.error(e);
-        setError(true);
+        setState((current) =>
+          current.sentence === sentence && current.requestId === requestId
+            ? { ...current, error: true }
+            : current
+        );
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setState((current) =>
+          current.sentence === sentence && current.requestId === requestId
+            ? { ...current, loading: false }
+            : current
+        );
+      });
   }
 
-  return { tokens, reliable, loading, error, visible, toggle };
+  return {
+    tokens: state.tokens,
+    reliable: state.reliable,
+    loading: state.loading,
+    error: state.error,
+    visible: state.visible,
+    toggle,
+  };
 }
