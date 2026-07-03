@@ -4,7 +4,8 @@
 // nodes; `children` only on phrase/clause nodes.
 export type StructureRole =
   | "ROOT" | "S" | "V" | "O" | "IO" | "DO" | "SC" | "OC"
-  | "ADV" | "ADJ" | "CONJ" | "MARK" | "PUNCT";
+  | "HEAD" | "DET" | "MOD" | "PREP" | "ADV" | "ADJ" | "CONJ"
+  | "MARK" | "PUNCT";
 export type StructureNodeType = "word" | "phrase" | "clause";
 export type SentencePattern = "SV" | "SVC" | "SVO" | "SVOO" | "SVOC";
 
@@ -17,8 +18,8 @@ export type StructureNode = {
   children?: StructureNode[];
 };
 
-// Result of POST /api/parse. `structure` is null when there is nothing to
-// analyze (empty sentence).
+// Result of POST /api/parse. `structure` stays nullable for compatibility with
+// older cached API results.
 export type ParseResult = { structure: StructureNode | null };
 
 export type VocabItem = {

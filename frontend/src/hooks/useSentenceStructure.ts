@@ -8,7 +8,7 @@ type SentenceStructureState = {
   structure: StructureNode | null;
   loaded: boolean;
   loading: boolean;
-  error: boolean;
+  error: string | null;
   visible: boolean;
 };
 
@@ -19,7 +19,7 @@ function initialState(sentence: string, requestId = 0): SentenceStructureState {
     structure: null,
     loaded: false,
     loading: false,
-    error: false,
+    error: null,
     visible: false,
   };
 }
@@ -29,10 +29,10 @@ function initialState(sentence: string, requestId = 0): SentenceStructureState {
 export function useSentenceStructure(sentence: string): {
   structure: StructureNode | null;
   loading: boolean;
-  error: boolean;
+  error: string | null;
   visible: boolean;
-  // null = not parsed yet (unknown); false = parsed but nothing to analyze (empty
-  // sentence / no structure), so the toggle should be disabled.
+  // null = not parsed yet (unknown); false = the API rejected an incomplete
+  // sentence or returned no structure, so the toggle should be disabled.
   analyzable: boolean | null;
   toggle: () => void;
   retry: () => void;
@@ -54,7 +54,7 @@ export function useSentenceStructure(sentence: string): {
     const requestId = state.requestId + 1;
     setState((current) =>
       current.sentence === sentence
-        ? { ...current, requestId, visible: true, loading: true, error: false }
+        ? { ...current, requestId, visible: true, loading: true, error: null }
         : current
     );
 
@@ -75,9 +75,18 @@ export function useSentenceStructure(sentence: string): {
       })
       .catch((e: unknown) => {
         console.error(e);
+        const incompleteMessage = "分析句構只適用於完整的句子";
+        const message =
+          e instanceof Error && e.message.includes(incompleteMessage)
+            ? incompleteMessage
+            : "句構分析失敗";
         setState((current) =>
           current.sentence === sentence && current.requestId === requestId
-            ? { ...current, error: true }
+            ? {
+                ...current,
+                error: message,
+                loaded: message === incompleteMessage,
+              }
             : current
         );
       })

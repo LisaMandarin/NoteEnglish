@@ -1,9 +1,14 @@
 import hashlib
 import re
 
+from fastapi import HTTPException
+
 from app.core.config import settings
 from app.services.gemini import PARSE_PROMPT_VERSION, ai_analyze_structure
+from app.services.nlp import is_complete_sentence
 from app.services.supabase import get_cached_parse, save_parse
+
+INCOMPLETE_SENTENCE_MESSAGE = "分析句構只適用於完整的句子"
 
 # In-memory L1 cache in front of Supabase (L2), keyed by (sentence_hash,
 # prompt_version). Avoids the network round-trip for hot sentences within a
@@ -23,15 +28,15 @@ def _hash(normalized: str) -> str:
 def get_structure(sentence: str) -> tuple[dict | None, dict | None]:
     """Return (structure, usage) for a sentence.
 
-    - structure is None for an empty/whitespace sentence (nothing to analyze).
     - usage is None on a cache hit (no AI call was made, so nothing to bill/log);
       it is a token-usage dict when a fresh Gemini call happened.
 
     Read-through cache: memory L1 -> Supabase L2 -> Gemini, writing back on miss.
-    Propagates HTTPException(502) from the AI layer so the route can surface it."""
+    Raises HTTPException(422) before cache/AI access for incomplete sentences and
+    propagates HTTPException(502) from the AI layer."""
     normalized = _normalize(sentence)
-    if not normalized:
-        return None, None
+    if not is_complete_sentence(normalized):
+        raise HTTPException(status_code=422, detail=INCOMPLETE_SENTENCE_MESSAGE)
 
     key = (_hash(normalized), PARSE_PROMPT_VERSION)
 

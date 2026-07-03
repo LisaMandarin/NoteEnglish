@@ -51,15 +51,20 @@ class ParseRouteTests(unittest.TestCase):
         log.assert_not_called()
         self.assertEqual(res.structure.role, "ROOT")
 
-    def test_empty_sentence_returns_null_structure(self):
+    def test_incomplete_sentence_error_propagates(self):
         with (
-            patch.object(parse_route, "get_structure", return_value=(None, None)),
+            patch.object(
+                parse_route,
+                "get_structure",
+                side_effect=HTTPException(422, "分析句構只適用於完整的句子"),
+            ),
             patch.object(parse_route, "log_api_usage") as log,
         ):
-            res = self._call("")
+            with self.assertRaises(HTTPException) as raised:
+                self._call("In the morning.")
 
+        self.assertEqual(raised.exception.status_code, 422)
         log.assert_not_called()
-        self.assertIsNone(res.structure)
 
     def test_ai_failure_propagates(self):
         with (

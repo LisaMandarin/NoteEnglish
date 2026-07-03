@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from app.models.vocab import VocabOptions
 from app.services import gemini
 from app.services.gemini import _strip_echoed_indices
-from app.services.nlp import split_sentences
+from app.services.nlp import is_complete_sentence, split_sentences
 
 
 class SentenceSplittingTests(unittest.TestCase):
@@ -44,6 +44,23 @@ class SentenceSplittingTests(unittest.TestCase):
             split_sentences("...\nThe next sentence."),
             ["The next sentence."],
         )
+
+
+class CompleteSentenceTests(unittest.TestCase):
+    def test_declarative_and_question_are_complete(self):
+        self.assertTrue(is_complete_sentence("She reads books"))
+        self.assertTrue(is_complete_sentence("Are you ready?"))
+
+    def test_imperative_is_complete_without_explicit_subject(self):
+        self.assertTrue(is_complete_sentence("Please sit down."))
+
+    def test_phrases_and_non_finite_fragments_are_incomplete(self):
+        self.assertFalse(is_complete_sentence("In the morning."))
+        self.assertFalse(is_complete_sentence("To learn English."))
+        self.assertFalse(is_complete_sentence("Running in the park."))
+
+    def test_dependent_clause_is_incomplete(self):
+        self.assertFalse(is_complete_sentence("Because I was tired."))
 
 
 class TranslationCleanupTests(unittest.TestCase):

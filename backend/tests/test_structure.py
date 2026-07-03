@@ -23,6 +23,30 @@ VALID_TREE = {
     ],
 }
 
+DETAILED_TREE = {
+    "text": "The deep sea is calm.",
+    "role": "ROOT",
+    "type": "clause",
+    "label": "主要子句",
+    "pattern": "SVC",
+    "children": [
+        {
+            "text": "The deep sea",
+            "role": "S",
+            "type": "phrase",
+            "label": "名詞片語",
+            "children": [
+                {"text": "The", "role": "DET", "type": "word", "label": "限定詞"},
+                {"text": "deep", "role": "ADJ", "type": "word", "label": "形容詞"},
+                {"text": "sea", "role": "HEAD", "type": "word", "label": "名詞"},
+            ],
+        },
+        {"text": "is", "role": "V", "type": "word", "label": "動詞"},
+        {"text": "calm", "role": "SC", "type": "word", "label": "主詞補語"},
+        {"text": ".", "role": "PUNCT", "type": "word", "label": "標點"},
+    ],
+}
+
 
 def _response(payload) -> SimpleNamespace:
     return SimpleNamespace(text=json.dumps(payload), usage_metadata=None)
@@ -47,6 +71,90 @@ class ReconstructionTests(unittest.TestCase):
         }
         # Sentence uses curly quotes + different case; must still reconstruct.
         self.assertTrue(gemini._reconstructs_sentence(tree, "he said “OK”"))
+
+    def test_detailed_tree_requires_children_on_long_phrase(self):
+        self.assertTrue(gemini._is_detailed_tree(DETAILED_TREE))
+
+        shallow = {
+            **DETAILED_TREE,
+            "children": [
+                {
+                    "text": "The deep sea",
+                    "role": "S",
+                    "type": "phrase",
+                    "label": "名詞片語",
+                },
+                *DETAILED_TREE["children"][1:],
+            ],
+        }
+        self.assertFalse(gemini._is_detailed_tree(shallow))
+        self.assertIn("unexpanded phrase has 3", gemini._detail_issue(shallow))
+
+    def test_compact_phrase_may_remain_a_leaf(self):
+        compact_phrase = {
+            "text": "Earth's surface",
+            "role": "HEAD",
+            "type": "phrase",
+            "label": "名詞片語",
+        }
+        self.assertTrue(gemini._is_detailed_tree(compact_phrase))
+
+    def test_long_phrase_can_contain_compact_phrase_leaves(self):
+        phrase = {
+            "text": "more than 70 percent of Earth's surface",
+            "role": "O",
+            "type": "phrase",
+            "label": "名詞片語",
+            "children": [
+                {
+                    "text": "more than",
+                    "role": "MOD",
+                    "type": "phrase",
+                    "label": "副詞片語",
+                },
+                {
+                    "text": "70 percent",
+                    "role": "HEAD",
+                    "type": "phrase",
+                    "label": "名詞片語",
+                },
+                {
+                    "text": "of Earth's surface",
+                    "role": "ADJ",
+                    "type": "phrase",
+                    "label": "介系詞片語",
+                    "children": [
+                        {
+                            "text": "of",
+                            "role": "PREP",
+                            "type": "word",
+                            "label": "介系詞",
+                        },
+                        {
+                            "text": "Earth's surface",
+                            "role": "HEAD",
+                            "type": "phrase",
+                            "label": "名詞片語",
+                        },
+                    ],
+                },
+            ],
+        }
+        self.assertTrue(gemini._is_detailed_tree(phrase))
+
+    def test_each_parent_span_must_match_its_children(self):
+        mismatched = {
+            **DETAILED_TREE,
+            "children": [
+                {
+                    **DETAILED_TREE["children"][0],
+                    "text": "A shallow sea",
+                },
+                *DETAILED_TREE["children"][1:],
+            ],
+        }
+        self.assertFalse(gemini._is_detailed_tree(mismatched))
+        self.assertIn("node text does not match", gemini._detail_issue(mismatched))
 
 
 class AnalyzeStructureTests(unittest.TestCase):
@@ -85,6 +193,10 @@ class AnalyzeStructureTests(unittest.TestCase):
         self.assertNotIn(gemini._STRUCTURE_RETRY_HINT, first.kwargs["contents"])
         self.assertGreater(second.kwargs["config"]["temperature"], 0.0)
         self.assertIn(gemini._STRUCTURE_RETRY_HINT, second.kwargs["contents"])
+        self.assertEqual(
+            first.kwargs["config"]["thinking_config"]["thinking_budget"],
+            gemini._STRUCTURE_THINKING_BUDGET,
+        )
 
     def test_reconstruction_mismatch_raises(self):
         with patch.object(
@@ -106,16 +218,65 @@ class AnalyzeStructureTests(unittest.TestCase):
         self.assertEqual(gen.call_count, 2)
         self.assertEqual(result["role"], "ROOT")
 
+    def test_shallow_long_phrase_is_expanded_locally(self):
+        shallow = {
+            **DETAILED_TREE,
+            "children": [
+                {
+                    "text": "The deep sea",
+                    "role": "S",
+                    "type": "phrase",
+                    "label": "名詞片語",
+                },
+                *DETAILED_TREE["children"][1:],
+            ],
+        }
+        with patch.object(
+            gemini.client.models,
+            "generate_content",
+            return_value=_response(shallow),
+        ) as gen:
+            result, _ = gemini.ai_analyze_structure("The deep sea is calm.")
+
+        subject = result["children"][0]
+        self.assertEqual([child["text"] for child in subject["children"]], ["The", "deep", "sea"])
+        self.assertEqual(
+            [child["role"] for child in subject["children"]],
+            ["DET", "ADJ", "HEAD"],
+        )
+        gen.assert_called_once()
+
 
 class GetStructureCacheTests(unittest.TestCase):
     def setUp(self):
         structure._MEM_CACHE.clear()
 
-    def test_empty_sentence_short_circuits(self):
-        with patch.object(structure, "ai_analyze_structure") as ai:
-            result, usage = structure.get_structure("   ")
-        self.assertEqual((result, usage), (None, None))
+    def test_empty_sentence_is_rejected_without_calling_ai(self):
+        with (
+            patch.object(structure, "ai_analyze_structure") as ai,
+            self.assertRaises(HTTPException) as raised,
+        ):
+            structure.get_structure("   ")
+
+        self.assertEqual(raised.exception.status_code, 422)
+        self.assertEqual(raised.exception.detail, structure.INCOMPLETE_SENTENCE_MESSAGE)
         ai.assert_not_called()
+
+    def test_incomplete_sentence_does_not_call_ai_or_cache(self):
+        with (
+            patch.object(structure, "is_complete_sentence", return_value=False),
+            patch.object(structure, "get_cached_parse") as l2,
+            patch.object(structure, "ai_analyze_structure") as ai,
+            patch.object(structure, "save_parse") as save,
+            self.assertRaises(HTTPException) as raised,
+        ):
+            structure.get_structure("In the morning.")
+
+        self.assertEqual(raised.exception.status_code, 422)
+        self.assertEqual(raised.exception.detail, structure.INCOMPLETE_SENTENCE_MESSAGE)
+        l2.assert_not_called()
+        ai.assert_not_called()
+        save.assert_not_called()
 
     def test_miss_calls_ai_saves_and_returns_usage(self):
         usage = {"prompt_tokens": 1, "response_tokens": 2, "total_tokens": 3}

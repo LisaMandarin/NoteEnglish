@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 
 from app.models.vocab import VocabOptions
 from app.core.config import settings
+from app.services.nlp import analyze_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +205,7 @@ def ai_ocr_image(image_bytes: bytes, mime_type: str) -> tuple[str, dict]:
 
 # Bumped whenever the prompt or output schema below changes in a way that should
 # invalidate cached analyses. The parse cache keys on (sentence_hash, this).
-PARSE_PROMPT_VERSION = 2
+PARSE_PROMPT_VERSION = 5
 
 # The pedagogical labels the model may use, mirrored from app.models.parse.Label.
 # Listed in the prompt so the model picks from a fixed vocabulary.
@@ -221,12 +222,12 @@ _STRUCTURE_PROMPT = (
     "sentence patterns (SV / SVC / SVO / SVOO / SVOC).\n\n"
     "Return ONLY a JSON object for the top node, where each node is:\n"
     '{ "text", "role", "type", "label", "pattern"(clause only), "children"(phrase/clause only) }\n\n'
-    "role in [ROOT,S,V,O,IO,DO,SC,OC,ADV,ADJ,CONJ,MARK,PUNCT]\n"
+    "role in [ROOT,S,V,O,IO,DO,SC,OC,HEAD,DET,MOD,PREP,ADV,ADJ,CONJ,MARK,PUNCT]\n"
     "type in [word, phrase, clause]\n"
     "pattern in [SV, SVC, SVO, SVOO, SVOC]\n"
     f"label in [{_STRUCTURE_LABELS}]\n\n"
     "Rules:\n"
-    "1. Concatenating every node's \"text\" left-to-right MUST reproduce the "
+    "1. Concatenating every LEAF node's \"text\" left-to-right MUST reproduce the "
     "sentence verbatim (same words, same order, keep quotes/punctuation).\n"
     "2. The top node is role=ROOT, type=clause, label=主要子句, with its pattern.\n"
     "3. EVERY clause (main or subordinate) gets its own \"pattern\" and is broken "
@@ -234,14 +235,21 @@ _STRUCTURE_PROMPT = (
     "4. Causative/perception verbs (help/make/let/have/see/find/keep/consider ...): "
     "\"V + OBJECT + adjective/noun/bare-infinitive\" -> the object is O and the "
     "trailing part is OC (受詞補語 / 原形動詞補語), NOT part of one big object.\n"
-    "5. Only expand a phrase into children when it contains its OWN verb (a reduced "
-    "or non-finite clause, e.g. an OC 'prepare for complex roles' -> prepare + "
-    "介系詞片語). A phrase with NO inner verb — a prepositional / noun / adjective "
-    "phrase such as 'for his kind personality' — is a SINGLE leaf node (no children); "
-    "do NOT break it into individual words. Label a stray non-phrase word inside an "
-    "expanded phrase by its part of speech (名詞/代名詞/限定詞/形容詞/副詞/介系詞/連接詞/助動詞).\n"
-    "6. Prepositional phrase: label 介系詞片語; role=ADJ if it modifies a noun, "
-    "role=ADV if it modifies a verb/adjective.\n"
+    "5. EVERY clause and every phrase containing 3 OR MORE lexical words MUST have "
+    "children. A short phrase of at most 2 words may remain a leaf when further "
+    "splitting adds little teaching value (e.g. 'Earth's surface' or 'of it'). "
+    "Recursively expand longer noun, prepositional, adjective, adverb, participial, "
+    "infinitive, and gerund phrases into meaningful smaller "
+    "phrases and word leaves. For noun phrases, expose determiners, modifiers, the "
+    "head noun, and embedded prepositional phrases. For coordinated lists, expose "
+    "each item, conjunction, and punctuation. Do not flatten a long phrase into one node.\n"
+    "6. Inside a phrase use role=HEAD for its lexical head, DET for a determiner, "
+    "PREP for a preposition, ADJ/ADV for adjective/adverb modifiers, MOD for another "
+    "modifier, and CONJ for coordinated material. Label word leaves by their part of "
+    "speech (名詞/代名詞/限定詞/形容詞/副詞/介系詞/連接詞/助動詞), except a clause's "
+    "direct S/V/O/C word may use its grammatical-function label. A prepositional "
+    "phrase is label=介系詞片語 and role=ADJ when modifying a noun or role=ADV when "
+    "modifying a verb, adjective, or whole clause.\n"
     "7. Coordinated items use role=CONJ; the subordinator (that/which/because...) "
     "is a MARK/引導詞 word inside its clause.\n"
     "8. Reproduce EVERY word of the sentence exactly once, verbatim — never drop, "
@@ -249,6 +257,9 @@ _STRUCTURE_PROMPT = (
     "especially easily-omitted function words: ANY adverb, ANY auxiliary/modal and "
     "the COMPLETE verb group (e.g. 'will be', 'has been', 'is being', 'would have "
     "been'), particles, articles, prepositions, and conjunctions.\n"
+    "9. Do not absorb a trailing adjunct into S/O/SC/OC. For example a comma + 'with "
+    "...' supplement that modifies the whole clause must be separate top-level PUNCT "
+    "and ADV children, while the core S/V/O/C span remains precise.\n"
     "Return JSON only. No markdown, no commentary.\n\n"
     "Sentence: "
 )
@@ -256,10 +267,11 @@ _STRUCTURE_PROMPT = (
 # Appended when a retry is needed: the model's previous answer failed the
 # verbatim-reconstruction check, so restate that constraint forcefully.
 _STRUCTURE_RETRY_HINT = (
-    "\n\nYour previous answer was REJECTED because the concatenated node texts did "
-    "not exactly reproduce the sentence — a word was dropped, added, or altered. "
-    "Re-analyze and return corrected JSON in which every original word appears "
-    "exactly once, verbatim."
+    "\n\nYour previous answer was REJECTED because it was either insufficiently "
+    "nested or its leaf texts did not exactly reproduce the sentence. Re-analyze "
+    "with children on every clause and every phrase of 3 or more words. Short phrases "
+    "of at most 2 words may remain leaves. Ensure every original word appears exactly "
+    "once, verbatim."
 )
 
 
@@ -296,11 +308,110 @@ def _reconstructs_sentence(structure: dict, sentence: str) -> bool:
     return _normalize_for_compare("".join(_leaf_texts(structure))) == _normalize_for_compare(sentence)
 
 
+_LEXICAL_TOKEN = re.compile(r"[A-Za-z0-9]+(?:[-'’][A-Za-z0-9]+)*")
+
+
+def _lexical_token_count(text: str) -> int:
+    return len(_LEXICAL_TOKEN.findall(text))
+
+
+def _phrase_word_node(token: dict[str, str | bool]) -> dict:
+    """Map a spaCy token to the controlled structure roles and labels."""
+    text = str(token["text"])
+    lower = str(token["lower"])
+    pos = str(token["pos"])
+
+    if pos == "PUNCT":
+        role, label = "PUNCT", "標點"
+    elif pos in {"DET", "NUM"} or lower in {"'s", "’s"}:
+        role, label = "DET", "限定詞"
+    elif pos == "ADJ":
+        role, label = "ADJ", "形容詞"
+    elif pos == "ADV":
+        role, label = "ADV", "副詞"
+    elif pos == "ADP":
+        role, label = "PREP", "介系詞"
+    elif pos in {"CCONJ", "SCONJ"}:
+        role, label = "CONJ", "連接詞"
+    elif pos == "AUX":
+        role, label = "MOD", "助動詞"
+    elif pos == "VERB":
+        role, label = "MOD", "動詞"
+    elif pos == "PRON":
+        role, label = "MOD", "代名詞"
+    elif pos == "PART" and lower == "to":
+        role, label = "MOD", "助動詞"
+    else:
+        role, label = "MOD", "名詞"
+
+    if bool(token["is_root"]) and role != "PUNCT":
+        role = "HEAD"
+
+    return {"text": text, "role": role, "type": "word", "label": label}
+
+
+def _expand_long_phrase_leaves(node: dict) -> None:
+    """Locally expand long phrase leaves when Gemini leaves `children` empty.
+
+    Gemini still supplies the pedagogically important clause hierarchy and
+    S/V/O/C roles. spaCy only fills the missing word-level detail, preventing a
+    usable whole-sentence analysis from failing because one phrase stayed flat.
+    """
+    children = node.get("children")
+    if node.get("type") == "phrase" and not children:
+        if _lexical_token_count(node["text"]) >= 3:
+            token_nodes = [_phrase_word_node(token) for token in analyze_tokens(node["text"])]
+            if token_nodes:
+                node["children"] = token_nodes
+        return
+
+    for child in children or []:
+        _expand_long_phrase_leaves(child)
+
+
+def _detail_issue(node: dict, path: str = "ROOT") -> str | None:
+    """Return the first nesting issue with its tree path, or None when valid."""
+    children = node.get("children")
+    node_type = node.get("type")
+
+    # Word nodes are always leaves. Compact phrases may also remain leaves, but
+    # longer phrases and all clauses must be expandable.
+    if node_type == "word":
+        return f"{path}: word node has children" if children else None
+    if node_type == "phrase" and not children:
+        word_count = _lexical_token_count(node["text"])
+        if 1 <= word_count <= 2:
+            return None
+        return f"{path}: unexpanded phrase has {word_count} lexical words"
+    if node_type != "clause" and node_type != "phrase":
+        return f"{path}: unsupported node type {node_type!r}"
+    if not children:
+        return f"{path}: {node_type} node has no children"
+
+    # Each node must describe the exact surface span covered by its direct
+    # children, not merely rely on the root-level reconstruction check.
+    child_text = "".join(child["text"] for child in children)
+    if _normalize_for_compare(child_text) != _normalize_for_compare(node["text"]):
+        return f"{path}: node text does not match its direct children"
+
+    for index, child in enumerate(children):
+        issue = _detail_issue(child, f"{path}.{index}")
+        if issue:
+            return issue
+    return None
+
+
+def _is_detailed_tree(node: dict) -> bool:
+    """Validate nesting semantics that Pydantic's recursive shape cannot express."""
+    return _detail_issue(node) is None
+
+
 # Attempts for a single analysis: the first at temperature 0 (deterministic), then
 # retries with a corrective hint and a nonzero temperature so the model can
 # actually produce a *different*, fixed answer instead of repeating the reject.
 _STRUCTURE_ATTEMPTS = 3
 _STRUCTURE_RETRY_TEMPERATURE = 0.4
+_STRUCTURE_THINKING_BUDGET = 1024
 
 
 def _prune_empty_children(node: dict) -> None:
@@ -344,7 +455,9 @@ def ai_analyze_structure(sentence: str) -> tuple[dict, dict]:
                     # e.g. putting a label value like 介系詞片語 into `type`.
                     "response_json_schema": StructureNode.model_json_schema(),
                     "temperature": temperature,
-                    "thinking_config": {"thinking_budget": 0},
+                    "thinking_config": {
+                        "thinking_budget": _STRUCTURE_THINKING_BUDGET,
+                    },
                 },
             )
         except Exception as e:
@@ -366,10 +479,21 @@ def ai_analyze_structure(sentence: str) -> tuple[dict, dict]:
 
         structure = node.model_dump(exclude_none=True)
         _prune_empty_children(structure)
+        _expand_long_phrase_leaves(structure)
         if not _reconstructs_sentence(structure, sentence):
             last_error = HTTPException(
                 status_code=502,
                 detail="Gemini structure analysis did not reproduce the sentence.",
+            )
+            continue
+        detail_issue = _detail_issue(structure)
+        if detail_issue:
+            last_error = HTTPException(
+                status_code=502,
+                detail=(
+                    "Gemini structure analysis was not sufficiently nested: "
+                    f"{detail_issue}."
+                ),
             )
             continue
 

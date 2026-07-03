@@ -7,7 +7,8 @@ from pydantic import BaseModel, Field
 # Grammatical role of a node within its parent clause. Drives the S/V/O/C
 # underline colors on the frontend. "ROOT" is the whole-sentence top node.
 Role = Literal[
-    "ROOT", "S", "V", "O", "IO", "DO", "SC", "OC", "ADV", "ADJ", "CONJ", "MARK", "PUNCT"
+    "ROOT", "S", "V", "O", "IO", "DO", "SC", "OC", "HEAD", "DET", "MOD",
+    "PREP", "ADV", "ADJ", "CONJ", "MARK", "PUNCT"
 ]
 
 # Whether a node is a single word-run, an expandable phrase, or a nested clause.
@@ -33,8 +34,9 @@ Label = Literal[
 
 
 # One node of the pedagogical constituent tree. Concatenating every leaf node's
-# `text` left-to-right reproduces the original sentence verbatim. `pattern` is set
-# only on clause nodes; `children` only on phrase/clause nodes.
+# leaf `text` values left-to-right reproduces the original sentence verbatim.
+# Long phrase and clause nodes contain children; compact phrases may remain leaves.
+# `pattern` is set only on clause nodes.
 class StructureNode(BaseModel):
     text: str = Field(description="Verbatim surface text of this span")
     role: Role
@@ -52,7 +54,7 @@ class ParseRequest(BaseModel):
     sentence: str = Field(description="The sentence to analyze")
 
 
-# Response: the sentence's structure tree, or null when there is nothing to
-# analyze (empty sentence).
+# Response: the sentence's structure tree. The optional type remains for
+# compatibility with parse results cached before request validation was added.
 class ParseResponse(BaseModel):
     structure: Optional[StructureNode] = None

@@ -10,6 +10,75 @@ def _get_nlp():
     return _nlp
 
 
+def analyze_tokens(text: str) -> list[dict[str, str | bool]]:
+    """Return the token attributes needed for deterministic phrase fallback."""
+    return [
+        {
+            "text": token.text,
+            "lower": token.lower_,
+            "pos": token.pos_,
+            "dep": token.dep_,
+            "is_root": token.dep_ == "ROOT",
+        }
+        for token in _get_nlp()(text)
+        if not token.is_space
+    ]
+
+
+def _span_is_complete_sentence(span) -> bool:
+    """Return whether a spaCy sentence span contains an independent clause."""
+    root = span.root
+    if root.pos_ not in {"VERB", "AUX"}:
+        return False
+
+    # A root introduced by a subordinating marker (because/if/although/etc.) is
+    # a dependent clause, even when it contains both a subject and a verb.
+    if any(token.dep_ == "mark" and token.head == root for token in span):
+        return False
+
+    has_subject = any(
+        token.head == root and token.dep_ in {"nsubj", "nsubjpass", "csubj", "expl"}
+        for token in span
+    )
+    has_finite_verb = root.morph.get("VerbForm") == ["Fin"] or any(
+        token.head == root
+        and token.dep_ in {"aux", "auxpass"}
+        and (token.morph.get("VerbForm") == ["Fin"] or token.tag_ == "MD")
+        for token in span
+    )
+    if has_subject and has_finite_verb:
+        return True
+
+    # Imperatives use a bare root verb and normally omit their subject. Exclude
+    # infinitives ("To learn English") and modal fragments ("Can swim").
+    if root.pos_ == "VERB" and root.tag_ == "VB" and not has_subject:
+        has_infinitive_marker = any(
+            token.head == root and token.lower_ == "to" for token in span
+        )
+        has_modal = any(token.head == root and token.tag_ == "MD" for token in span)
+        return not has_infinitive_marker and not has_modal
+
+    return False
+
+
+def is_complete_sentence(text: str) -> bool:
+    """Return True only when `text` is one complete English sentence.
+
+    Punctuation is intentionally not required: "She reads." and "She reads"
+    are both complete clauses, while a punctuated phrase is still incomplete.
+    """
+    normalized = text.strip()
+    if not normalized or not re.search(r"[a-zA-Z]", normalized):
+        return False
+
+    spans = [
+        span
+        for span in _get_nlp()(normalized).sents
+        if re.search(r"[a-zA-Z]", span.text)
+    ]
+    return len(spans) == 1 and _span_is_complete_sentence(spans[0])
+
+
 # Matches a single multiple-choice option marker, e.g. "(A)", "（B）", "C.", "D)".
 # Covers bracketed forms anywhere, and letter+delimiter forms at a word boundary.
 _OPTION_MARKER = re.compile(

@@ -132,7 +132,9 @@ export default function SentenceItem({
             </Tooltip>
             <Tooltip
               title={
-                structure.analyzable === false ? "此句無法分析句構" : "句構分析"
+                structure.analyzable === false
+                  ? "分析句構只適用於完整的句子"
+                  : "句構分析"
               }
             >
               <button
@@ -175,11 +177,13 @@ export default function SentenceItem({
                 {structure.error && (
                   <div className="flex items-center gap-2">
                     <Text type="secondary" style={{ fontSize: "0.8rem" }}>
-                      句構分析失敗
+                      {structure.error}
                     </Text>
-                    <Button size="small" onClick={structure.retry}>
-                      重試
-                    </Button>
+                    {structure.analyzable !== false && (
+                      <Button size="small" onClick={structure.retry}>
+                        重試
+                      </Button>
+                    )}
                   </div>
                 )}
                 {structure.structure && (
