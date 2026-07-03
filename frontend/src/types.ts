@@ -1,12 +1,25 @@
-// Dependency-parse token from the backend POST /api/parse (spaCy):
-// token.text / token.dep_ / token.head.i. head = index of the governing token; ROOT points to itself.
-// pos = coarse-grained POS (spaCy pos_, e.g. NOUN/VERB/ADJ); lets a prep phrase's
-// role (modifies a noun vs a verb) be derived from its head. Optional for back-compat.
-export type SyntaxToken = { text: string; dep: string; head: number; pos?: string };
+// Sentence-structure analysis from POST /api/parse. A recursive constituent tree
+// (see backend app/models/parse.py). Concatenating every leaf node's `text`
+// left-to-right reproduces the sentence. `pattern` is present only on clause
+// nodes; `children` only on phrase/clause nodes.
+export type StructureRole =
+  | "ROOT" | "S" | "V" | "O" | "IO" | "DO" | "SC" | "OC"
+  | "ADV" | "ADJ" | "CONJ" | "MARK" | "PUNCT";
+export type StructureNodeType = "word" | "phrase" | "clause";
+export type SentencePattern = "SV" | "SVC" | "SVO" | "SVOO" | "SVOC";
 
-// Result of POST /api/parse. `reliable` is false when the parse looks suspect
-// (clause root is not a verb/aux), so the UI can warn instead of misleading.
-export type ParseResult = { tokens: SyntaxToken[]; reliable: boolean };
+export type StructureNode = {
+  text: string;
+  role: StructureRole;
+  type: StructureNodeType;
+  label: string;
+  pattern?: SentencePattern;
+  children?: StructureNode[];
+};
+
+// Result of POST /api/parse. `structure` is null when there is nothing to
+// analyze (empty sentence).
+export type ParseResult = { structure: StructureNode | null };
 
 export type VocabItem = {
   text: string;

@@ -1,10 +1,9 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from app.models.parse import ParseRequest, ParseResponse
-from app.services.nlp import cache_parse, parse_dependencies
-from app.services.gemini import ai_reparse_dependencies
+from app.services.structure import get_structure
 from app.services.supabase import log_api_usage
 from app.core.config import settings
 from app.core.auth import require_user
@@ -14,21 +13,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["parse"])
 
 
-# Dependency-parse a single sentence. spaCy runs locally first (deterministic, no
-# AI cost); only when that parse looks unreliable do we fall back to Gemini to
-# re-assign the relations, then cache the fix so the fallback bills at most once.
+# Analyze a sentence into a five-pattern constituent tree with Gemini, served
+# through a read-through cache (in-memory -> Supabase). A fresh AI call returns
+# usage, which we bill/log; a cache hit returns usage=None and bills nothing, so
+# a given sentence is analyzed at most once ever. An unusable AI result raises
+# HTTPException(502) here, letting the UI offer a retry.
 @router.post("/parse", response_model=ParseResponse)
 def parse(req: ParseRequest, user: dict = Depends(require_user)):
-    result = parse_dependencies(req.sentence)
-
-    if not result["reliable"] and result["tokens"]:
-        try:
-            tokens, usage = ai_reparse_dependencies(result["tokens"])
-            log_api_usage(user["id"], "parse", settings.gemini_model, usage)
-            cache_parse(req.sentence, tokens, reliable=True)
-            result = {"tokens": tokens, "reliable": True}
-        except HTTPException as e:
-            # Gemini fallback failed — keep spaCy's parse and let the UI warn.
-            logger.warning("Gemini reparse fallback failed: %s", e.detail)
-
-    return ParseResponse(**result)
+    structure, usage = get_structure(req.sentence)
+    if usage is not None:
+        log_api_usage(user["id"], "parse", settings.gemini_model, usage)
+    return ParseResponse(structure=structure)

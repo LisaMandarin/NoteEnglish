@@ -413,7 +413,8 @@ h1, h2, h3 {
 .slot-group.slot-O  { --slot-color: var(--c-comp); }
 .slot-group.slot-DO { --slot-color: var(--c-comp); } /* 直接受詞同受詞色 */
 .slot-group.slot-IO { --slot-color: var(--c-conj); } /* 間接受詞另色區分 */
-.slot-group.slot-C  { --slot-color: var(--c-pp); }
+.slot-group.slot-SC { --slot-color: var(--c-pp); }   /* 主詞補語 */
+.slot-group.slot-OC { --slot-color: var(--c-pp); }   /* 受詞補語 */
 
 /* 句型徽章：標在主幹上方，顯示主要子句的五大句型。 */
 .pattern-badge {
@@ -428,6 +429,15 @@ h1, h2, h3 {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
   padding: 1px 9px;
   border-radius: 6px;
+}
+
+/* 小號句型徽章：嵌在子句方塊標籤前，標該子句自己的句型。 */
+.pattern-badge--sm {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 0 5px;
+  margin-right: 5px;
+  vertical-align: 1px;
 }
 
 /* 方塊 / 膠囊內的詞：中性主色，顏色身分交給底色+邊框+標籤承擔。 */

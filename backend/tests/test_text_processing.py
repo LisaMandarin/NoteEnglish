@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from app.models.vocab import VocabOptions
 from app.services import gemini
 from app.services.gemini import _strip_echoed_indices
-from app.services.nlp import parse_dependencies, split_sentences
+from app.services.nlp import split_sentences
 
 
 class SentenceSplittingTests(unittest.TestCase):
@@ -213,56 +213,6 @@ class VocabLookupTests(unittest.TestCase):
 
         self.assertEqual(raised.exception.status_code, 502)
         self.assertIn("invalid response", raised.exception.detail)
-
-
-class ParseReliabilityTests(unittest.TestCase):
-    """The `reliable` flag drives the structure-view warning and the Gemini
-    fallback. These run the real spaCy model (like the splitting tests above)."""
-
-    def test_clean_sentence_is_reliable(self):
-        result = parse_dependencies(
-            "China filled the void and gained influence in the island nation."
-        )
-        self.assertTrue(result["reliable"])
-
-    def test_copular_sentence_is_reliable(self):
-        # spaCy roots copular sentences on "is" (AUX) — must not be flagged.
-        result = parse_dependencies("Seychelles is an archipelago of 115 islands.")
-        self.assertTrue(result["reliable"])
-
-    def test_non_verbal_root_is_flagged(self):
-        # spaCy mis-roots this on the adjective "aware" instead of "began".
-        result = parse_dependencies(
-            "Washington, aware that Beijing had gained a foothold, began reengaging."
-        )
-        self.assertFalse(result["reliable"])
-
-    def test_duplicate_core_argument_is_flagged(self):
-        # spaCy mis-roots "cancel" as a verb with two dobj children
-        # ("experience" and "suffering"), which the duplicate-role check catches.
-        result = parse_dependencies(
-            "People who are the targets of cancel culture experience severe "
-            "emotional suffering as a result of cyberbullying, reputational harm, "
-            "and public humiliation."
-        )
-        self.assertFalse(result["reliable"])
-
-    def test_nonfinite_conj_of_root_is_flagged(self):
-        # spaCy mis-attaches the trailing non-finite verbs "to act" (infinitive)
-        # and "received" (participle) as conj of the main verb "comes" instead of
-        # to the nearer phrases they parallel — a coordination-scope misparse.
-        result = parse_dependencies(
-            "A personal testimony comes in response to our sincere and dedicated "
-            "quest to want to know for ourselves and then to act upon the "
-            "impressions and the knowledge received."
-        )
-        self.assertFalse(result["reliable"])
-
-    def test_finite_coordination_is_reliable(self):
-        # Genuine main-clause coordination is finite ("sang and danced") and must
-        # not be flagged by the non-finite-conj rule.
-        result = parse_dependencies("She sang and danced all night.")
-        self.assertTrue(result["reliable"])
 
 
 if __name__ == "__main__":

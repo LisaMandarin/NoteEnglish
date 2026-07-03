@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Input, Tooltip, Typography } from "antd";
+import { Button, Input, Tooltip, Typography } from "antd";
 import { ApartmentOutlined, FormOutlined, SoundOutlined } from "@ant-design/icons";
 import type { Sentence, VocabItem } from "../../types";
 import VocabCards from "../Vocab/VocabCards";
@@ -130,12 +130,21 @@ export default function SentenceItem({
                 <FormOutlined />
               </button>
             </Tooltip>
-            <Tooltip title="句構分析">
+            <Tooltip
+              title={
+                structure.analyzable === false ? "此句無法分析句構" : "句構分析"
+              }
+            >
               <button
                 type="button"
                 onClick={structure.toggle}
-                className={`transition-colors cursor-pointer hover:text-(--accent) ${
-                  structure.visible ? "text-(--accent)" : "text-gray-400"
+                disabled={structure.analyzable === false}
+                className={`transition-colors ${
+                  structure.analyzable === false
+                    ? "text-gray-300 cursor-not-allowed"
+                    : `cursor-pointer hover:text-(--accent) ${
+                        structure.visible ? "text-(--accent)" : "text-gray-400"
+                      }`
                 }`}
                 aria-label="Toggle sentence structure"
                 aria-pressed={structure.visible}
@@ -164,17 +173,18 @@ export default function SentenceItem({
                   </Text>
                 )}
                 {structure.error && (
-                  <Text type="secondary" style={{ fontSize: "0.8rem" }}>
-                    句構分析失敗，請稍後再試
-                  </Text>
+                  <div className="flex items-center gap-2">
+                    <Text type="secondary" style={{ fontSize: "0.8rem" }}>
+                      句構分析失敗
+                    </Text>
+                    <Button size="small" onClick={structure.retry}>
+                      重試
+                    </Button>
+                  </div>
                 )}
-                {structure.tokens && (
+                {structure.structure && (
                   <div className="rounded-md border border-(--card-border) bg-(--card-bg) px-3 py-2">
-                    <SentenceSkeleton
-                      tokens={structure.tokens}
-                      previewWords={3}
-                      reliable={structure.reliable}
-                    />
+                    <SentenceSkeleton structure={structure.structure} previewWords={3} />
                   </div>
                 )}
               </div>

@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { parseSentence } from "../lib/api";
-import type { SyntaxToken } from "../types";
+import type { StructureNode } from "../types";
 
 type SentenceStructureState = {
   sentence: string;
   requestId: number;
-  tokens: SyntaxToken[] | null;
-  reliable: boolean;
+  structure: StructureNode | null;
+  loaded: boolean;
   loading: boolean;
   error: boolean;
   visible: boolean;
@@ -16,23 +16,26 @@ function initialState(sentence: string, requestId = 0): SentenceStructureState {
   return {
     sentence,
     requestId,
-    tokens: null,
-    reliable: true,
+    structure: null,
+    loaded: false,
     loading: false,
     error: false,
     visible: false,
   };
 }
 
-// Lazily fetches a sentence's dependency parse the first time it is revealed and
-// caches it, so toggling the structure view off/on does not re-hit the API.
+// Lazily fetches a sentence's structure analysis the first time it is revealed
+// and caches it, so toggling the structure view off/on does not re-hit the API.
 export function useSentenceStructure(sentence: string): {
-  tokens: SyntaxToken[] | null;
-  reliable: boolean;
+  structure: StructureNode | null;
   loading: boolean;
   error: boolean;
   visible: boolean;
+  // null = not parsed yet (unknown); false = parsed but nothing to analyze (empty
+  // sentence / no structure), so the toggle should be disabled.
+  analyzable: boolean | null;
   toggle: () => void;
+  retry: () => void;
 } {
   const [state, setState] = useState<SentenceStructureState>(() =>
     initialState(sentence)
@@ -45,21 +48,9 @@ export function useSentenceStructure(sentence: string): {
     setState(initialState(sentence, state.requestId + 1));
   }
 
-  function toggle(): void {
-    if (state.visible) {
-      setState((current) =>
-        current.sentence === sentence ? { ...current, visible: false } : current
-      );
-      return;
-    }
-
-    if (state.tokens || state.loading) {
-      setState((current) =>
-        current.sentence === sentence ? { ...current, visible: true } : current
-      );
-      return;
-    }
-
+  // Fetch the analysis, opening the panel. Shared by the first reveal and retry;
+  // a fresh requestId invalidates any earlier in-flight parse.
+  function fetchStructure(): void {
     const requestId = state.requestId + 1;
     setState((current) =>
       current.sentence === sentence
@@ -69,12 +60,15 @@ export function useSentenceStructure(sentence: string): {
 
     parseSentence(sentence)
       .then((result) => {
+        // No structure → nothing to render; close the panel so an empty box never
+        // shows, and the button disables itself.
         setState((current) =>
           current.sentence === sentence && current.requestId === requestId
             ? {
                 ...current,
-                tokens: result.tokens,
-                reliable: result.reliable,
+                structure: result.structure,
+                loaded: true,
+                visible: result.structure ? current.visible : false,
               }
             : current
         );
@@ -96,12 +90,31 @@ export function useSentenceStructure(sentence: string): {
       });
   }
 
+  function toggle(): void {
+    if (state.visible) {
+      setState((current) =>
+        current.sentence === sentence ? { ...current, visible: false } : current
+      );
+      return;
+    }
+
+    if (state.loaded || state.loading) {
+      setState((current) =>
+        current.sentence === sentence ? { ...current, visible: true } : current
+      );
+      return;
+    }
+
+    fetchStructure();
+  }
+
   return {
-    tokens: state.tokens,
-    reliable: state.reliable,
+    structure: state.structure,
     loading: state.loading,
     error: state.error,
     visible: state.visible,
+    analyzable: state.loaded ? state.structure !== null : null,
     toggle,
+    retry: fetchStructure,
   };
 }

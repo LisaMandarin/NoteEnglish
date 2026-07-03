@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { ParseResult, Sentence, SessionPage, SyntaxToken, TokenUsageData } from "../types";
+import type { ParseResult, Sentence, SessionPage, StructureNode, TokenUsageData } from "../types";
 
 type ApiSessionShape = {
   id: string;
@@ -95,8 +95,8 @@ export async function parseSentence(sentence: string): Promise<ParseResult> {
   const res = (await apiFetch("/api/parse", {
     method: "POST",
     body: JSON.stringify({ sentence }),
-  })) as { tokens: SyntaxToken[]; reliable?: boolean };
-  return { tokens: res.tokens, reliable: res.reliable ?? true };
+  })) as { structure: StructureNode | null };
+  return { structure: res.structure ?? null };
 }
 
 export async function getAdminUserTokenUsage(userId: string): Promise<TokenUsageData> {

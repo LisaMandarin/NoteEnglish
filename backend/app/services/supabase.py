@@ -366,6 +366,52 @@ def save_session(
     }
 
 
+def get_cached_parse(sentence_hash: str, prompt_version: int) -> dict | None:
+    """Return the cached structure tree for a sentence, or None on a cache miss."""
+    query = parse.urlencode(
+        {
+            "sentence_hash": f"eq.{sentence_hash}",
+            "prompt_version": f"eq.{prompt_version}",
+            "select": "structure",
+            "limit": 1,
+        }
+    )
+    rows = _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/sentence_parses?{query}",
+        headers=_service_headers(),
+    ) or []
+    return rows[0]["structure"] if rows else None
+
+
+def save_parse(
+    sentence_hash: str,
+    prompt_version: int,
+    model: str,
+    sentence: str,
+    structure: dict,
+) -> None:
+    """Persist a structure analysis. Upserts on (sentence_hash, prompt_version)
+    so a race between two first-time requests can't 409. A cache-write failure
+    must not fail the user's request — the analysis is already computed."""
+    try:
+        _request_json(
+            "POST",
+            f"{settings.supabase_url}/rest/v1/sentence_parses"
+            "?on_conflict=sentence_hash,prompt_version",
+            headers=_service_headers("resolution=merge-duplicates,return=minimal"),
+            payload={
+                "sentence_hash": sentence_hash,
+                "prompt_version": prompt_version,
+                "model": model,
+                "sentence": sentence,
+                "structure": structure,
+            },
+        )
+    except Exception:
+        logger.warning("Failed to cache sentence parse (hash=%s)", sentence_hash)
+
+
 def log_api_usage(user_id: str, endpoint: str, model: str, usage: dict) -> None:
     try:
         _request_json(

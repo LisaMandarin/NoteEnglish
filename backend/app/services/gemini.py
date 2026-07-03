@@ -199,161 +199,183 @@ def ai_ocr_image(image_bytes: bytes, mime_type: str) -> tuple[str, dict]:
     text = _normalize_ocr_text(response.text) if response.text else ""
     return text, _extract_usage(response)
 
-# spaCy's English dependency labels (dep_), given to the model so its output maps
-# straight onto the existing CAT/DEP tables the frontend already understands.
-_DEP_LABELS = frozenset({
-    "ROOT",
-    "nsubj",
-    "nsubjpass",
-    "csubj",
-    "expl",
-    "aux",
-    "auxpass",
-    "cop",
-    "attr",
-    "acomp",
-    "dobj",
-    "dative",
-    "oprd",
-    "ccomp",
-    "xcomp",
-    "pcomp",
-    "prep",
-    "pobj",
-    "agent",
-    "case",
-    "det",
-    "amod",
-    "advmod",
-    "nummod",
-    "npadvmod",
-    "poss",
-    "compound",
-    "neg",
-    "mark",
-    "advcl",
-    "acl",
-    "relcl",
-    "appos",
-    "prt",
-    "punct",
-    "cc",
-    "conj",
-    "preconj",
+
+# --- Sentence-structure analysis (five-pattern constituent tree) ---------------
+
+# Bumped whenever the prompt or output schema below changes in a way that should
+# invalidate cached analyses. The parse cache keys on (sentence_hash, this).
+PARSE_PROMPT_VERSION = 2
+
+# The pedagogical labels the model may use, mirrored from app.models.parse.Label.
+# Listed in the prompt so the model picks from a fixed vocabulary.
+_STRUCTURE_LABELS = (
+    "主詞,動詞,受詞,間接受詞,直接受詞,主詞補語,受詞補語,引導詞,對等連接詞,標點,"
+    "名詞,代名詞,限定詞,形容詞,副詞,介系詞,連接詞,助動詞,"
+    "主要子句,受詞子句,主詞子句,補語子句,副詞子句,關係子句,同位子句,"
+    "名詞片語,動名詞片語,不定詞片語,原形動詞補語,分詞片語,介系詞片語,形容詞片語,副詞片語"
+)
+
+_STRUCTURE_PROMPT = (
+    "You are an English-grammar analyzer for Traditional-Chinese-speaking learners.\n"
+    "Analyze the sentence into a NESTED constituent tree using the five basic "
+    "sentence patterns (SV / SVC / SVO / SVOO / SVOC).\n\n"
+    "Return ONLY a JSON object for the top node, where each node is:\n"
+    '{ "text", "role", "type", "label", "pattern"(clause only), "children"(phrase/clause only) }\n\n'
+    "role in [ROOT,S,V,O,IO,DO,SC,OC,ADV,ADJ,CONJ,MARK,PUNCT]\n"
+    "type in [word, phrase, clause]\n"
+    "pattern in [SV, SVC, SVO, SVOO, SVOC]\n"
+    f"label in [{_STRUCTURE_LABELS}]\n\n"
+    "Rules:\n"
+    "1. Concatenating every node's \"text\" left-to-right MUST reproduce the "
+    "sentence verbatim (same words, same order, keep quotes/punctuation).\n"
+    "2. The top node is role=ROOT, type=clause, label=主要子句, with its pattern.\n"
+    "3. EVERY clause (main or subordinate) gets its own \"pattern\" and is broken "
+    "into its S/V/O/IO/DO/SC/OC constituents.\n"
+    "4. Causative/perception verbs (help/make/let/have/see/find/keep/consider ...): "
+    "\"V + OBJECT + adjective/noun/bare-infinitive\" -> the object is O and the "
+    "trailing part is OC (受詞補語 / 原形動詞補語), NOT part of one big object.\n"
+    "5. Only expand a phrase into children when it contains its OWN verb (a reduced "
+    "or non-finite clause, e.g. an OC 'prepare for complex roles' -> prepare + "
+    "介系詞片語). A phrase with NO inner verb — a prepositional / noun / adjective "
+    "phrase such as 'for his kind personality' — is a SINGLE leaf node (no children); "
+    "do NOT break it into individual words. Label a stray non-phrase word inside an "
+    "expanded phrase by its part of speech (名詞/代名詞/限定詞/形容詞/副詞/介系詞/連接詞/助動詞).\n"
+    "6. Prepositional phrase: label 介系詞片語; role=ADJ if it modifies a noun, "
+    "role=ADV if it modifies a verb/adjective.\n"
+    "7. Coordinated items use role=CONJ; the subordinator (that/which/because...) "
+    "is a MARK/引導詞 word inside its clause.\n"
+    "8. Reproduce EVERY word of the sentence exactly once, verbatim — never drop, "
+    "merge away, or paraphrase a word. This applies to ALL words WITHOUT EXCEPTION, "
+    "especially easily-omitted function words: ANY adverb, ANY auxiliary/modal and "
+    "the COMPLETE verb group (e.g. 'will be', 'has been', 'is being', 'would have "
+    "been'), particles, articles, prepositions, and conjunctions.\n"
+    "Return JSON only. No markdown, no commentary.\n\n"
+    "Sentence: "
+)
+
+# Appended when a retry is needed: the model's previous answer failed the
+# verbatim-reconstruction check, so restate that constraint forcefully.
+_STRUCTURE_RETRY_HINT = (
+    "\n\nYour previous answer was REJECTED because the concatenated node texts did "
+    "not exactly reproduce the sentence — a word was dropped, added, or altered. "
+    "Re-analyze and return corrected JSON in which every original word appears "
+    "exactly once, verbatim."
+)
+
+
+def _leaf_texts(node: dict) -> list[str]:
+    """Surface text of every leaf (childless) node, in order."""
+    children = node.get("children")
+    if not children:
+        return [node["text"]]
+    out: list[str] = []
+    for child in children:
+        out.extend(_leaf_texts(child))
+    return out
+
+
+# Style differences that must not fail reconstruction: curly vs straight
+# quotes/apostrophes and dash variants. Whitespace and case are handled separately.
+_PUNCT_VARIANTS = str.maketrans({
+    "“": '"', "”": '"', "‘": "'", "’": "'",
+    "—": "-", "–": "-",
 })
 
 
-def _validate_dependency_tree(tokens: list[dict]) -> None:
-    """Require one rooted, connected, acyclic dependency tree."""
-    roots = [i for i, token in enumerate(tokens) if token["dep"] == "ROOT"]
-    if len(roots) != 1:
-        raise HTTPException(
-            status_code=502,
-            detail="Gemini reparse: must have exactly one ROOT.",
-        )
+def _normalize_for_compare(text: str) -> str:
+    text = text.translate(_PUNCT_VARIANTS).replace("…", "...")
+    return re.sub(r"\s+", "", text).casefold()
 
-    root = roots[0]
-    if tokens[root]["head"] != root:
-        raise HTTPException(
-            status_code=502,
-            detail="Gemini reparse: ROOT must point to itself.",
-        )
 
-    for start, token in enumerate(tokens):
-        if start != root and token["head"] == start:
-            raise HTTPException(
-                status_code=502,
-                detail="Gemini reparse: non-ROOT token points to itself.",
+def _reconstructs_sentence(structure: dict, sentence: str) -> bool:
+    """True when the leaf texts reproduce the sentence.
+
+    Whitespace, letter case, and quote/dash style are normalized away on both
+    sides so the check tolerates cosmetic choices while still catching dropped,
+    added, or reordered words."""
+    return _normalize_for_compare("".join(_leaf_texts(structure))) == _normalize_for_compare(sentence)
+
+
+# Attempts for a single analysis: the first at temperature 0 (deterministic), then
+# retries with a corrective hint and a nonzero temperature so the model can
+# actually produce a *different*, fixed answer instead of repeating the reject.
+_STRUCTURE_ATTEMPTS = 3
+_STRUCTURE_RETRY_TEMPERATURE = 0.4
+
+
+def _prune_empty_children(node: dict) -> None:
+    """Drop `children: []` that the schema-constrained model emits on leaves,
+    so leaf nodes stay childless dicts as the frontend expects."""
+    children = node.get("children")
+    if not children:
+        node.pop("children", None)
+        return
+    for child in children:
+        _prune_empty_children(child)
+
+
+def ai_analyze_structure(sentence: str) -> tuple[dict, dict]:
+    """Analyze a sentence into a five-pattern constituent tree using Gemini.
+
+    Returns (structure_dict, usage). Raises HTTPException(502) when the model
+    output is unusable (invalid schema or does not reconstruct the sentence)
+    after the retries — the caller surfaces that so the UI can offer a retry."""
+    # Imported here to avoid a circular import (models has no service deps).
+    from app.models.parse import StructureNode
+
+    usage = {"prompt_tokens": 0, "response_tokens": 0, "total_tokens": 0}
+    last_error: HTTPException | None = None
+
+    for attempt in range(_STRUCTURE_ATTEMPTS):
+        contents = _STRUCTURE_PROMPT + sentence
+        temperature = 0.0
+        if attempt:
+            contents += _STRUCTURE_RETRY_HINT
+            temperature = _STRUCTURE_RETRY_TEMPERATURE
+
+        try:
+            response = client.models.generate_content(
+                model=settings.gemini_model,
+                contents=contents,
+                config={
+                    "response_mime_type": "application/json",
+                    # Enforce the node shape (role/type/label enums, recursion via
+                    # $ref) at the API level so the model cannot mix up fields —
+                    # e.g. putting a label value like 介系詞片語 into `type`.
+                    "response_json_schema": StructureNode.model_json_schema(),
+                    "temperature": temperature,
+                    "thinking_config": {"thinking_budget": 0},
+                },
             )
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Gemini API request failed: {e}")
 
-        current = start
-        visited: set[int] = set()
-        while current != root:
-            if current in visited:
-                raise HTTPException(
-                    status_code=502,
-                    detail="Gemini reparse: dependency cycle detected.",
-                )
-            visited.add(current)
-            current = tokens[current]["head"]
+        attempt_usage = _extract_usage(response)
+        for key in usage:
+            usage[key] += attempt_usage[key]
 
-
-def ai_reparse_dependencies(tokens: list[dict]) -> tuple[list[dict], dict]:
-    """Re-assign dep + head for an already-tokenized sentence using Gemini.
-
-    Used as a fallback when spaCy's local (en_core_web_sm) parse looks unreliable.
-    Tokenization stays fixed — the model only fills in the relations — so token
-    alignment is safe. Returns corrected {text, dep, head} tokens (text preserved
-    from the input, never the model's echo) plus usage. Raises HTTPException(502)
-    if the model output is unusable, so the caller can keep the spaCy result."""
-    n = len(tokens)
-    items = [{"i": i, "text": t["text"]} for i, t in enumerate(tokens)]
-    input_json = json.dumps(items, ensure_ascii=False)
-    dep_labels = ", ".join(sorted(_DEP_LABELS))
-
-    prompt = (
-        "You are a dependency parser using spaCy's English label set. "
-        "Below is a sentence already split into tokens (do not re-tokenize). "
-        "For EACH token return its syntactic head and dependency relation.\n\n"
-        "Rules:\n"
-        f"- dep MUST be one of: {dep_labels}.\n"
-        "- head is the 0-based index ('i') of the token's governing word.\n"
-        "- Exactly one token is the main verb: its dep is \"ROOT\" and its head equals its own index.\n"
-        "- Every other token's head must point toward the ROOT (the result is a tree).\n"
-        "- Pick the finite main verb as ROOT, not an adjective/noun complement of it.\n\n"
-        "Return ONLY a JSON array, same length and order as the input, each element "
-        '{"i": <int>, "dep": <string>, "head": <int>}. No markdown, no explanation.\n\n'
-        f"Tokens:\n{input_json}"
-    )
-
-    try:
-        response = client.models.generate_content(
-            model=settings.gemini_model,
-            contents=prompt,
-            config={
-                "response_mime_type": "application/json",
-                "temperature": 0,
-                "thinking_config": {"thinking_budget": 0},
-            },
-        )
-        data = json.loads(response.text)
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Gemini reparse failed: {e}")
-
-    usage = _extract_usage(response)
-
-    if not isinstance(data, list) or len(data) != n:
-        raise HTTPException(status_code=502, detail="Gemini reparse: wrong length or shape.")
-
-    # Map by reported index so a reordered response still aligns; require full cover.
-    by_index: dict[int, dict] = {}
-    for item in data:
-        if not isinstance(item, dict) or type(item.get("i")) is not int:
-            raise HTTPException(status_code=502, detail="Gemini reparse: malformed element.")
-        by_index[item["i"]] = item
-    if set(by_index) != set(range(n)):
-        raise HTTPException(status_code=502, detail="Gemini reparse: indices do not cover all tokens.")
-
-    corrected: list[dict] = []
-    for i in range(n):
-        item = by_index[i]
-        dep = item.get("dep")
-        head = item.get("head")
-        if not isinstance(dep, str) or type(head) is not int or not (0 <= head < n):
-            raise HTTPException(status_code=502, detail="Gemini reparse: bad dep/head value.")
-        if dep not in _DEP_LABELS:
-            raise HTTPException(
+        try:
+            data = json.loads(response.text)
+            node = StructureNode.model_validate(data)
+        except (json.JSONDecodeError, ValidationError) as e:
+            last_error = HTTPException(
                 status_code=502,
-                detail=f"Gemini reparse: unsupported dependency label {dep!r}.",
+                detail=f"Gemini structure analysis returned invalid data: {e}",
             )
-        # Keep the original surface text + pos; only the relations come from the model.
-        corrected.append(
-            {"text": tokens[i]["text"], "dep": dep, "head": head, "pos": tokens[i].get("pos")}
-        )
+            continue
 
-    _validate_dependency_tree(corrected)
+        structure = node.model_dump(exclude_none=True)
+        _prune_empty_children(structure)
+        if not _reconstructs_sentence(structure, sentence):
+            last_error = HTTPException(
+                status_code=502,
+                detail="Gemini structure analysis did not reproduce the sentence.",
+            )
+            continue
 
-    return corrected, usage
+        return structure, usage
+
+    raise last_error
 
 
 _POS_MAP = {

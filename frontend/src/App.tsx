@@ -5,7 +5,6 @@ import AppMainSection from "./components/MainSection";
 import AppSidebar from "./components/AppSidebar";
 import SummaryWindow from "./components/SummaryWindow";
 import VocabPrintWindow from "./components/Vocab/VocabPrintWindow";
-import SentenceStructureDemo from "./components/SentenceStructure/SentenceStructureDemo";
 import LoginPage from "./components/Auth/LoginPage";
 import AdminLoginPage from "./components/Auth/AdminLoginPage";
 import AdminDashboard from "./components/Admin";
@@ -87,7 +86,6 @@ export default function App(): React.ReactElement {
   const params = new URLSearchParams(window.location.search);
   const isSummaryView = params.get("view") === "summary";
   const isVocabPrintView = params.get("view") === "vocab-print";
-  const isSyntaxDemoView = params.get("view") === "syntax-demo";
   const isAdminDashboard = window.location.pathname === "/admin-dashboard";
 
   useEffect(() => {
@@ -137,10 +135,6 @@ export default function App(): React.ReactElement {
 
   if (isVocabPrintView) {
     return <VocabPrintWindow />;
-  }
-
-  if (isSyntaxDemoView) {
-    return <SentenceStructureDemo />;
   }
 
   if (!authReady) {
