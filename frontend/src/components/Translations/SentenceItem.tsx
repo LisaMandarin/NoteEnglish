@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, Input, Tooltip, Typography } from "antd";
-import { ApartmentOutlined, FormOutlined, SoundOutlined } from "@ant-design/icons";
+import { Button, Dropdown, Input, Typography } from "antd";
+import type { MenuProps } from "antd";
+import {
+  ApartmentOutlined,
+  FormOutlined,
+  MoreOutlined,
+  SoundOutlined,
+} from "@ant-design/icons";
 import type { Sentence, VocabItem } from "../../types";
 import VocabCards from "../Vocab/VocabCards";
 import { speak } from "../../lib/speech";
@@ -102,6 +108,29 @@ export default function SentenceItem({
 
   useEffect(() => clearSaveTimer, []);
 
+  const moreMenuItems: MenuProps["items"] = [
+    {
+      key: "note",
+      icon: <FormOutlined className={hasNote ? "text-(--accent)" : undefined} />,
+      label: hasNote ? "編輯筆記" : "自訂筆記",
+      onClick: openNoteEditor,
+    },
+    {
+      key: "structure",
+      icon: (
+        <ApartmentOutlined
+          className={structure.visible ? "text-(--accent)" : undefined}
+        />
+      ),
+      label:
+        structure.analyzable === false
+          ? "句構分析（僅適用完整句子）"
+          : "句構分析",
+      disabled: structure.analyzable === false,
+      onClick: structure.toggle,
+    },
+  ];
+
   return (
     <li data-idx={idx} className="flex flex-col gap-1 sm:flex-row sm:gap-4">
       <div className="w-7 h-7 rounded-full bg-(--accent) text-white flex items-center justify-center shrink-0 font-bold text-sm sm:mt-0.5">
@@ -109,51 +138,31 @@ export default function SentenceItem({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex flex-row items-baseline gap-2">
-          <div className="flex flex-col items-center gap-5">
+          <div className="flex flex-col items-center gap-1">
             <button
               type="button"
               onClick={() => speak(sentence.original)}
-              className="text-gray-400 hover:text-(--accent) transition-colors cursor-pointer"
+              className="flex size-8 items-center justify-center text-gray-400 hover:text-(--accent) transition-colors cursor-pointer"
               aria-label="Pronounce sentence"
             >
               <SoundOutlined />
             </button>
-            <Tooltip title="自訂筆記">
-              <button
-                type="button"
-                onClick={openNoteEditor}
-                className={`transition-colors cursor-pointer hover:text-(--accent) ${
-                  hasNote ? "text-(--accent)" : "text-gray-400"
-                }`}
-                aria-label="Add note"
-              >
-                <FormOutlined />
-              </button>
-            </Tooltip>
-            <Tooltip
-              title={
-                structure.analyzable === false
-                  ? "分析句構只適用於完整的句子"
-                  : "句構分析"
-              }
+            <Dropdown
+              menu={{ items: moreMenuItems }}
+              placement="bottomLeft"
+              trigger={["click"]}
             >
               <button
                 type="button"
-                onClick={structure.toggle}
-                disabled={structure.analyzable === false}
-                className={`transition-colors ${
-                  structure.analyzable === false
-                    ? "text-gray-300 cursor-not-allowed"
-                    : `cursor-pointer hover:text-(--accent) ${
-                        structure.visible ? "text-(--accent)" : "text-gray-400"
-                      }`
+                className={`flex size-8 items-center justify-center transition-colors cursor-pointer hover:text-(--accent) ${
+                  hasNote || structure.visible ? "text-(--accent)" : "text-gray-400"
                 }`}
-                aria-label="Toggle sentence structure"
-                aria-pressed={structure.visible}
+                aria-label="更多句子操作"
+                aria-haspopup="menu"
               >
-                <ApartmentOutlined />
+                <MoreOutlined />
               </button>
-            </Tooltip>
+            </Dropdown>
           </div>
           <div className="min-w-0 flex-1">
             <span className="lookup-original-text" data-original-text="true">
@@ -166,6 +175,28 @@ export default function SentenceItem({
                 {sentence.translation}
               </Text>
             </div>
+
+            {editingNote ? (
+              <div className="mt-2">
+                <Input.TextArea
+                  value={draftNote}
+                  onChange={(e) => handleDraftChange(e.target.value)}
+                  onBlur={saveNote}
+                  autoFocus
+                  autoSize={{ minRows: 2 }}
+                  placeholder="輸入筆記…（換行會原樣顯示）"
+                />
+              </div>
+            ) : (
+              hasNote && (
+                <div
+                  onClick={openNoteEditor}
+                  className="mt-2 cursor-text rounded-md border border-(--card-border) bg-(--card-bg) px-3 py-2"
+                >
+                  <Text style={{ whiteSpace: "pre-wrap" }}>{note}</Text>
+                </div>
+              )
+            )}
 
             {structure.visible && (
               <div className="mt-2">
@@ -192,28 +223,6 @@ export default function SentenceItem({
                   </div>
                 )}
               </div>
-            )}
-
-            {editingNote ? (
-              <div className="mt-2">
-                <Input.TextArea
-                  value={draftNote}
-                  onChange={(e) => handleDraftChange(e.target.value)}
-                  onBlur={saveNote}
-                  autoFocus
-                  autoSize={{ minRows: 2 }}
-                  placeholder="輸入筆記…（換行會原樣顯示）"
-                />
-              </div>
-            ) : (
-              hasNote && (
-                <div
-                  onClick={openNoteEditor}
-                  className="mt-2 cursor-text rounded-md border border-(--card-border) bg-(--card-bg) px-3 py-2"
-                >
-                  <Text style={{ whiteSpace: "pre-wrap" }}>{note}</Text>
-                </div>
-              )
             )}
           </div>
         </div>
