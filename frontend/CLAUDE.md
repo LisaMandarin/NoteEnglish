@@ -22,14 +22,20 @@ When any UI work involves color, background, font, or border, always use the CSS
 
 ## Protected Behaviors
 
-- **`.summary-page` font stack** — do not replace or remove it. It carries the CJK-friendly font for Traditional Chinese print output.
+- **`.summary-print-root` / `.vocab-print-root` font stacks** (`src/index.css`) — do not replace or remove them. They carry the CJK-friendly fonts for Traditional Chinese print output.
 - **`@media print` styles** — do not remove the white-background print behavior. Print/export is a core feature.
+- **Print color rules** — printed output is black/white/gray only: white page background, `.spp-num` number badges dark gray on white, `.pos-badge` light gray background, example blocks light gray background. Apply these rules everywhere in one pass when touching print styles — partial application has required repeated corrections.
+
+## Verification Rules
+
+- **Print styles**: after changing anything under `@media print` or the summary/vocab print windows, verify via actual print preview (or a rendered screenshot), not just the browser view — print preview has silently dropped text and colors before.
+- **Layout changes**: verify at a mobile viewport width and confirm nothing overflows the screen height (100vh) or overlaps neighboring elements. Overflow on mobile and footer/height overflow are recurring regressions.
 
 ## TypeScript Rules
 
-`tsconfig.json` has `strict: false` and `allowJs: true` — the codebase is gradually typed. Follow these rules when adding or modifying code:
+`tsconfig.json` has `strict: false` and `allowJs: true` — the codebase is gradually typed. `noImplicitAny` is enabled and enforced by `npm run type-check` (also run in CI). Follow these rules when adding or modifying code:
 
-- Every variable, parameter, and return value must have an explicit type — no implicit `any`
+- Every variable, parameter, and return value must have an explicit type — no implicit `any` (compiler-enforced)
 - Use `unknown` instead of `any` when the shape is genuinely uncertain, then narrow it
 - Before defining a new type, check `src/types.ts` for existing shared types; add new shared types there
 - Component props should be typed inline for one-off components, or as a named type if reused

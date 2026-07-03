@@ -155,9 +155,11 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: 
   const cardRef = useRef<HTMLDivElement>(null);
   const isConfirmingRef = useRef(false);
   const draftRef = useRef(draft);
-  draftRef.current = draft;
   const onEditRef = useRef(onEdit);
-  onEditRef.current = onEdit;
+  useEffect(() => {
+    draftRef.current = draft;
+    onEditRef.current = onEdit;
+  });
 
   useEffect(() => {
     if (!isEditing) return;

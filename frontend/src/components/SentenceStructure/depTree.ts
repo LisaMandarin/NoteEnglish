@@ -18,7 +18,7 @@ export type DepTree = {
 
 export function buildDepTree(tokens: Token[]): DepTree {
   const n = tokens.length;
-  const children: number[][] = Array.from({ length: n }, () => []);
+  const children: number[][] = Array.from({ length: n }, (): number[] => []);
   tokens.forEach((t, j) => {
     if (t.head === j) return; // ROOT points to itself — not a child edge.
     if (t.head < 0 || t.head >= n) return; // defend against malformed indices.

@@ -51,7 +51,8 @@ All endpoints except `/api/health` and `/api/debug/*` require a Supabase Bearer 
 | `GET` | `/api/health` | Health check (no auth) |
 | `POST` | `/api/debug/split` | Sentence-split text without translating (no auth) |
 | `POST` | `/api/translate` | Split and translate text, return base vocab |
-| `POST` | `/api/vocab/detail` | Enrich selected vocab (with in-memory cache) |
+| `POST` | `/api/vocab/lookup` | Enrich selected vocab (with in-memory cache) |
+| `POST` | `/api/parse` | Re-parse a sentence's dependency structure via Gemini |
 | `POST` | `/api/ocr` | Extract text from a base64 image via Gemini vision (JPEG/PNG/WebP, max 8 MB) |
 | `POST` | `/api/profile/ensure` | Create or verify user profile |
 | `GET` | `/api/sessions` | List sessions (supports `limit` / `offset`) |

@@ -7,7 +7,7 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# In-memory cache keyed by sentence_id|word_index to avoid repeated AI calls.
+# In-memory cache keyed by session|sentence_id|word_index to avoid repeated AI calls.
 LOOKUP_CACHE: dict[str, CachedLookup] = {}
 
 def get_vocab_lookup(req: VocabLookupRequest, user_id: str) -> VocabLookupResponse:

@@ -1,7 +1,6 @@
 import { useRef, useState } from "react"
 import { Typography, Input, Button, Alert, Modal } from "antd"
 import { useTranslation } from "../../context/translationContext"
-import { formatUpdatedAt } from "../../lib/formatUpdatedAt"
 import { ocrImage } from "../../lib/api"
 import { fileToCompressedBase64, ImagePrepError } from "../../lib/image"
 import sampleArticles from "../../data/sampleArticles"
@@ -47,7 +46,7 @@ const WARN_THRESHOLD = 1300
 
 export default function AppTextarea() {
     const {
-        state: {text, translating, sessionLoading, saving, error, saveError, ocrError, updatedAt, sentences},
+        state: {text, translating, sessionLoading, saving, error, saveError, ocrError, sentences},
         actions: {translate, setText, setOcrText, clear, setOcrError, dismissError}
     } = useTranslation()
 

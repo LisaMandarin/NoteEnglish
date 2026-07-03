@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Button, Input } from "antd";
 import { supabase } from "../../lib/supabase";
 
@@ -9,7 +9,7 @@ const DEMO_CREDENTIALS = {
   password: "test1234",
 };
 
-function validatePassword(password) {
+function validatePassword(password: string): boolean {
   return /^[A-Za-z0-9]{6,}$/.test(password);
 }
 
@@ -42,7 +42,15 @@ function translateAuthError(message: string): string {
   return "驗證失敗，請再試一次。";
 }
 
-function getValidationError({ mode, displayName, email, password, confirmPassword }) {
+type ValidationFields = {
+  mode: string;
+  displayName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+};
+
+function getValidationError({ mode, displayName, email, password, confirmPassword }: ValidationFields): string {
   if (mode === "sign_up" && !displayName.trim()) {
     return "請輸入顯示名稱。";
   }
@@ -85,7 +93,7 @@ export default function LoginPage() {
     setError("");
   }
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setLoading(true);
     setError("");
