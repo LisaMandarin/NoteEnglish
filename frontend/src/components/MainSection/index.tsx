@@ -5,11 +5,16 @@ import TranslationsList from "../Translations";
 import TipBox from "./TipBox";
 import TokenUsageView from "../shared/TokenUsageView";
 import { useTranslation } from "../../context/translationContext";
+import HomeDashboard from "./HomeDashboard";
 
 export default function AppMainSection({
   mainView,
+  username,
+  onShowTranslate,
 }: {
-  mainView: "translate" | "usage";
+  mainView: "home" | "translate" | "usage";
+  username: string;
+  onShowTranslate: () => void;
 }): React.ReactElement {
   const { state: { sessionLoading, sentences } } = useTranslation();
   const [showTip, setShowTip] = useState(() => localStorage.getItem("ne_lookup_tip") !== "1");
@@ -21,6 +26,15 @@ export default function AppMainSection({
 
   if (mainView === "usage") {
     return <TokenUsageView />;
+  }
+
+  if (mainView === "home") {
+    return (
+      <HomeDashboard
+        username={username}
+        onShowTranslate={onShowTranslate}
+      />
+    );
   }
 
   return (

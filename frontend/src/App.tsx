@@ -28,11 +28,11 @@ async function ensureProfile(user: User): Promise<void> {
   await ensureProfileApi(displayName);
 }
 
-type MainView = "translate" | "usage";
+type MainView = "home" | "translate" | "usage";
 
 function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): React.ReactElement {
   const [activePanel, setActivePanel] = useState<string | null>(null);
-  const [mainView, setMainView] = useState<MainView>("translate");
+  const [mainView, setMainView] = useState<MainView>("home");
   const isSidebarOpen = activePanel !== null;
   const username = getDisplayName(user);
 
@@ -48,6 +48,11 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
 
   function handleShowTranslate(): void {
     setMainView("translate");
+  }
+
+  function handleShowHome(): void {
+    setMainView("home");
+    setActivePanel(null);
   }
 
   return (
@@ -68,8 +73,14 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
             onSignOut={onSignOut}
             onShowUsage={handleShowUsage}
             onShowTranslate={handleShowTranslate}
+            onShowHome={handleShowHome}
+            isHomeActive={mainView === "home" && !isSidebarOpen}
           />
-          <AppMainSection mainView={mainView} />
+          <AppMainSection
+            mainView={mainView}
+            username={username}
+            onShowTranslate={handleShowTranslate}
+          />
         </div>
         <footer className="mx-auto mt-10 max-w-7xl text-center text-sm text-(--text-main) opacity-60">
           <p className="m-0">© {new Date().getFullYear()} NoteEnglish. All rights reserved.</p>
