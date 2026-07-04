@@ -52,7 +52,7 @@ All endpoints except `/api/health` and `/api/debug/*` require a Supabase Bearer 
 | `POST` | `/api/debug/split` | Sentence-split text without translating (no auth) |
 | `POST` | `/api/translate` | Split and translate text, return base vocab |
 | `POST` | `/api/vocab/lookup` | Enrich selected vocab (with in-memory cache) |
-| `POST` | `/api/parse` | Re-parse a sentence's dependency structure via Gemini |
+| `POST` | `/api/parse` | Analyze a sentence into a five-pattern constituent tree via Gemini (spaCy validates/repairs; cached in memory + Supabase) |
 | `POST` | `/api/ocr` | Extract text from a base64 image via Gemini vision (JPEG/PNG/WebP, max 8 MB) |
 | `POST` | `/api/profile/ensure` | Create or verify user profile |
 | `GET` | `/api/sessions` | List sessions (supports `limit` / `offset`) |
