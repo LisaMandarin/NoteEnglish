@@ -1,3 +1,4 @@
+import copy
 import json
 import unittest
 from types import SimpleNamespace
@@ -5,7 +6,7 @@ from unittest.mock import patch
 
 from fastapi import HTTPException
 
-from app.services import gemini, structure
+from app.services import gemini, nlp, structure
 
 
 # A minimal valid analysis of "She reads books." whose leaf texts reconstruct it.
@@ -47,6 +48,146 @@ DETAILED_TREE = {
     ],
 }
 
+EMPTY_NESTED_CLAUSE_TREE = {
+    "text": (
+        "She joined the Church in August 1957 in Mendoza, Argentina, 32 years "
+        "after South America was dedicated for the preaching of the gospel."
+    ),
+    "role": "ROOT",
+    "type": "clause",
+    "label": "主要子句",
+    "pattern": "SVO",
+    "children": [
+        {"text": "She", "role": "S", "type": "word", "label": "主詞"},
+        {"text": "joined", "role": "V", "type": "word", "label": "動詞"},
+        {
+            "text": "the Church",
+            "role": "O",
+            "type": "phrase",
+            "label": "名詞片語",
+        },
+        {
+            "text": "in August 1957",
+            "role": "ADV",
+            "type": "phrase",
+            "label": "介系詞片語",
+            "children": [
+                {"text": "in", "role": "PREP", "type": "word", "label": "介系詞"},
+                {"text": "August", "role": "HEAD", "type": "word", "label": "名詞"},
+                {"text": "1957", "role": "DET", "type": "word", "label": "限定詞"},
+            ],
+        },
+        {
+            "text": "in Mendoza, Argentina",
+            "role": "ADV",
+            "type": "phrase",
+            "label": "介系詞片語",
+            "children": [
+                {"text": "in", "role": "PREP", "type": "word", "label": "介系詞"},
+                {"text": "Mendoza", "role": "HEAD", "type": "word", "label": "名詞"},
+                {"text": ",", "role": "PUNCT", "type": "word", "label": "標點"},
+                {"text": "Argentina", "role": "MOD", "type": "word", "label": "名詞"},
+            ],
+        },
+        {"text": ",", "role": "PUNCT", "type": "word", "label": "標點"},
+        {
+            "text": (
+                "32 years after South America was dedicated for the preaching "
+                "of the gospel"
+            ),
+            "role": "ADV",
+            "type": "phrase",
+            "label": "副詞片語",
+            "children": [
+                {
+                    "text": "32 years",
+                    "role": "MOD",
+                    "type": "phrase",
+                    "label": "名詞片語",
+                },
+                {
+                    "text": (
+                        "after South America was dedicated for the preaching "
+                        "of the gospel"
+                    ),
+                    "role": "MOD",
+                    "type": "clause",
+                    "label": "副詞子句",
+                    "pattern": "SV",
+                },
+            ],
+        },
+        {"text": ".", "role": "PUNCT", "type": "word", "label": "標點"},
+    ],
+}
+
+# A correct rule-4 analysis (V + O + infinitive OC) that spaCy's parser sees
+# as an embedded clause; the validator must accept it as-is.
+SVOC_GEMINI_TREE = {
+    "text": "he never allowed those challenges to define him",
+    "role": "ROOT",
+    "type": "clause",
+    "label": "主要子句",
+    "pattern": "SVOC",
+    "children": [
+        {"text": "he", "role": "S", "type": "word", "label": "主詞"},
+        {"text": "never", "role": "ADV", "type": "word", "label": "副詞"},
+        {"text": "allowed", "role": "V", "type": "word", "label": "動詞"},
+        {"text": "those challenges", "role": "O", "type": "phrase", "label": "名詞片語"},
+        {"text": "to define him", "role": "OC", "type": "phrase", "label": "不定詞片語"},
+    ],
+}
+
+# Reconstructs its sentence but keeps a relative clause flattened inside the
+# subject phrase — well-formed yet under-nested.
+UNDER_NESTED_TREE = {
+    "text": "The man who came stayed.",
+    "role": "ROOT",
+    "type": "clause",
+    "label": "主要子句",
+    "pattern": "SV",
+    "children": [
+        {
+            "text": "The man who came",
+            "role": "S",
+            "type": "phrase",
+            "label": "名詞片語",
+            "children": [
+                {"text": "The", "role": "DET", "type": "word", "label": "限定詞"},
+                {"text": "man", "role": "HEAD", "type": "word", "label": "名詞"},
+                {"text": "who", "role": "MOD", "type": "word", "label": "代名詞"},
+                {"text": "came", "role": "MOD", "type": "word", "label": "動詞"},
+            ],
+        },
+        {"text": "stayed", "role": "V", "type": "word", "label": "動詞"},
+        {"text": ".", "role": "PUNCT", "type": "word", "label": "標點"},
+    ],
+}
+
+# Leaf texts reproduce the sentence, but the subject node's text contradicts
+# its children — corrupt, so it must never be served.
+MISMATCHED_SPAN_TREE = {
+    "text": "She reads books.",
+    "role": "ROOT",
+    "type": "clause",
+    "label": "主要子句",
+    "pattern": "SVO",
+    "children": [
+        {
+            "text": "She herself",
+            "role": "S",
+            "type": "phrase",
+            "label": "名詞片語",
+            "children": [
+                {"text": "She", "role": "HEAD", "type": "word", "label": "代名詞"},
+            ],
+        },
+        {"text": "reads", "role": "V", "type": "word", "label": "動詞"},
+        {"text": "books", "role": "O", "type": "word", "label": "受詞"},
+        {"text": ".", "role": "PUNCT", "type": "word", "label": "標點"},
+    ],
+}
+
 
 def _response(payload) -> SimpleNamespace:
     return SimpleNamespace(text=json.dumps(payload), usage_metadata=None)
@@ -73,7 +214,7 @@ class ReconstructionTests(unittest.TestCase):
         self.assertTrue(gemini._reconstructs_sentence(tree, "he said “OK”"))
 
     def test_detailed_tree_requires_children_on_long_phrase(self):
-        self.assertTrue(gemini._is_detailed_tree(DETAILED_TREE))
+        self.assertIsNone(gemini._nesting_issue(DETAILED_TREE))
 
         shallow = {
             **DETAILED_TREE,
@@ -87,8 +228,7 @@ class ReconstructionTests(unittest.TestCase):
                 *DETAILED_TREE["children"][1:],
             ],
         }
-        self.assertFalse(gemini._is_detailed_tree(shallow))
-        self.assertIn("unexpanded phrase has 3", gemini._detail_issue(shallow))
+        self.assertIn("unexpanded phrase has 3", gemini._nesting_issue(shallow))
 
     def test_compact_phrase_may_remain_a_leaf(self):
         compact_phrase = {
@@ -97,7 +237,7 @@ class ReconstructionTests(unittest.TestCase):
             "type": "phrase",
             "label": "名詞片語",
         }
-        self.assertTrue(gemini._is_detailed_tree(compact_phrase))
+        self.assertIsNone(gemini._nesting_issue(compact_phrase))
 
     def test_long_phrase_can_contain_compact_phrase_leaves(self):
         phrase = {
@@ -140,7 +280,7 @@ class ReconstructionTests(unittest.TestCase):
                 },
             ],
         }
-        self.assertTrue(gemini._is_detailed_tree(phrase))
+        self.assertIsNone(gemini._nesting_issue(phrase))
 
     def test_each_parent_span_must_match_its_children(self):
         mismatched = {
@@ -153,8 +293,164 @@ class ReconstructionTests(unittest.TestCase):
                 *DETAILED_TREE["children"][1:],
             ],
         }
-        self.assertFalse(gemini._is_detailed_tree(mismatched))
-        self.assertIn("node text does not match", gemini._detail_issue(mismatched))
+        self.assertIn("node text does not match", gemini._malformed_issue(mismatched))
+
+    def test_complex_phrase_cannot_be_flattened_into_word_nodes(self):
+        text = "of the promise that you have come by the word of Christ"
+        flattened = {
+            "text": text,
+            "role": "ADJ",
+            "type": "phrase",
+            "label": "介系詞片語",
+            "children": [
+                gemini._phrase_word_node(token)
+                for token in gemini.analyze_tokens(text)
+            ],
+        }
+
+        self.assertIn("flattened into word nodes", gemini._nesting_issue(flattened))
+
+    def test_missing_embedded_finite_clause_is_detected(self):
+        phrase = {
+            "text": "the promise that you have come by faith",
+            "role": "HEAD",
+            "type": "phrase",
+            "label": "名詞片語",
+            "children": [
+                {"text": "the", "role": "DET", "type": "word", "label": "限定詞"},
+                {"text": "promise", "role": "HEAD", "type": "word", "label": "名詞"},
+                {
+                    "text": "that you have come by faith",
+                    "role": "MOD",
+                    "type": "phrase",
+                    "label": "名詞片語",
+                    "children": [
+                        {
+                            "text": "that you have come",
+                            "role": "MOD",
+                            "type": "phrase",
+                            "label": "名詞片語",
+                        },
+                        {
+                            "text": "by faith",
+                            "role": "ADV",
+                            "type": "phrase",
+                            "label": "介系詞片語",
+                        },
+                    ],
+                },
+            ],
+        }
+
+        self.assertIn("embedded clause", gemini._nesting_issue(phrase))
+
+    def test_deep_quote_phrase_is_nested_semantically(self):
+        phrase = {
+            "text": (
+                "of the promise that you have come “by the word of Christ with "
+                "unshaken faith in him, relying wholly upon the merits of him who "
+                "is mighty to save.”"
+            ),
+            "role": "ADJ",
+            "type": "phrase",
+            "label": "介系詞片語",
+        }
+
+        gemini._expand_missing_details(phrase)
+
+        labels: list[str] = []
+        clauses: list[dict] = []
+
+        def collect(node):
+            labels.append(node["label"])
+            if node["type"] == "clause":
+                clauses.append(node)
+            for child in node.get("children") or []:
+                collect(child)
+
+        collect(phrase)
+        self.assertIsNone(gemini._malformed_issue(phrase))
+        self.assertIsNone(gemini._nesting_issue(phrase))
+        self.assertEqual([node["label"] for node in clauses], ["同位子句", "關係子句"])
+        self.assertIn("分詞片語", labels)
+        self.assertIn("不定詞片語", labels)
+        self.assertGreaterEqual(labels.count("介系詞片語"), 6)
+
+
+class ValidatorAlignmentTests(unittest.TestCase):
+    """The deterministic checks must agree with prompt rule 4: a causative or
+    perception verb's non-finite complement is O + OC, never a clause node."""
+
+    def test_nonfinite_complements_do_not_demand_clause_nodes(self):
+        self.assertEqual(
+            gemini._embedded_finite_clause_count(
+                "He never allowed those challenges to define him."
+            ),
+            0,
+        )
+        # Only the finite that-clause counts; "helps him prepare" does not.
+        self.assertEqual(
+            gemini._embedded_finite_clause_count(
+                'He has explained that embracing his "inner child" helps him '
+                "prepare for complex roles."
+            ),
+            1,
+        )
+
+    def test_finite_clauses_are_still_required(self):
+        self.assertEqual(
+            gemini._embedded_finite_clause_count(
+                "In 2017, the Holland family founded The Brothers Trust, "
+                "which supports health and social programs."
+            ),
+            1,
+        )
+
+    def test_svoc_tree_for_causative_verb_passes_validation(self):
+        # Same order as ai_analyze_structure: local expansion, then validation.
+        tree = copy.deepcopy(SVOC_GEMINI_TREE)
+        gemini._expand_missing_details(tree)
+        self.assertIsNone(gemini._malformed_issue(tree))
+        self.assertIsNone(gemini._nesting_issue(tree))
+
+    def test_causative_pattern_is_svoc(self):
+        for clause in (
+            "he never allowed those challenges to define him",
+            'embracing his "inner child" helps him prepare for complex roles',
+        ):
+            tokens = gemini.analyze_tokens(clause)
+            self.assertEqual(gemini._infer_clause_pattern(tokens), "SVOC", clause)
+
+    def test_clausal_object_pattern_is_svo(self):
+        for clause in ("She wants to leave early", "He said that she left"):
+            tokens = gemini.analyze_tokens(clause)
+            self.assertEqual(gemini._infer_clause_pattern(tokens), "SVO", clause)
+
+    def test_clause_fallback_marks_only_the_root_verb_group_as_v(self):
+        node = {
+            "text": "he never allowed those challenges to define him",
+            "role": "ROOT",
+            "type": "clause",
+            "label": "主要子句",
+            "pattern": "SVOC",
+        }
+        roles = {w["text"]: w["role"] for w in gemini._clause_word_nodes(node)}
+        self.assertEqual(roles["allowed"], "V")
+        self.assertNotEqual(roles["to"], "V")
+        self.assertNotEqual(roles["challenges"], "V")
+
+    def test_expand_never_relabels_gemini_nodes(self):
+        def nodes(node):
+            yield (node["text"], node["role"], node["label"], node["type"])
+            for child in node.get("children") or []:
+                yield from nodes(child)
+
+        tree = copy.deepcopy(SVOC_GEMINI_TREE)
+        gemini._expand_missing_details(tree)
+
+        # Expansion may add children under leaves but must keep every node
+        # Gemini produced, with its role and label untouched.
+        self.assertLessEqual(set(nodes(SVOC_GEMINI_TREE)), set(nodes(tree)))
 
 
 class AnalyzeStructureTests(unittest.TestCase):
@@ -197,6 +493,31 @@ class AnalyzeStructureTests(unittest.TestCase):
             first.kwargs["config"]["thinking_config"]["thinking_budget"],
             gemini._STRUCTURE_THINKING_BUDGET,
         )
+
+    def test_under_nested_answer_is_served_after_retries(self):
+        with patch.object(
+            gemini.client.models,
+            "generate_content",
+            return_value=_response(UNDER_NESTED_TREE),
+        ) as gen:
+            result, usage = gemini.ai_analyze_structure("The man who came stayed.")
+
+        self.assertEqual(gen.call_count, gemini._STRUCTURE_ATTEMPTS)
+        self.assertEqual(result, UNDER_NESTED_TREE)
+        self.assertIn("total_tokens", usage)
+
+    def test_malformed_answer_still_raises(self):
+        with patch.object(
+            gemini.client.models,
+            "generate_content",
+            return_value=_response(MISMATCHED_SPAN_TREE),
+        ) as gen:
+            with self.assertRaises(HTTPException) as raised:
+                gemini.ai_analyze_structure("She reads books.")
+
+        self.assertEqual(gen.call_count, gemini._STRUCTURE_ATTEMPTS)
+        self.assertEqual(raised.exception.status_code, 502)
+        self.assertIn("malformed", raised.exception.detail)
 
     def test_reconstruction_mismatch_raises(self):
         with patch.object(
@@ -245,6 +566,151 @@ class AnalyzeStructureTests(unittest.TestCase):
             ["DET", "ADJ", "HEAD"],
         )
         gen.assert_called_once()
+
+    def test_complex_phrase_is_nested_locally(self):
+        phrase = {
+            "text": "the promise that you have come by faith",
+            "role": "SC",
+            "type": "phrase",
+            "label": "名詞片語",
+        }
+
+        gemini._expand_missing_details(phrase)
+
+        self.assertGreaterEqual(gemini._descendant_clause_count(phrase), 1)
+        self.assertIsNone(gemini._nesting_issue(phrase))
+
+    def test_empty_nested_clause_is_expanded_locally(self):
+        sentence = EMPTY_NESTED_CLAUSE_TREE["text"]
+        with patch.object(
+            gemini.client.models,
+            "generate_content",
+            return_value=_response(EMPTY_NESTED_CLAUSE_TREE),
+        ) as gen:
+            result, _ = gemini.ai_analyze_structure(sentence)
+
+        clause = result["children"][6]["children"][1]
+        self.assertEqual(clause["type"], "clause")
+        self.assertTrue(clause["children"])
+        self.assertIsNone(gemini._nesting_issue(result))
+        self.assertEqual(
+            [child["role"] for child in clause["children"][:5]],
+            ["MARK", "S", "V", "V", "ADV"],
+        )
+        # A clause arriving childless is retried before the spaCy fill ships.
+        self.assertEqual(gen.call_count, gemini._STRUCTURE_ATTEMPTS)
+
+
+class ReportedRegressionTests(unittest.TestCase):
+    """Regressions reported from real PDF-sourced sentences."""
+
+    FEFF_SENTENCE = "But that was not enough﻿—I needed to know for myself."
+
+    def test_invisible_characters_are_normalized_away(self):
+        clean = self.FEFF_SENTENCE.replace("﻿", "")
+        self.assertEqual(
+            structure._normalize(self.FEFF_SENTENCE), structure._normalize(clean)
+        )
+        self.assertEqual(
+            gemini._normalize_for_compare(self.FEFF_SENTENCE),
+            gemini._normalize_for_compare(clean),
+        )
+        self.assertNotIn("﻿", nlp.split_sentences(self.FEFF_SENTENCE)[0])
+
+    def test_inverted_copular_sentence_is_complete(self):
+        self.assertTrue(
+            nlp.is_complete_sentence(
+                "Most inspiring is that their faithfulness depends not only on "
+                "their spiritual heritage but on their personal decision to "
+                "follow the Savior."
+            )
+        )
+
+    def test_predicative_fragment_is_still_incomplete(self):
+        self.assertFalse(nlp.is_complete_sentence("Most inspiring of all."))
+
+    def test_relative_pronoun_is_not_merged_into_the_subject(self):
+        clause = {
+            "text": (
+                "that time gives to see the refining and perfecting hand of "
+                "our Savior, Jesus Christ, in my life and in my family's life"
+            ),
+            "role": "MOD",
+            "type": "clause",
+            "label": "關係子句",
+            "pattern": "SVO",
+        }
+        gemini._expand_missing_details(clause)
+
+        first = clause["children"][0]
+        self.assertEqual((first["text"], first["role"]), ("that", "MARK"))
+        subject_roles = {
+            child["text"]: child["role"] for child in clause["children"]
+        }
+        self.assertEqual(subject_roles.get("time"), "S")
+
+        labels: list[str] = []
+
+        def collect(node):
+            labels.append(node["label"])
+            for child in node.get("children") or []:
+                collect(child)
+
+        collect(clause)
+        # "to see ..." is a purpose infinitive, not a participle phrase.
+        self.assertIn("不定詞片語", labels)
+        self.assertNotIn("分詞片語", labels)
+
+    def test_missing_trailing_period_is_repaired(self):
+        tree = {
+            "text": "She reads books",
+            "role": "ROOT",
+            "type": "clause",
+            "label": "主要子句",
+            "pattern": "SVO",
+            "children": [
+                {"text": "She", "role": "S", "type": "word", "label": "主詞"},
+                {"text": "reads", "role": "V", "type": "word", "label": "動詞"},
+                {"text": "books", "role": "O", "type": "word", "label": "受詞"},
+            ],
+        }
+        gemini._repair_missing_trailing_punct(tree, "She reads books.")
+
+        self.assertTrue(gemini._reconstructs_sentence(tree, "She reads books."))
+        self.assertEqual(tree["children"][-1]["role"], "PUNCT")
+        self.assertEqual(tree["text"], "She reads books.")
+        self.assertIsNone(gemini._malformed_issue(tree))
+
+    def test_missing_word_is_not_repaired(self):
+        tree = {
+            "text": "She reads",
+            "role": "ROOT",
+            "type": "clause",
+            "label": "主要子句",
+            "pattern": "SVO",
+            "children": [
+                {"text": "She", "role": "S", "type": "word", "label": "主詞"},
+                {"text": "reads", "role": "V", "type": "word", "label": "動詞"},
+            ],
+        }
+        gemini._repair_missing_trailing_punct(tree, "She reads books.")
+
+        self.assertFalse(gemini._reconstructs_sentence(tree, "She reads books."))
+        self.assertEqual(len(tree["children"]), 2)
+
+    def test_clause_without_children_is_retried_then_recovered(self):
+        childless = {
+            key: value for key, value in VALID_TREE.items() if key != "children"
+        }
+        with patch.object(
+            gemini.client.models,
+            "generate_content",
+            side_effect=[_response(childless), _response(VALID_TREE)],
+        ) as gen:
+            result, _ = gemini.ai_analyze_structure("She reads books.")
+
+        self.assertEqual(gen.call_count, 2)
+        self.assertEqual(result, VALID_TREE)
 
 
 class GetStructureCacheTests(unittest.TestCase):

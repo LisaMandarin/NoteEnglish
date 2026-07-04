@@ -5,7 +5,7 @@ from fastapi import HTTPException
 
 from app.core.config import settings
 from app.services.gemini import PARSE_PROMPT_VERSION, ai_analyze_structure
-from app.services.nlp import is_complete_sentence
+from app.services.nlp import is_complete_sentence, strip_invisible
 from app.services.supabase import get_cached_parse, save_parse
 
 INCOMPLETE_SENTENCE_MESSAGE = "分析句構只適用於完整的句子"
@@ -17,8 +17,10 @@ _MEM_CACHE: dict[tuple[str, int], dict] = {}
 
 
 def _normalize(sentence: str) -> str:
-    """Collapse whitespace so trivially-different spacing shares one cache entry."""
-    return re.sub(r"\s+", " ", sentence).strip()
+    """Collapse whitespace and drop invisible format characters (PDF copies
+    carry zero-width marks) so trivial variants share one cache entry and the
+    analyzer never sees characters it cannot reproduce."""
+    return re.sub(r"\s+", " ", strip_invisible(sentence)).strip()
 
 
 def _hash(normalized: str) -> str:

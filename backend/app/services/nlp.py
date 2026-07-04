@@ -1,6 +1,18 @@
 import re
 import spacy
 
+# Invisible format characters (BOM/zero-width spaces/joiners, soft hyphen) that
+# ride along when text is copied from PDFs. They are not whitespace, so \s
+# does not remove them, yet Gemini never reproduces them — left in, they make
+# the verbatim-reconstruction check fail on otherwise perfect analyses.
+_INVISIBLE_CHARS = re.compile(r"[\u200b-\u200f\u2060\ufeff\u00ad]")
+
+
+def strip_invisible(text: str) -> str:
+    """Remove zero-width/format characters that carry no visible content."""
+    return _INVISIBLE_CHARS.sub("", text)
+
+
 _nlp = None
 
 def _get_nlp():
@@ -10,15 +22,32 @@ def _get_nlp():
     return _nlp
 
 
-def analyze_tokens(text: str) -> list[dict[str, str | bool]]:
-    """Return the token attributes needed for deterministic phrase fallback."""
+def analyze_tokens(text: str) -> list[dict[str, str | bool | int]]:
+    """Return token attributes needed for deterministic tree fallbacks."""
     return [
         {
+            "index": token.i,
+            "head_index": token.head.i,
+            "start": token.idx,
+            "end": token.idx + len(token.text),
             "text": token.text,
             "lower": token.lower_,
             "pos": token.pos_,
             "dep": token.dep_,
             "is_root": token.dep_ == "ROOT",
+            "is_finite": token.morph.get("VerbForm") == ["Fin"] or any(
+                child.dep_ in {"aux", "auxpass"}
+                and (
+                    child.morph.get("VerbForm") == ["Fin"]
+                    or child.tag_ == "MD"
+                )
+                for child in token.children
+            ),
+            "has_subject": any(
+                child.dep_ in {"nsubj", "nsubjpass", "csubj", "expl"}
+                for child in token.children
+            ),
+            "has_marker": any(child.dep_ == "mark" for child in token.children),
         }
         for token in _get_nlp()(text)
         if not token.is_space
@@ -48,6 +77,26 @@ def _span_is_complete_sentence(span) -> bool:
     )
     if has_subject and has_finite_verb:
         return True
+
+    # Inverted copular sentences front the predicate and leave the root
+    # subjectless ("Most inspiring is that their faithfulness depends ...").
+    # spaCy parses the fronted phrase as acomp/attr and the true subject
+    # clause as a ccomp carrying its own subject.
+    if has_finite_verb and root.pos_ == "AUX":
+        has_predicative = any(
+            token.head == root and token.dep_ in {"acomp", "attr"} for token in span
+        )
+        has_clausal_subject = any(
+            token.head == root
+            and token.dep_ == "ccomp"
+            and any(
+                child.dep_ in {"nsubj", "nsubjpass", "csubj", "expl"}
+                for child in token.children
+            )
+            for token in span
+        )
+        if has_predicative and has_clausal_subject:
+            return True
 
     # Imperatives use a bare root verb and normally omit their subject. Exclude
     # infinitives ("To learn English") and modal fragments ("Can swim").
@@ -123,6 +172,7 @@ def split_sentences(text: str) -> list[str]:
         return []
 
     # Normalize non-breaking spaces and Windows line endings, but keep newlines.
+    text = strip_invisible(text)
     text = text.replace("\u00a0", " ")
     text = text.replace("\r\n", "\n").replace("\r", "\n")
 
