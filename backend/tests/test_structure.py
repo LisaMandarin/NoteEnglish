@@ -2,7 +2,7 @@ import copy
 import json
 import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 from fastapi import HTTPException
 
@@ -744,6 +744,23 @@ class GetStructureCacheTests(unittest.TestCase):
         l2.assert_not_called()
         ai.assert_not_called()
         save.assert_not_called()
+
+    def test_cache_lookup_and_save_use_current_prompt_version(self):
+        """A prompt/schema change bumps PARSE_PROMPT_VERSION (see gemini.py);
+        the cache key must track that constant so old-version rows (e.g. a
+        tree cached before Phase 2 added display_pattern/sentence_type) are
+        never served — a stale row simply cannot match this version in the
+        (sentence_hash, prompt_version) lookup, forcing a fresh AI call."""
+        usage = {"prompt_tokens": 1, "response_tokens": 2, "total_tokens": 3}
+        with (
+            patch.object(structure, "get_cached_parse", return_value=None) as l2,
+            patch.object(structure, "ai_analyze_structure", return_value=(VALID_TREE, usage)),
+            patch.object(structure, "save_parse") as save,
+        ):
+            structure.get_structure("She reads books.")
+
+        l2.assert_called_once_with(ANY, gemini.PARSE_PROMPT_VERSION)
+        self.assertEqual(save.call_args.kwargs["prompt_version"], gemini.PARSE_PROMPT_VERSION)
 
     def test_miss_calls_ai_saves_and_returns_usage(self):
         usage = {"prompt_tokens": 1, "response_tokens": 2, "total_tokens": 3}
