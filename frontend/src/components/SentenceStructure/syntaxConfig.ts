@@ -1,4 +1,4 @@
-import type { SentencePattern, StructureRole } from "../../types";
+import type { SentencePattern, SentenceType, StructureRole } from "../../types";
 
 // Single source of truth for the sentence-structure view's colors and labels.
 // The tree itself now comes ready-made from the backend (POST /api/parse), so
@@ -44,14 +44,54 @@ export const SLOT_ZH: Partial<Record<StructureRole, string>> = {
   OC: "受詞補語",
 };
 
-// Five basic patterns, for the clause pattern badge's tooltip.
+// Seven basic patterns, for the clause pattern badge's tooltip. SVA/SVOA
+// carry an obligatory adverbial (必要狀語), e.g. "She is in the kitchen".
 export const PATTERN_ZH: Record<SentencePattern, string> = {
   SV: "主詞＋動詞",
   SVC: "主詞＋動詞＋補語",
   SVO: "主詞＋動詞＋受詞",
+  SVA: "主詞＋動詞＋必要狀語",
   SVOO: "主詞＋動詞＋間接受詞＋直接受詞",
   SVOC: "主詞＋動詞＋受詞＋受詞補語",
+  SVOA: "主詞＋動詞＋受詞＋必要狀語",
 };
+
+// Badge text per pattern: SVOO is taught as SVIODO (S＋V＋間接受詞＋直接受詞).
+export const PATTERN_DISPLAY: Record<SentencePattern, string> = {
+  SV: "SV",
+  SVC: "SVC",
+  SVO: "SVO",
+  SVA: "SVA",
+  SVOO: "SVIODO",
+  SVOC: "SVOC",
+  SVOA: "SVOA",
+};
+
+// Whole-sentence structure type badge (單句/合句/複句/複合句).
+export const SENTENCE_TYPE_ZH: Record<SentenceType, string> = {
+  simple: "單句",
+  compound: "合句",
+  complex: "複句",
+  "compound-complex": "複合句",
+};
+
+export const SENTENCE_TYPE_EN: Record<SentenceType, string> = {
+  simple: "Simple",
+  compound: "Compound",
+  complex: "Complex",
+  "compound-complex": "Compound-Complex",
+};
+
+// Whether the constituent sequence ("A+S+V+O") says more than the pattern
+// badge already does — hide it when it is just the pattern spelled out.
+export function sequenceAddsInfo(
+  pattern: SentencePattern | undefined,
+  displayPattern: string | undefined,
+): boolean {
+  if (!displayPattern) return false;
+  if (!pattern) return true;
+  return displayPattern.replace(/\+/g, "") !== PATTERN_DISPLAY[pattern];
+}
 
 export const roleCategory = (role: StructureRole): ColorCategory => ROLE_CATEGORY[role];
 

@@ -207,6 +207,7 @@ def test_golden_sentence_properties(sentence: str, is_compound: bool):
         issues.append(f"reconstruction: leaves rebuild {rebuilt!r}")
 
     sentence_tokens = analyze_tokens(normalized)
+    derived_type = gemini.derive_sentence_type(tree)
     top_main_clauses = 0
     for node in _walk(tree):
         node_type = node.get("type")
@@ -226,6 +227,31 @@ def test_golden_sentence_properties(sentence: str, is_compound: bool):
             node, sentence_tokens
         ):
             issues.append(f"role=V span has no verb token: {path_hint}")
+
+        # Phase 2: a clause with at least one recognizable core-role child
+        # (S/V/O/...) must carry its constituent-sequence badge. A clause
+        # whose children carry NO core role at all is a pre-existing spaCy
+        # fallback-tagging gap (e.g. archaic pronouns like "thou"/"art" on a
+        # childless-clause retry) rather than a Phase 2 regression, so it is
+        # not held to this check.
+        child_roles = {c.get("role") for c in node.get("children") or []}
+        has_core_role = bool(child_roles & set(gemini._SEQUENCE_SYMBOLS))
+        if node_type == "clause" and has_core_role and not node.get("display_pattern"):
+            # A compound sentence's top node intentionally has no badge.
+            if node is not tree or derived_type not in {
+                "compound", "compound-complex"
+            }:
+                issues.append(f"clause without display_pattern: {path_hint}")
+
+    # Phase 2: the whole-sentence structure type must match the known shape,
+    # and a compound sentence's top node must not carry a single pattern.
+    if is_compound:
+        if derived_type not in {"compound", "compound-complex"}:
+            issues.append(f"expected compound(-complex), derived {derived_type}")
+        if tree.get("pattern"):
+            issues.append("compound top node still carries a single pattern")
+    elif derived_type not in {"simple", "complex"}:
+        issues.append(f"expected simple/complex, derived {derived_type}")
 
     # Compound sentences must expose >= 2 main clauses at the top level.
     if is_compound:

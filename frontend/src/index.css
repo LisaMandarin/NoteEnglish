@@ -440,6 +440,20 @@ h1, h2, h3 {
   vertical-align: 1px;
 }
 
+/* 成分序列（實際語序）徽章：中性色，與主色的句型徽章區隔。 */
+.pattern-badge--seq {
+  color: var(--text-main);
+  border-color: color-mix(in srgb, var(--text-main) 30%, transparent);
+  background: color-mix(in srgb, var(--text-main) 6%, transparent);
+}
+
+/* 整句結構類型徽章（單句/合句/複句/複合句）：實心主色，站在最前面。 */
+.pattern-badge--type {
+  color: var(--card-bg);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
 /* 方塊 / 膠囊內的詞：中性主色，顏色身分交給底色+邊框+標籤承擔。 */
 .skel-word-neutral {
   font-family: var(--font-heading);
@@ -452,6 +466,8 @@ h1, h2, h3 {
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
+  /* 窄螢幕：方塊不得超出容器寬，讓內容列自行換行（手機水平溢出回歸防範）。 */
+  max-width: 100%;
   vertical-align: middle;
   font-family: var(--font-heading);
   font-size: 18px;
@@ -468,6 +484,7 @@ h1, h2, h3 {
   align-items: baseline;
   flex-wrap: wrap;
   gap: 6px;
+  max-width: 100%; /* 配合 .skel-box 的寬度上限，巢狀內容在窄螢幕換行 */
 }
 /* depth 0：實心淡底、無邊框。depth 1：實線框。depth ≥2：虛線框。
    暗背景下用 7% 成分色底墊著，確保邊框與文字看得清。 */

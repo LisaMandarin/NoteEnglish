@@ -6,14 +6,49 @@ import {
   type SyntheticEvent,
 } from "react";
 import { Button, Tooltip } from "antd";
-import type { StructureNode, StructureRole } from "../../types";
-import { PATTERN_ZH, SLOT_ZH, isCoreSlot, roleCategory } from "./syntaxConfig";
+import type { SentenceType, StructureNode, StructureRole } from "../../types";
+import {
+  PATTERN_DISPLAY,
+  PATTERN_ZH,
+  SENTENCE_TYPE_EN,
+  SENTENCE_TYPE_ZH,
+  SLOT_ZH,
+  isCoreSlot,
+  roleCategory,
+  sequenceAddsInfo,
+} from "./syntaxConfig";
 
 type SentenceSkeletonProps = {
   structure: StructureNode;
+  // Whole-sentence structure type (單句/合句/複句/複合句) from POST /api/parse.
+  sentenceType?: SentenceType | null;
   // Leading words shown in a collapsed block's preview before truncating. Default 3.
   previewWords?: number;
 };
+
+// A clause's badges: the basic pattern (SVOO taught as SVIODO) plus, when the
+// surface order differs from it, the constituent sequence (e.g. A+S+V+O).
+function PatternBadges({ node, small }: { node: StructureNode; small: boolean }): ReactElement | null {
+  const sizeCls = small ? " pattern-badge--sm" : "";
+  const showSequence = sequenceAddsInfo(node.pattern, node.display_pattern);
+  if (!node.pattern && !showSequence) return null;
+  return (
+    <>
+      {node.pattern && (
+        <Tooltip title={`句型：${PATTERN_ZH[node.pattern]}`}>
+          <span className={`pattern-badge${sizeCls}`}>{PATTERN_DISPLAY[node.pattern]}</span>
+        </Tooltip>
+      )}
+      {showSequence && (
+        <Tooltip title="成分序列（實際語序，A＝狀語）">
+          <span className={`pattern-badge pattern-badge--seq${sizeCls}`}>
+            {node.display_pattern}
+          </span>
+        </Tooltip>
+      )}
+    </>
+  );
+}
 
 // A word is part of an underlined S/V/O/C run only when it is a leaf word filling
 // a core clause slot; everything else breaks the run.
@@ -61,6 +96,7 @@ const ROOT_PATH = "r";
 
 export default function SentenceSkeleton({
   structure,
+  sentenceType = null,
   previewWords = 3,
 }: SentenceSkeletonProps): ReactElement {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
@@ -131,11 +167,7 @@ export default function SentenceSkeleton({
           )}
         </span>
         <span className={`skel-box__label cat-${category}`}>
-          {node.pattern && (
-            <Tooltip title={`句型：${PATTERN_ZH[node.pattern]}`}>
-              <span className="pattern-badge pattern-badge--sm">{node.pattern}</span>
-            </Tooltip>
-          )}
+          <PatternBadges node={node} small />
           {labelText}
         </span>
       </span>
@@ -198,12 +230,15 @@ export default function SentenceSkeleton({
 
   return (
     <div>
-      <div className="mb-3 flex items-center gap-2">
-        {structure.pattern && (
-          <Tooltip title={`主要子句句型：${PATTERN_ZH[structure.pattern]}`}>
-            <span className="pattern-badge">{structure.pattern}</span>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        {sentenceType && (
+          <Tooltip title={`結構類型：${SENTENCE_TYPE_EN[sentenceType]}`}>
+            <span className="pattern-badge pattern-badge--type">
+              {SENTENCE_TYPE_ZH[sentenceType]}
+            </span>
           </Tooltip>
         )}
+        <PatternBadges node={structure} small={false} />
         <span className="flex gap-2 no-print">
           <Button size="small" onClick={expandAll}>
             全部展開

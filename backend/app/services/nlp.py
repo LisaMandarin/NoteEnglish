@@ -33,6 +33,7 @@ def analyze_tokens(text: str) -> list[dict[str, str | bool | int]]:
             "text": token.text,
             "lower": token.lower_,
             "pos": token.pos_,
+            "tag": token.tag_,
             "dep": token.dep_,
             "is_root": token.dep_ == "ROOT",
             "is_finite": token.morph.get("VerbForm") == ["Fin"] or any(

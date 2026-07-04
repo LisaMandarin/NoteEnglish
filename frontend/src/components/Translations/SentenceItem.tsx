@@ -219,7 +219,11 @@ export default function SentenceItem({
                 )}
                 {structure.structure && (
                   <div className="rounded-md border border-(--card-border) bg-(--card-bg) px-3 py-2">
-                    <SentenceSkeleton structure={structure.structure} previewWords={3} />
+                    <SentenceSkeleton
+                      structure={structure.structure}
+                      sentenceType={structure.sentenceType}
+                      previewWords={3}
+                    />
                   </div>
                 )}
               </div>

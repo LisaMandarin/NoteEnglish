@@ -7,7 +7,10 @@ export type StructureRole =
   | "HEAD" | "DET" | "MOD" | "PREP" | "ADV" | "ADJ" | "CONJ"
   | "MARK" | "PUNCT";
 export type StructureNodeType = "word" | "phrase" | "clause";
-export type SentencePattern = "SV" | "SVC" | "SVO" | "SVOO" | "SVOC";
+// Seven basic patterns; SVA/SVOA carry an obligatory adverbial.
+export type SentencePattern = "SV" | "SVC" | "SVO" | "SVA" | "SVOO" | "SVOC" | "SVOA";
+// Whole-sentence structure type derived by the backend from the tree.
+export type SentenceType = "simple" | "compound" | "complex" | "compound-complex";
 
 export type StructureNode = {
   text: string;
@@ -15,12 +18,17 @@ export type StructureNode = {
   type: StructureNodeType;
   label: string;
   pattern?: SentencePattern;
+  // Backend-derived surface constituent sequence, e.g. "A+S+V+O" / "S+V+IO+DO".
+  display_pattern?: string;
   children?: StructureNode[];
 };
 
 // Result of POST /api/parse. `structure` stays nullable for compatibility with
-// older cached API results.
-export type ParseResult = { structure: StructureNode | null };
+// older cached API results; `sentence_type` is null when structure is null.
+export type ParseResult = {
+  structure: StructureNode | null;
+  sentence_type: SentenceType | null;
+};
 
 export type VocabItem = {
   text: string;

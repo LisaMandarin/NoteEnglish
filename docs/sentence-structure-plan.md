@@ -5,7 +5,7 @@
 
 ## 目前狀態（2026-07-04）
 
-**Phase 1（可靠性修復）已完成並驗證**，等使用者實際使用確認。相關程式碼：
+**Phase 1（可靠性修復）+ Phase 2（心智圖對齊）+ Phase 3（golden 迴歸）皆已完成**，等使用者實際使用確認。Phase 2 詳見下方「步驟 2」。相關程式碼：
 
 - `backend/app/services/gemini.py` — 分析主流程 `ai_analyze_structure`、prompt、驗證器、spaCy fallback
 - `backend/app/services/structure.py` — 快取（記憶體 L1 + Supabase L2，key = sentence_hash + `PARSE_PROMPT_VERSION`，目前 **8**）
@@ -26,12 +26,13 @@ Phase 1 做了什麼（都有單元測試，`backend/tests/test_structure.py`，
 
 **⚠️ Git 狀態**：working tree 未 commit，且包含「更早之前 Codex 未提交的一層」（`nlp.py` 的 token 欄位 + `gemini.py` 的依存分組機制，HEAD 還停在 prompt v5）。Phase 1 疊在其上且依賴它——**不可單獨 revert `nlp.py`**。第一件事建議把現狀 commit（一個 commit 即可）。
 
-已知殘留（屬 Phase 2 範圍，使用者已回報過）：
+已知殘留（Phase 2 已修正前三項；其餘見下）：
 
-- 受格 gap 的關係子句 badge 顯示 SV 而非 SVO（"the perspective **that time gives**"）。
-- 併合句頂層 badge 沿用第一個子句的句型（或缺 badge），無「合句」概念。
-- 短的非限定關係子句（"In 2017, ... The Brothers Trust, which supports ..."）Gemini 常固執不給 children → 跑滿 3 次（首次約 45 秒）後以 fallback 出圖（品質可接受）。
-- 動名詞（reading/grounded）詞性標籤偶標「動詞」；phrase 節點偶爾掛「主詞／受詞」這類 word-level label。
+- ~~受格 gap 的關係子句 badge 顯示 SV 而非 SVO~~ → Phase 2 `_relative_clause_gap_symbol` 已修正，pattern 改判為 SVO 並在 display_pattern 前綴 O。
+- ~~併合句頂層 badge 沿用第一個子句的句型~~ → Phase 2 `derive_sentence_type` + `_finalize_structure` 已修正，合句頂層不再掛單一 pattern，改掛「合句」結構類型 badge。
+- ~~動名詞/分詞詞性標籤偶標「動詞」~~ → Phase 2 `_fix_verbal_word_labels` 已修正（依 spaCy tag/dep relabel 為名詞/形容詞）。
+- 短的非限定關係子句（"In 2017, ... The Brothers Trust, which supports ..."）Gemini 常固執不給 children → 跑滿 3 次（首次約 45 秒）後以 fallback 出圖（品質可接受）；同類情形也見於古典英語引文子句、since/after 子句、重後位修飾片語（golden 句 3/11/14/15，皆為既有殘留，非 Phase 2 引入）。
+- 句子功能（直述/疑問/祈使/感嘆）未做（使用者已確認這次不需要）。
 
 ## 下一步（建議順序）
 
@@ -83,25 +84,34 @@ Phase 2 改動後全跑一次，對照此基準（degraded 數量不應增加）
 
 成本：全跑一次約 15–40 次 Gemini 呼叫（flash）。跑完記錄通過率到本檔。
 
-### 步驟 2（目前進行點）：Phase 2 — 心智圖對齊（動 schema + prompt + 前端）
+### ✅ 步驟 2：Phase 2 — 心智圖對齊（2026-07-04 完成）
 
-教學框架 = 使用者提供的心智圖：七元素句型（含 **A＝狀語**）、SVOO 顯示為 **SVIODO**、結構類型（單句 Simple／合句 Compound／複句 Complex／複合句 Compound-Complex）、句子功能（直述/疑問/祈使/感嘆）。
+教學框架 = 使用者提供的心智圖：七元素句型（含 **A＝狀語**）、SVOO 顯示為 **SVIODO**、結構類型（單句 Simple／合句 Compound／複句 Complex／複合句 Compound-Complex）。句子功能（直述/疑問/祈使/感嘆）依使用者確認**這次不做**。
 
-**⚠️ 先問使用者再動工**（CLAUDE.md：UX 變更先提案）：
+**UX 決策（2026-07-04 使用者回覆）**：整句結構類型 badge + 各子句 pattern badge（合句頂層不掛單一 pattern）；顯示成分序列（如 ASVO）；SVOO 顯示為 SVIODO。
 
-- badge 呈現：整句「結構類型」badge + 每個子句各自 pattern badge？合句頂層是否完全不顯示 pattern？
-- 是否要顯示成分序列（如 `A+S+V+O`，狀語前置顯示 ASVO/SVAA）？
-- SVOO 改顯示 SVIODO 確認？功能（直述句等）要不要做？
+實作內容（`backend/app/services/gemini.py`、`app/models/parse.py`、`app/routes/parse.py`）：
 
-實作要點：
+1. `Pattern` enum 擴為 `SV/SVC/SVO/SVA/SVOO/SVOC/SVOA`（`parse.py` + `types.ts` + prompt 規則 10）；`_infer_clause_pattern` 新增 SVA 判斷（bare copula + 介系詞/副詞修飾語）。
+2. `display_pattern`：新欄位，由 `_clause_display_sequence` 從子句 children 的角色順序推導（如 `A+S+V+O`、`S+V+IO+DO`），保證與樹一致；`_annotate_display_patterns` 附加到每個 clause 節點；SVOO 由前端 `PATTERN_DISPLAY` 映射顯示為 SVIODO（後端資料仍存 SVOO）。此欄位純後端衍生，已從 Gemini 的 response_json_schema 排除（`_gemini_structure_schema`）。
+3. `sentence_type`：`derive_sentence_type` 從樹推導（頂層 ≥2 個 主要子句→compound；含從屬子句→complex；皆有→compound-complex），由 route 附加到 `ParseResponse`（不快取，規則可獨立演進）；`_finalize_structure` 讓 compound/compound-complex 頂層移除單一 pattern/display_pattern。
+4. 驗證收緊：`_malformed_issue` 新增 label 層級檢查（word 不得掛片語/子句 label，phrase/clause 不得掛 word-level label）；`_repair_node_levels` 在驗證前先做確定性修復（label 層級錯位、role=ROOT 非頂層降級、clause 缺對應 label）；`_lift_trailing_punct` 把巢狀在深層的句尾標點移回頂層節點。
+5. 殘留修正：`_relative_clause_gap_symbol` 讓受格 gap 關係子句 pattern 正確判為 SVO；`_fix_verbal_word_labels` 依 spaCy tag/dep 把動名詞/分詞誤標的「動詞」relabel 為「名詞/形容詞」。
+6. `PARSE_PROMPT_VERSION` 8→**9**；前端 `syntaxConfig.ts` 補 `PATTERN_ZH`/`PATTERN_DISPLAY`/`SENTENCE_TYPE_ZH` 新句型；`SentenceSkeleton.tsx` 顯示結構類型 badge + pattern badge + 成分序列 badge（`sequenceAddsInfo` 過濾掉序列等於基本句型的重複顯示）；CSS 新增 `.pattern-badge--seq`/`.pattern-badge--type`，badge 容器改 `flex-wrap` 防手機溢出。
+7. 單元測試：`backend/tests/test_structure.py` 新增 8 個測試類別（`DisplayPatternTests`、`SentenceTypeTests`、`NodeLevelRepairTests`、`LiftTrailingPunctTests`、`VerbalWordLabelTests`、`InferSvaPatternTests`），全套 88 個測試通過。
+8. Golden suite（15 句真實 Gemini 呼叫）追加 badge 一致性檢查：每個有核心角色（S/V/O...）子句必須有 display_pattern；`sentence_type` 與已知合句/非合句分類相符；合句頂層不得殘留單一 pattern。**結果：15/15 通過**（同一批已知 degraded-serve 句子，見上方殘留清單，未新增）。
+9. UI 驗證：以臨時 harness（`preview-main.tsx` + Vite，跑完即刪除）灌真實 v9 分析結果，用 headless Chrome 截圖桌面（1200px）與手機（390px）寬度，確認 badge 正確顯示且無橫向溢出；發現手機寬度下 badge 列會被截斷，已修正為 `flex-wrap` 並加 `max-width: 100%` 到 `.skel-box`/`.skel-box__content`。
 
-1. `Pattern` enum 擴為 `SV/SVO/SVC/SVA/SVOO/SVOC/SVOA`（`parse.py` + `types.ts` + prompt 的 pattern 說明；SVA=必要狀語如 be+地點、SVOA=put+O+地點）。
-2. **badge 由後端從子句 children 的角色順序推導**（clause-level ADV → A），保證 badge 永遠與樹一致；SVOO 顯示字串 SVIODO。放新欄位（如 `display_pattern`），`pattern` 保持基本型以相容。
-3. `sentence_type` 新欄位：從樹推導（頂層 ≥2 個對等主要子句→合句；含從屬子句→複句；皆有→複合句），加進 `ParseResponse` 與前端 badge；併合句頂層不掛單一 pattern。
-4. Schema/驗證收緊：word 不得掛片語/子句 label、phrase 不掛 word-level 功能 label（進 `_malformed_issue` 或 Pydantic validator）；`role=ROOT` 僅限頂層；句尾標點自動移回頂層（deterministic）。
-5. 殘留修正：受格 gap 關係子句 pattern 推導為 SVO；動名詞詞性標籤。
-6. `PARSE_PROMPT_VERSION` → 9；前端 `PATTERN_ZH` 補新句型的中文（SVA 主詞＋動詞＋必要狀語…）；遵守 `frontend/CLAUDE.md`（AntD 優先、CSS 變數、mobile 驗證）。
-7. 改完全跑 golden suite 對照步驟 1 的基準，並實際截圖驗證 UI（CLAUDE.md 規定）。
+## 下一步
+
+Phase 1/2/3 的既定範圍都已完成並自動化驗證過（單元測試 88 個、golden suite 15/15）。尚未做的是**人工在瀏覽器實際操作確認**（CLAUDE.md 規定的驗證守則，自動截圖只涵蓋臨時 harness，不是完整 app 流程）：
+
+1. 開 dev server，貼一個合句（如 yet-compound 例句）跑分析，確認頂層顯示「合句」badge、不疊加單一 pattern，展開後每個子句各自的 pattern + 成分序列正確。
+2. 貼一個 SVOO 句子（如 "She gave him a book."），確認 badge 顯示 **SVIODO**。
+3. 手機寬度（瀏覽器窄視窗或實機）確認 badge 列不溢出、不遮擋。
+4. 確認舊快取（prompt v8 以前分析過的句子）重新開啟時會用 v9 重新分析，不會殘留缺欄位的舊格式。
+
+若使用者之後想再做「句子功能」（直述/疑問/祈使/感嘆），可作為 Phase 2 的追加項目，做法與 `sentence_type` 類似（多半可從樹的 ROOT 子句判斷，但疑問句/感嘆句需要看句尾標點與詞序，比 sentence_type 複雜一些）。
 
 ## 驗證守則（每次改動都適用）
 

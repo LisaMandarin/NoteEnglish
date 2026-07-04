@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { parseSentence } from "../lib/api";
-import type { StructureNode } from "../types";
+import type { SentenceType, StructureNode } from "../types";
 
 type SentenceStructureState = {
   sentence: string;
   requestId: number;
   structure: StructureNode | null;
+  sentenceType: SentenceType | null;
   loaded: boolean;
   loading: boolean;
   error: string | null;
@@ -17,6 +18,7 @@ function initialState(sentence: string, requestId = 0): SentenceStructureState {
     sentence,
     requestId,
     structure: null,
+    sentenceType: null,
     loaded: false,
     loading: false,
     error: null,
@@ -28,6 +30,7 @@ function initialState(sentence: string, requestId = 0): SentenceStructureState {
 // and caches it, so toggling the structure view off/on does not re-hit the API.
 export function useSentenceStructure(sentence: string): {
   structure: StructureNode | null;
+  sentenceType: SentenceType | null;
   loading: boolean;
   error: string | null;
   visible: boolean;
@@ -67,6 +70,7 @@ export function useSentenceStructure(sentence: string): {
             ? {
                 ...current,
                 structure: result.structure,
+                sentenceType: result.sentence_type,
                 loaded: true,
                 visible: result.structure ? current.visible : false,
               }
@@ -119,6 +123,7 @@ export function useSentenceStructure(sentence: string): {
 
   return {
     structure: state.structure,
+    sentenceType: state.sentenceType,
     loading: state.loading,
     error: state.error,
     visible: state.visible,

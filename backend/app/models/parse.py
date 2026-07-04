@@ -14,8 +14,14 @@ Role = Literal[
 # Whether a node is a single word-run, an expandable phrase, or a nested clause.
 NodeType = Literal["word", "phrase", "clause"]
 
-# Five basic sentence patterns. Present on every clause node (main or embedded).
-Pattern = Literal["SV", "SVC", "SVO", "SVOO", "SVOC"]
+# Seven basic sentence patterns (Quirk's seven clause types). Present on every
+# clause node (main or embedded). SVA/SVOA cover obligatory adverbials
+# ("She is in the kitchen", "He put the keys on the table").
+Pattern = Literal["SV", "SVC", "SVO", "SVA", "SVOO", "SVOC", "SVOA"]
+
+# Overall sentence structure type, derived from the tree (not model-emitted):
+# >=2 coordinated main clauses -> compound; any subordinate clause -> complex.
+SentenceType = Literal["simple", "compound", "complex", "compound-complex"]
 
 # Controlled Traditional-Chinese teaching label shown as a node's heading. Kept
 # as an enum (not free text) so the AI can't drift and colors/labels stay stable.
@@ -43,6 +49,10 @@ class StructureNode(BaseModel):
     type: NodeType
     label: Label
     pattern: Optional[Pattern] = None
+    # Surface constituent sequence of a clause (e.g. "A+S+V+O", "S+V+IO+DO"),
+    # derived by the backend from the children's roles — never model-emitted,
+    # so it is stripped from the Gemini response schema.
+    display_pattern: Optional[str] = None
     children: Optional[list["StructureNode"]] = None
 
 
@@ -56,5 +66,7 @@ class ParseRequest(BaseModel):
 
 # Response: the sentence's structure tree. The optional type remains for
 # compatibility with parse results cached before request validation was added.
+# `sentence_type` is derived from the tree at response time.
 class ParseResponse(BaseModel):
     structure: Optional[StructureNode] = None
+    sentence_type: Optional[SentenceType] = None

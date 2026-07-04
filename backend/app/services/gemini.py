@@ -206,7 +206,7 @@ def ai_ocr_image(image_bytes: bytes, mime_type: str) -> tuple[str, dict]:
 # Bumped whenever the prompt, output schema, or post-processing below changes in
 # a way that should invalidate cached analyses. The parse cache keys on
 # (sentence_hash, this).
-PARSE_PROMPT_VERSION = 8
+PARSE_PROMPT_VERSION = 9
 
 # The pedagogical labels the model may use, mirrored from app.models.parse.Label.
 # Listed in the prompt so the model picks from a fixed vocabulary.
@@ -219,18 +219,24 @@ _STRUCTURE_LABELS = (
 
 _STRUCTURE_PROMPT = (
     "You are an English-grammar analyzer for Traditional-Chinese-speaking learners.\n"
-    "Analyze the sentence into a NESTED constituent tree using the five basic "
-    "sentence patterns (SV / SVC / SVO / SVOO / SVOC).\n\n"
+    "Analyze the sentence into a NESTED constituent tree using the seven basic "
+    "sentence patterns (SV / SVC / SVO / SVA / SVOO / SVOC / SVOA).\n\n"
     "Return ONLY a JSON object for the top node, where each node is:\n"
     '{ "text", "role", "type", "label", "pattern"(clause only), "children"(phrase/clause only) }\n\n'
     "role in [ROOT,S,V,O,IO,DO,SC,OC,HEAD,DET,MOD,PREP,ADV,ADJ,CONJ,MARK,PUNCT]\n"
     "type in [word, phrase, clause]\n"
-    "pattern in [SV, SVC, SVO, SVOO, SVOC]\n"
+    "pattern in [SV, SVC, SVO, SVA, SVOO, SVOC, SVOA]\n"
     f"label in [{_STRUCTURE_LABELS}]\n\n"
     "Rules:\n"
     "1. Concatenating every LEAF node's \"text\" left-to-right MUST reproduce the "
     "sentence verbatim (same words, same order, keep quotes/punctuation).\n"
-    "2. The top node is role=ROOT, type=clause, label=主要子句, with its pattern.\n"
+    "2. The top node is role=ROOT, type=clause, label=主要子句, with its pattern. "
+    "role=ROOT appears ONLY on the top node. For a COMPOUND sentence (two or more "
+    "coordinated main clauses joined by and/but/yet/or, a semicolon, or a dash) "
+    "the top node omits \"pattern\" and holds each coordinated clause as its own "
+    "主要子句 clause child (plus the connector/punctuation between them). "
+    "Sentence-final punctuation is a direct child of the top node, never nested "
+    "inside an inner phrase or clause.\n"
     "3. EVERY clause (main or subordinate) gets its own \"pattern\" and is broken "
     "into its S/V/O/IO/DO/SC/OC constituents. Finite content/appositive clauses "
     "after nouns (e.g. 'the fact that she came') and relative clauses (e.g. 'the "
@@ -262,7 +268,10 @@ _STRUCTURE_PROMPT = (
     "phrase is label=介系詞片語 and role=ADJ when modifying a noun or role=ADV when "
     "modifying a verb, adjective, or whole clause.\n"
     "7. Coordinated items use role=CONJ; the subordinator (that/which/because...) "
-    "is a MARK/引導詞 word inside its clause.\n"
+    "is a MARK/引導詞 word inside its clause. A clause opened by a subordinating "
+    "conjunction (because/although/when/since/while/whereas...) is a 副詞子句 "
+    "inside the main clause — contrastive while/whereas included. Only "
+    "and/but/or/yet/so, a semicolon, or a dash join coordinate 主要子句.\n"
     "8. Reproduce EVERY word of the sentence exactly once, verbatim — never drop, "
     "merge away, or paraphrase a word. This applies to ALL words WITHOUT EXCEPTION, "
     "especially easily-omitted function words: ANY adverb, ANY auxiliary/modal and "
@@ -271,6 +280,14 @@ _STRUCTURE_PROMPT = (
     "9. Do not absorb a trailing adjunct into S/O/SC/OC. For example a comma + 'with "
     "...' supplement that modifies the whole clause must be separate top-level PUNCT "
     "and ADV children, while the core S/V/O/C span remains precise.\n"
+    "10. SVA and SVOA are for OBLIGATORY adverbials only: SVA when the verb needs an "
+    "adverbial to be complete ('She is in the kitchen'), SVOA when verb + object need "
+    "one ('He put the keys on the table'). An optional adverbial does NOT change the "
+    "pattern — 'She reads books at night' stays SVO.\n"
+    "11. Label level must match node type: a word node takes a word-level label "
+    "(grammatical function or part of speech), a phrase node takes a 片語 label, and "
+    "a clause node takes a 子句 label. Never put 主詞/受詞/動詞 on a phrase node or a "
+    "片語/子句 label on a word node.\n"
     "Return JSON only. No markdown, no commentary.\n\n"
     "Sentence: "
 )
@@ -468,7 +485,13 @@ def _infer_clause_pattern(
     # object slot ("said (that) she left", "wants to go").
     if has_object or deps & {"ccomp", "xcomp"}:
         return "SVO"
-    if has_complement or (root is not None and str(root["pos"]) == "AUX"):
+    if has_complement:
+        return "SVC"
+    if root is not None and str(root["pos"]) == "AUX":
+        # A bare copula with no complement needs its adverbial to be complete:
+        # "She is in the kitchen" is SVA, not SVC.
+        if any(str(token["dep"]) in {"prep", "advmod", "npadvmod"} for token in branches):
+            return "SVA"
         return "SVC"
     return "SV"
 
@@ -741,6 +764,33 @@ _OBJECT_DEPS = {"dobj", "obj"}
 _INDIRECT_OBJECT_DEPS = {"dative", "iobj"}
 _COMPLEMENT_DEPS = {"attr", "acomp", "oprd"}
 
+# Label vocabulary split by the node level it belongs to, mirroring the
+# groupings in app.models.parse.Label. A node whose label sits at the wrong
+# level (e.g. 主詞 on a phrase) is deterministically repaired before validation.
+_WORD_POS_LABELS = {"名詞", "代名詞", "限定詞", "形容詞", "副詞", "介系詞", "連接詞", "助動詞"}
+_WORD_LEVEL_LABELS = set(_CLAUSE_ROLE_LABELS.values()) | _WORD_POS_LABELS
+_CLAUSE_LEVEL_LABELS = {
+    "主要子句", "受詞子句", "主詞子句", "補語子句", "副詞子句", "關係子句", "同位子句",
+}
+_PHRASE_LEVEL_LABELS = {
+    "名詞片語", "動名詞片語", "不定詞片語", "原形動詞補語", "分詞片語",
+    "介系詞片語", "形容詞片語", "副詞片語",
+}
+_SUBORDINATE_CLAUSE_LABELS = _CLAUSE_LEVEL_LABELS - {"主要子句"}
+
+# Clause label implied by the slot a mislabeled clause node fills.
+_CLAUSE_LABEL_BY_ROLE = {
+    "S": "主詞子句",
+    "O": "受詞子句",
+    "DO": "受詞子句",
+    "IO": "受詞子句",
+    "SC": "補語子句",
+    "OC": "補語子句",
+    "ADV": "副詞子句",
+    "ADJ": "關係子句",
+    "MOD": "關係子句",
+}
+
 
 def _clause_branch_dep(
     token: dict[str, str | bool | int],
@@ -890,8 +940,15 @@ def _malformed_issue(node: dict, path: str = "ROOT") -> str | None:
     children, or a node whose text does not match its direct children's texts
     (the collapsed preview would then contradict the expanded view)."""
     children = node.get("children")
+    label = node.get("label")
     if node.get("type") == "word":
-        return f"{path}: word node has children" if children else None
+        if children:
+            return f"{path}: word node has children"
+        if label in _CLAUSE_LEVEL_LABELS or label in _PHRASE_LEVEL_LABELS:
+            return f"{path}: word node carries the non-word label {label}"
+        return None
+    if label in _WORD_LEVEL_LABELS:
+        return f"{path}: {node.get('type')} node carries the word-level label {label}"
     if not children:
         return None
 
@@ -945,6 +1002,282 @@ def _nesting_issue(node: dict, path: str = "ROOT") -> str | None:
         if issue:
             return issue
     return None
+
+
+def _phrase_label_from_text(text: str) -> str:
+    """Phrase-level label inferred from the span's own syntax, for repairing a
+    phrase node that arrived with a word-level label."""
+    tokens = analyze_tokens(text)
+    if not tokens:
+        return "名詞片語"
+    first = tokens[0]
+    if str(first["lower"]) == "to" and str(first["pos"]) == "PART":
+        return "不定詞片語"
+    if str(first["pos"]) == "ADP" or str(first["dep"]) == "prep":
+        return "介系詞片語"
+    root = next((token for token in tokens if bool(token["is_root"])), first)
+    root_pos = str(root["pos"])
+    if root_pos == "VERB":
+        tag = str(root["tag"])
+        if tag == "VBG":
+            return "動名詞片語"
+        if tag == "VB":
+            return "原形動詞補語"
+        return "分詞片語"
+    if root_pos == "ADJ":
+        return "形容詞片語"
+    if root_pos == "ADV":
+        return "副詞片語"
+    return "名詞片語"
+
+
+def _repair_node_levels(node: dict, top: bool = True) -> None:
+    """Deterministically fix nodes whose label or role sits at the wrong level:
+    a word carrying a 片語/子句 label becomes that node type (a compact leaf
+    phrase is legal; a childless clause goes through the normal unfilled-clause
+    retry), a phrase carrying a word-level label gets a derived 片語 label, a
+    clause carrying a non-clause label gets one implied by its slot, and
+    role=ROOT below the top node is demoted."""
+    if not top and node.get("role") == "ROOT":
+        node["role"] = "CONJ" if node.get("type") == "clause" else "HEAD"
+
+    label = node.get("label")
+    node_type = node.get("type")
+    if node_type == "word":
+        if label in _PHRASE_LEVEL_LABELS:
+            node["type"] = "phrase"
+        elif label in _CLAUSE_LEVEL_LABELS:
+            node["type"] = "clause"
+    elif node_type == "phrase":
+        if label in _CLAUSE_LEVEL_LABELS:
+            node["type"] = "clause"
+        elif label in _WORD_LEVEL_LABELS:
+            node["label"] = _phrase_label_from_text(str(node.get("text", "")))
+    elif node_type == "clause" and label not in _CLAUSE_LEVEL_LABELS:
+        node["label"] = _CLAUSE_LABEL_BY_ROLE.get(
+            str(node.get("role", "")), "主要子句"
+        )
+
+    if node.get("type") != "clause":
+        node.pop("pattern", None)
+
+    for child in node.get("children") or []:
+        _repair_node_levels(child, top=False)
+
+
+# Only unambiguous sentence-final marks are lifted to the top level; a closing
+# quote stays inside its quotation node.
+_LIFTABLE_FINAL_PUNCT = set(".?!…")
+
+
+def _lift_trailing_punct(structure: dict) -> None:
+    """Move a sentence-final punctuation leaf nested deep inside the last
+    branch up to the top level (the teaching mind map keeps sentence-final
+    punctuation at the sentence level). Ancestor texts are trimmed so every
+    node's text still matches its children."""
+    if not structure.get("children"):
+        return
+    chain = [structure]
+    while chain[-1].get("children"):
+        chain.append(chain[-1]["children"][-1])
+    leaf = chain[-1]
+    if len(chain) <= 2:  # already a direct child of the top node
+        return
+    text = str(leaf.get("text", ""))
+    if not text or (set(text) - _LIFTABLE_FINAL_PUNCT):
+        return
+    intermediate = chain[1:-1]
+    if any(not str(node.get("text", "")).endswith(text) for node in intermediate):
+        return  # unexpected spacing; leave the tree untouched
+    parent = chain[-2]
+    if len(parent["children"]) <= 1:
+        return  # never leave an empty container behind
+    parent["children"].pop()
+    for node in intermediate:
+        node["text"] = str(node["text"])[: -len(text)].rstrip()
+    structure["children"].append(leaf)
+
+
+# Dependencies under which a gerund acts as a noun / a past participle as an
+# adjective, for relabeling 動詞 leaves that are not the clause's verb.
+_NOMINAL_GERUND_DEPS = {"nsubj", "nsubjpass", "dobj", "pobj", "attr", "conj", "appos"}
+_ADJECTIVAL_PARTICIPLE_DEPS = {"acomp", "amod", "conj", "oprd"}
+
+
+def _fix_verbal_word_labels(structure: dict, sentence: str) -> None:
+    """Relabel 動詞 word leaves that are not the clause's verb when spaCy shows
+    they act as a gerund (-> 名詞) or a participial adjective (-> 形容詞),
+    e.g. 'reading' in 'found spelling and reading difficult' or 'grounded' in
+    'described as relatable and grounded'."""
+    tokens = analyze_tokens(sentence)
+    leaves: list[dict] = []
+
+    def collect(node: dict) -> None:
+        children = node.get("children")
+        if not children:
+            leaves.append(node)
+            return
+        for child in children:
+            collect(child)
+
+    collect(structure)
+    cursor = 0
+    for leaf in leaves:
+        text = str(leaf.get("text", ""))
+        start = sentence.find(text, cursor)
+        if start == -1:
+            continue
+        cursor = start + len(text)
+        if (
+            leaf.get("type") != "word"
+            or leaf.get("label") != "動詞"
+            or leaf.get("role") == "V"
+        ):
+            continue
+        covering = [
+            token
+            for token in tokens
+            if int(token["start"]) < cursor and int(token["end"]) > start
+        ]
+        if len(covering) != 1:
+            continue  # only single-word leaves are relabeled confidently
+        token = covering[0]
+        pos, tag, dep = str(token["pos"]), str(token["tag"]), str(token["dep"])
+        if pos == "ADJ" or (tag == "VBN" and dep in _ADJECTIVAL_PARTICIPLE_DEPS):
+            leaf["label"] = "形容詞"
+        elif tag == "VBG" and dep in _NOMINAL_GERUND_DEPS:
+            leaf["label"] = "名詞"
+
+
+# Clause-child role -> symbol in the displayed constituent sequence. Roles not
+# listed (MARK, CONJ, PUNCT, phrase-internal roles) do not appear in it.
+_SEQUENCE_SYMBOLS = {
+    "S": "S", "V": "V", "O": "O", "IO": "IO", "DO": "DO",
+    "SC": "C", "OC": "C", "ADV": "A",
+}
+
+_RELATIVIZERS = {"that", "which", "who", "whom"}
+
+
+def _relative_clause_gap_symbol(node: dict) -> str | None:
+    """The slot a relative clause's relativizer fills — 'who came' opens with
+    its subject (S), 'that time gives' opens with the gapped object (O) — so
+    the badge reflects the true clause pattern instead of showing SV."""
+    if node.get("label") != "關係子句":
+        return None
+    tokens = analyze_tokens(str(node.get("text", "")))
+    if not tokens:
+        return None
+    first = tokens[0]
+    if str(first["lower"]) not in _RELATIVIZERS:
+        return None
+    if str(first["dep"]) in _SUBJECT_DEPS:
+        return "S"
+    root = next((token for token in tokens if bool(token["is_root"])), None)
+    if root is None or str(root["pos"]) != "VERB":
+        return None
+    has_object = any(str(token["dep"]) in _OBJECT_DEPS for token in tokens)
+    has_subject = any(str(token["dep"]) in _SUBJECT_DEPS for token in tokens)
+    if has_subject and not has_object:
+        return "O"
+    return None
+
+
+def _clause_display_sequence(node: dict) -> str | None:
+    """Surface constituent sequence of a clause ('A+S+V+O', 'S+V+IO+DO'),
+    derived from the children's roles in order so the badge always matches the
+    tree. A run of adjacent same-role words (a verb group) counts once."""
+    children = node.get("children") or []
+    symbols: list[str] = []
+    previous_word_symbol: str | None = None
+    for child in children:
+        symbol = _SEQUENCE_SYMBOLS.get(str(child.get("role", "")))
+        if symbol is None:
+            previous_word_symbol = None
+            continue
+        if child.get("type") == "word":
+            if symbol == previous_word_symbol:
+                continue
+            previous_word_symbol = symbol
+        else:
+            previous_word_symbol = None
+        symbols.append(symbol)
+    return "+".join(symbols) if symbols else None
+
+
+def _annotate_display_patterns(node: dict) -> None:
+    """Attach `display_pattern` to every clause and correct the pattern of an
+    object-gap relative clause (SV -> SVO)."""
+    if node.get("type") == "clause":
+        sequence = _clause_display_sequence(node)
+        gap = _relative_clause_gap_symbol(node)
+        if gap:
+            if gap == "O" and node.get("pattern") in (None, "SV"):
+                node["pattern"] = "SVO"
+            parts = sequence.split("+") if sequence else []
+            if not parts or parts[0] != gap:
+                sequence = "+".join([gap, *parts]) if parts else gap
+        if sequence:
+            node["display_pattern"] = sequence
+    for child in node.get("children") or []:
+        _annotate_display_patterns(child)
+
+
+def derive_sentence_type(structure: dict) -> str:
+    """Structure type for the whole-sentence badge, derived from the tree:
+    >=2 coordinated main clauses at the top level -> compound, any subordinate
+    clause anywhere -> complex, both -> compound-complex."""
+    top_main_clauses = sum(
+        1
+        for child in structure.get("children") or []
+        if child.get("type") == "clause" and child.get("label") == "主要子句"
+    )
+    compound = top_main_clauses >= 2
+
+    def has_subordinate(node: dict) -> bool:
+        for child in node.get("children") or []:
+            if (
+                child.get("type") == "clause"
+                and child.get("label") in _SUBORDINATE_CLAUSE_LABELS
+            ):
+                return True
+            if has_subordinate(child):
+                return True
+        return False
+
+    complex_ = has_subordinate(structure)
+    if compound and complex_:
+        return "compound-complex"
+    if compound:
+        return "compound"
+    if complex_:
+        return "complex"
+    return "simple"
+
+
+def _finalize_structure(structure: dict, sentence: str) -> dict:
+    """Deterministic presentation pass on a validated tree: relabel mislabeled
+    verbal words, attach display sequences, and drop the top node's single
+    pattern on a compound sentence (its clauses each carry their own)."""
+    _fix_verbal_word_labels(structure, sentence)
+    _annotate_display_patterns(structure)
+    if derive_sentence_type(structure) in {"compound", "compound-complex"}:
+        structure.pop("pattern", None)
+        structure.pop("display_pattern", None)
+    return structure
+
+
+def _gemini_structure_schema() -> dict:
+    """StructureNode's JSON schema without backend-derived fields, so the
+    model cannot emit them."""
+    from app.models.parse import StructureNode
+
+    schema = StructureNode.model_json_schema()
+    for definition in [schema, *schema.get("$defs", {}).values()]:
+        properties = definition.get("properties")
+        if properties:
+            properties.pop("display_pattern", None)
+    return schema
 
 
 # Attempts for a single analysis: the first at temperature 0 (deterministic), then
@@ -1006,7 +1339,8 @@ def ai_analyze_structure(sentence: str) -> tuple[dict, dict]:
                     # Enforce the node shape (role/type/label enums, recursion via
                     # $ref) at the API level so the model cannot mix up fields —
                     # e.g. putting a label value like 介系詞片語 into `type`.
-                    "response_json_schema": StructureNode.model_json_schema(),
+                    # Backend-derived fields are stripped from the schema.
+                    "response_json_schema": _gemini_structure_schema(),
                     "temperature": temperature,
                     "thinking_config": {
                         "thinking_budget": _STRUCTURE_THINKING_BUDGET,
@@ -1032,9 +1366,11 @@ def ai_analyze_structure(sentence: str) -> tuple[dict, dict]:
 
         structure = node.model_dump(exclude_none=True)
         _prune_empty_children(structure)
+        _repair_node_levels(structure)
         unfilled_clause = _unfilled_clause_issue(structure)
         _expand_missing_details(structure)
         _repair_missing_trailing_punct(structure, sentence)
+        _lift_trailing_punct(structure)
         if not _reconstructs_sentence(structure, sentence):
             leaves = " | ".join(_leaf_texts(structure))
             previous_feedback = (
@@ -1059,7 +1395,7 @@ def ai_analyze_structure(sentence: str) -> tuple[dict, dict]:
 
         nesting_issue = unfilled_clause or _nesting_issue(structure)
         if nesting_issue is None:
-            return structure, usage
+            return _finalize_structure(structure, sentence), usage
 
         # Well-formed but under-nested: keep it and retry for a fully nested
         # answer. Serving a shallow-but-correct tree beats failing the whole
@@ -1080,7 +1416,7 @@ def ai_analyze_structure(sentence: str) -> tuple[dict, dict]:
             sentence,
             degraded_issue,
         )
-        return degraded, usage
+        return _finalize_structure(degraded, sentence), usage
     raise last_error
 
 

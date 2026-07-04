@@ -503,7 +503,8 @@ class AnalyzeStructureTests(unittest.TestCase):
             result, usage = gemini.ai_analyze_structure("The man who came stayed.")
 
         self.assertEqual(gen.call_count, gemini._STRUCTURE_ATTEMPTS)
-        self.assertEqual(result, UNDER_NESTED_TREE)
+        # The served tree additionally carries the derived constituent sequence.
+        self.assertEqual(result, {**UNDER_NESTED_TREE, "display_pattern": "S+V"})
         self.assertIn("total_tokens", usage)
 
     def test_malformed_answer_still_raises(self):
@@ -710,7 +711,7 @@ class ReportedRegressionTests(unittest.TestCase):
             result, _ = gemini.ai_analyze_structure("She reads books.")
 
         self.assertEqual(gen.call_count, 2)
-        self.assertEqual(result, VALID_TREE)
+        self.assertEqual(result, {**VALID_TREE, "display_pattern": "S+V+O"})
 
 
 class GetStructureCacheTests(unittest.TestCase):
@@ -802,6 +803,293 @@ class GetStructureCacheTests(unittest.TestCase):
             structure.get_structure("She   reads books.")  # only spacing differs
 
         ai.assert_called_once()
+
+
+def _clause(text, role, label, pattern=None, children=None):
+    node = {"text": text, "role": role, "type": "clause", "label": label}
+    if pattern:
+        node["pattern"] = pattern
+    if children:
+        node["children"] = children
+    return node
+
+
+def _word(text, role, label):
+    return {"text": text, "role": role, "type": "word", "label": label}
+
+
+class DisplayPatternTests(unittest.TestCase):
+    def test_sequence_from_children_with_fronted_adverbial(self):
+        node = _clause(
+            "During the war, he slept.", "ROOT", "主要子句", "SV",
+            children=[
+                {"text": "During the war", "role": "ADV", "type": "phrase", "label": "介系詞片語"},
+                _word(",", "PUNCT", "標點"),
+                _word("he", "S", "主詞"),
+                _word("slept", "V", "動詞"),
+                _word(".", "PUNCT", "標點"),
+            ],
+        )
+        self.assertEqual(gemini._clause_display_sequence(node), "A+S+V")
+
+    def test_svoo_children_produce_s_v_io_do(self):
+        node = _clause(
+            "She gave him books.", "ROOT", "主要子句", "SVOO",
+            children=[
+                _word("She", "S", "主詞"),
+                _word("gave", "V", "動詞"),
+                _word("him", "IO", "間接受詞"),
+                _word("books", "DO", "直接受詞"),
+                _word(".", "PUNCT", "標點"),
+            ],
+        )
+        self.assertEqual(gemini._clause_display_sequence(node), "S+V+IO+DO")
+
+    def test_adjacent_same_role_words_collapse_once(self):
+        node = _clause(
+            "She has explained it.", "ROOT", "主要子句", "SVO",
+            children=[
+                _word("She", "S", "主詞"),
+                _word("has", "V", "動詞"),
+                _word("explained", "V", "動詞"),
+                _word("it", "O", "受詞"),
+            ],
+        )
+        self.assertEqual(gemini._clause_display_sequence(node), "S+V+O")
+
+    def test_object_gap_relative_clause_becomes_svo(self):
+        node = _clause(
+            "that time gives", "MOD", "關係子句", "SV",
+            children=[
+                _word("that", "MARK", "引導詞"),
+                _word("time", "S", "主詞"),
+                _word("gives", "V", "動詞"),
+            ],
+        )
+        gemini._annotate_display_patterns(node)
+        self.assertEqual(node["pattern"], "SVO")
+        self.assertEqual(node["display_pattern"], "O+S+V")
+
+    def test_subject_gap_relative_clause_prepends_s(self):
+        node = _clause(
+            "who came", "MOD", "關係子句", "SV",
+            children=[
+                _word("who", "MARK", "引導詞"),
+                _word("came", "V", "動詞"),
+            ],
+        )
+        gemini._annotate_display_patterns(node)
+        self.assertEqual(node["pattern"], "SV")
+        self.assertEqual(node["display_pattern"], "S+V")
+
+    def test_compound_top_node_loses_its_single_pattern(self):
+        tree = _clause(
+            "She reads, but he sleeps.", "ROOT", "主要子句", "SVO",
+            children=[
+                _clause(
+                    "She reads", "CONJ", "主要子句", "SVO",
+                    children=[_word("She", "S", "主詞"), _word("reads", "V", "動詞")],
+                ),
+                _word(",", "PUNCT", "標點"),
+                _word("but", "CONJ", "對等連接詞"),
+                _clause(
+                    "he sleeps", "CONJ", "主要子句", "SV",
+                    children=[_word("he", "S", "主詞"), _word("sleeps", "V", "動詞")],
+                ),
+                _word(".", "PUNCT", "標點"),
+            ],
+        )
+        gemini._finalize_structure(tree, "She reads, but he sleeps.")
+        self.assertNotIn("pattern", tree)
+        self.assertNotIn("display_pattern", tree)
+        self.assertEqual(tree["children"][0]["display_pattern"], "S+V")
+
+
+class SentenceTypeTests(unittest.TestCase):
+    def test_simple(self):
+        self.assertEqual(gemini.derive_sentence_type(VALID_TREE), "simple")
+
+    def test_compound(self):
+        tree = _clause(
+            "x", "ROOT", "主要子句",
+            children=[
+                _clause("a", "CONJ", "主要子句"),
+                _word("but", "CONJ", "對等連接詞"),
+                _clause("b", "CONJ", "主要子句"),
+            ],
+        )
+        self.assertEqual(gemini.derive_sentence_type(tree), "compound")
+
+    def test_complex(self):
+        tree = _clause(
+            "x", "ROOT", "主要子句",
+            children=[
+                _word("She", "S", "主詞"),
+                _word("said", "V", "動詞"),
+                _clause("that he came", "O", "受詞子句"),
+            ],
+        )
+        self.assertEqual(gemini.derive_sentence_type(tree), "complex")
+
+    def test_compound_complex(self):
+        tree = _clause(
+            "x", "ROOT", "主要子句",
+            children=[
+                _clause(
+                    "a", "CONJ", "主要子句",
+                    children=[_clause("when he came", "ADV", "副詞子句")],
+                ),
+                _clause("b", "CONJ", "主要子句"),
+            ],
+        )
+        self.assertEqual(gemini.derive_sentence_type(tree), "compound-complex")
+
+
+class NodeLevelRepairTests(unittest.TestCase):
+    def test_word_with_phrase_label_becomes_leaf_phrase(self):
+        tree = _clause(
+            "x", "ROOT", "主要子句",
+            children=[_word("in the kitchen", "ADV", "介系詞片語")],
+        )
+        gemini._repair_node_levels(tree)
+        self.assertEqual(tree["children"][0]["type"], "phrase")
+
+    def test_phrase_with_word_function_label_gets_phrase_label(self):
+        tree = _clause(
+            "x", "ROOT", "主要子句",
+            children=[
+                {
+                    "text": "the tall man",
+                    "role": "S",
+                    "type": "phrase",
+                    "label": "主詞",
+                    "children": [
+                        _word("the", "DET", "限定詞"),
+                        _word("tall", "ADJ", "形容詞"),
+                        _word("man", "HEAD", "名詞"),
+                    ],
+                }
+            ],
+        )
+        gemini._repair_node_levels(tree)
+        self.assertEqual(tree["children"][0]["label"], "名詞片語")
+
+    def test_inner_root_role_is_demoted(self):
+        tree = _clause(
+            "x", "ROOT", "主要子句",
+            children=[_clause("a", "ROOT", "主要子句")],
+        )
+        gemini._repair_node_levels(tree)
+        self.assertEqual(tree["children"][0]["role"], "CONJ")
+        self.assertEqual(tree["role"], "ROOT")
+
+    def test_clause_with_word_label_gets_clause_label_from_role(self):
+        tree = _clause(
+            "x", "ROOT", "主要子句",
+            children=[_clause("that he came", "O", "受詞")],
+        )
+        gemini._repair_node_levels(tree)
+        self.assertEqual(tree["children"][0]["label"], "受詞子句")
+
+    def test_malformed_issue_flags_label_level_crossings(self):
+        word_with_clause_label = copy.deepcopy(VALID_TREE)
+        word_with_clause_label["children"][0]["label"] = "關係子句"
+        self.assertIn("non-word label", gemini._malformed_issue(word_with_clause_label))
+
+        phrase_with_word_label = copy.deepcopy(DETAILED_TREE)
+        phrase_with_word_label["children"][0]["label"] = "主詞"
+        self.assertIn("word-level label", gemini._malformed_issue(phrase_with_word_label))
+
+
+class LiftTrailingPunctTests(unittest.TestCase):
+    def test_nested_final_period_moves_to_top_level(self):
+        tree = _clause(
+            "She saw the man who came.", "ROOT", "主要子句", "SVO",
+            children=[
+                _word("She", "S", "主詞"),
+                _word("saw", "V", "動詞"),
+                {
+                    "text": "the man who came.",
+                    "role": "O",
+                    "type": "phrase",
+                    "label": "名詞片語",
+                    "children": [
+                        _word("the man", "HEAD", "名詞"),
+                        _clause(
+                            "who came.", "MOD", "關係子句", "SV",
+                            children=[
+                                _word("who", "MARK", "引導詞"),
+                                _word("came", "V", "動詞"),
+                                _word(".", "PUNCT", "標點"),
+                            ],
+                        ),
+                    ],
+                },
+            ],
+        )
+        gemini._lift_trailing_punct(tree)
+        self.assertEqual(tree["children"][-1], _word(".", "PUNCT", "標點"))
+        self.assertEqual(tree["children"][2]["text"], "the man who came")
+        self.assertEqual(tree["children"][2]["children"][1]["text"], "who came")
+        self.assertIsNone(gemini._malformed_issue(tree))
+        self.assertTrue(gemini._reconstructs_sentence(tree, "She saw the man who came."))
+
+    def test_closing_quote_is_not_lifted(self):
+        tree = _clause(
+            'He said, "Go."', "ROOT", "主要子句", "SVO",
+            children=[
+                _word("He", "S", "主詞"),
+                _word("said", "V", "動詞"),
+                _word(",", "PUNCT", "標點"),
+                {
+                    "text": '"Go."',
+                    "role": "O",
+                    "type": "phrase",
+                    "label": "名詞片語",
+                    "children": [
+                        _word('"', "PUNCT", "標點"),
+                        _word("Go", "HEAD", "名詞"),
+                        _word(".", "PUNCT", "標點"),
+                        _word('"', "PUNCT", "標點"),
+                    ],
+                },
+            ],
+        )
+        before = copy.deepcopy(tree)
+        gemini._lift_trailing_punct(tree)
+        self.assertEqual(tree, before)
+
+
+class VerbalWordLabelTests(unittest.TestCase):
+    def test_participial_adjective_is_relabeled(self):
+        sentence = "He is often described as relatable and grounded."
+        tree = _clause(
+            sentence, "ROOT", "主要子句", "SVC",
+            children=[
+                _word("He", "S", "主詞"),
+                _word("is often described as relatable and", "V", "動詞"),
+                _word("grounded", "SC", "動詞"),
+                _word(".", "PUNCT", "標點"),
+            ],
+        )
+        gemini._fix_verbal_word_labels(tree, sentence)
+        self.assertEqual(tree["children"][2]["label"], "形容詞")
+
+    def test_clause_verb_keeps_its_label(self):
+        sentence = "She reads books."
+        tree = copy.deepcopy(VALID_TREE)
+        gemini._fix_verbal_word_labels(tree, sentence)
+        self.assertEqual(tree["children"][1]["label"], "動詞")
+
+
+class InferSvaPatternTests(unittest.TestCase):
+    def test_bare_copula_with_locative_is_sva(self):
+        tokens = nlp.analyze_tokens("She is in the kitchen")
+        self.assertEqual(gemini._infer_clause_pattern(tokens), "SVA")
+
+    def test_copula_with_complement_stays_svc(self):
+        tokens = nlp.analyze_tokens("She is happy")
+        self.assertEqual(gemini._infer_clause_pattern(tokens), "SVC")
 
 
 if __name__ == "__main__":

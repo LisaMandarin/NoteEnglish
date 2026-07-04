@@ -3,6 +3,7 @@ import logging
 from fastapi import APIRouter, Depends
 
 from app.models.parse import ParseRequest, ParseResponse
+from app.services.gemini import derive_sentence_type
 from app.services.structure import get_structure
 from app.services.supabase import log_api_usage
 from app.core.config import settings
@@ -23,4 +24,7 @@ def parse(req: ParseRequest, user: dict = Depends(require_user)):
     structure, usage = get_structure(req.sentence)
     if usage is not None:
         log_api_usage(user["id"], "parse", settings.gemini_model, usage)
-    return ParseResponse(structure=structure)
+    # Derived at response time (not cached), so the classification rules can
+    # evolve without invalidating cached trees.
+    sentence_type = derive_sentence_type(structure) if structure else None
+    return ParseResponse(structure=structure, sentence_type=sentence_type)
