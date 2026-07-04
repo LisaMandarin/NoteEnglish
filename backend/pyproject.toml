@@ -34,3 +34,9 @@ dev = [
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+# The golden suite calls the real Gemini API; exclude it by default and in CI.
+# Run it manually with: poetry run python -m pytest -m gemini -q
+addopts = "-m 'not gemini'"
+markers = [
+    "gemini: calls the real Gemini API (needs GEMINI_API_KEY in backend/.env)",
+]

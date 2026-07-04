@@ -35,9 +35,24 @@ Phase 1 做了什麼（都有單元測試，`backend/tests/test_structure.py`，
 
 ## 下一步（建議順序）
 
-### 步驟 0：commit 現有變更
+### ✅ 步驟 0：commit 現有變更（2026-07-04 完成）
 
-### 步驟 1：Phase 3 — golden 迴歸測試（先建基準，防 Phase 2 改壞）
+Phase 1 程式碼其實已在 HEAD（9defeb5）；本 plan 文件以 7a0b21e commit。
+
+### ✅ 步驟 1：Phase 3 — golden 迴歸測試（2026-07-04 完成）
+
+已建 `backend/tests/test_parse_golden.py`（15 句、性質檢查如下述規格）；`pyproject.toml` 註冊 `gemini` marker 並以 `addopts = "-m 'not gemini'"` 讓預設與 CI 不跑。手動執行：`cd backend && poetry run python -m pytest -m gemini -q`。
+
+**基準（2026-07-04，prompt v8）：15/15 通過，7 分 58 秒。** 其中 4 句以 degraded serve 出圖（性質檢查仍全過，僅巢狀不足）：
+
+- 句 3（非限定關係子句）：`which supports...` 子句 Gemini 不給 children（符合已知殘留）
+- 句 11（古典引文）：引文子句未展開
+- 句 14（since/after）：頂層只找到 1 個必要子句節點（預期 2）
+- 句 15（重後位修飾）：複雜片語被壓平成 word 節點
+
+Phase 2 改動後全跑一次，對照此基準（degraded 數量不應增加）。
+
+### 原步驟 1 規格（留供參考）
 
 新檔 `backend/tests/test_parse_golden.py`，pytest marker `gemini`（CI 與預設不跑；手動 `cd backend && poetry run python -m pytest -m gemini -q`，需 `backend/.env` 的 `GEMINI_API_KEY`）。直接呼叫 `ai_analyze_structure(structure._normalize(s))` **繞過快取、不寫 Supabase**（注意：dev 與 prod 是同一個 Supabase 專案，勿透過 `get_structure` 測試）。
 
@@ -68,7 +83,7 @@ Phase 1 做了什麼（都有單元測試，`backend/tests/test_structure.py`，
 
 成本：全跑一次約 15–40 次 Gemini 呼叫（flash）。跑完記錄通過率到本檔。
 
-### 步驟 2：Phase 2 — 心智圖對齊（動 schema + prompt + 前端）
+### 步驟 2（目前進行點）：Phase 2 — 心智圖對齊（動 schema + prompt + 前端）
 
 教學框架 = 使用者提供的心智圖：七元素句型（含 **A＝狀語**）、SVOO 顯示為 **SVIODO**、結構類型（單句 Simple／合句 Compound／複句 Complex／複合句 Compound-Complex）、句子功能（直述/疑問/祈使/感嘆）。
 
