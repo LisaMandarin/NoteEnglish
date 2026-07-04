@@ -12,6 +12,7 @@ import {
 } from "@ant-design/icons";
 import { Button, Tooltip } from "antd";
 import { useTranslation } from "../../context/translationContext";
+import AppTitle from "../MainSection/AppTitle";
 import SidebarIconButton from "./SidebarIconButton";
 import SidebarPanelContent from "./SidebarPanelContent";
 
@@ -109,6 +110,16 @@ export default function AppSidebar({
         >
           {isMobileMenuOpen ? <CloseOutlined /> : <MenuOutlined />}
         </button>
+
+        <div
+          className={`fixed left-18 top-4 z-40 flex h-12 items-center transition-all duration-300 ${
+            isMobileMenuOpen
+              ? "-translate-x-8 opacity-0 pointer-events-none"
+              : "translate-x-0 opacity-100"
+          }`}
+        >
+          <AppTitle title="句句通" className="flex items-center gap-2" />
+        </div>
 
         <div
           className={`fixed left-18 right-4 top-4 z-40 flex flex-row gap-2 overflow-x-auto py-1 transition-all duration-300 ${

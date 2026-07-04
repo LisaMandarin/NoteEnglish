@@ -68,7 +68,7 @@ export default function AppMainSection({
 
   return (
     <div>
-      <AppTitle title="句句通" />
+      <AppTitle title="句句通" className="mb-4 hidden items-center gap-2 lg:flex" />
       {content}
     </div>
   );
