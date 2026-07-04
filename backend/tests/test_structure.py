@@ -1000,6 +1000,22 @@ class NodeLevelRepairTests(unittest.TestCase):
         self.assertEqual(tree["children"][0]["role"], "CONJ")
         self.assertEqual(tree["role"], "ROOT")
 
+    def test_coordinate_main_clause_mislabeled_s_is_forced_to_conj(self):
+        # Real-world bug: Gemini gave both coordinate main clauses of a
+        # compound sentence role=S, which made the frontend badge wrongly
+        # append "（S）" as if the clause filled the top node's subject slot.
+        tree = _clause(
+            "x", "ROOT", "主要子句",
+            children=[
+                _clause("a", "S", "主要子句", "SVO"),
+                _word("yet", "CONJ", "對等連接詞"),
+                _clause("b", "S", "主要子句", "SVC"),
+            ],
+        )
+        gemini._repair_node_levels(tree)
+        self.assertEqual(tree["children"][0]["role"], "CONJ")
+        self.assertEqual(tree["children"][2]["role"], "CONJ")
+
     def test_clause_with_word_label_gets_clause_label_from_role(self):
         tree = _clause(
             "x", "ROOT", "主要子句",

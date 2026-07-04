@@ -206,7 +206,7 @@ def ai_ocr_image(image_bytes: bytes, mime_type: str) -> tuple[str, dict]:
 # Bumped whenever the prompt, output schema, or post-processing below changes in
 # a way that should invalidate cached analyses. The parse cache keys on
 # (sentence_hash, this).
-PARSE_PROMPT_VERSION = 9
+PARSE_PROMPT_VERSION = 10
 
 # The pedagogical labels the model may use, mirrored from app.models.parse.Label.
 # Listed in the prompt so the model picks from a fixed vocabulary.
@@ -234,9 +234,10 @@ _STRUCTURE_PROMPT = (
     "role=ROOT appears ONLY on the top node. For a COMPOUND sentence (two or more "
     "coordinated main clauses joined by and/but/yet/or, a semicolon, or a dash) "
     "the top node omits \"pattern\" and holds each coordinated clause as its own "
-    "主要子句 clause child (plus the connector/punctuation between them). "
-    "Sentence-final punctuation is a direct child of the top node, never nested "
-    "inside an inner phrase or clause.\n"
+    "主要子句 clause child with role=CONJ (a coordinate main clause fills no "
+    "S/O/C slot of the top node; NEVER give it role=S/O/SC/OC/ROOT) plus the "
+    "connector/punctuation between them. Sentence-final punctuation is a direct "
+    "child of the top node, never nested inside an inner phrase or clause.\n"
     "3. EVERY clause (main or subordinate) gets its own \"pattern\" and is broken "
     "into its S/V/O/IO/DO/SC/OC constituents. Finite content/appositive clauses "
     "after nouns (e.g. 'the fact that she came') and relative clauses (e.g. 'the "
@@ -1037,12 +1038,16 @@ def _repair_node_levels(node: dict, top: bool = True) -> None:
     phrase is legal; a childless clause goes through the normal unfilled-clause
     retry), a phrase carrying a word-level label gets a derived 片語 label, a
     clause carrying a non-clause label gets one implied by its slot, and
-    role=ROOT below the top node is demoted."""
-    if not top and node.get("role") == "ROOT":
-        node["role"] = "CONJ" if node.get("type") == "clause" else "HEAD"
-
+    role=ROOT below the top node is demoted, and a coordinate main clause
+    (a non-top 主要子句) always gets role=CONJ — it fills no S/O/C slot of
+    the top node, but the model occasionally mislabels it S/O/ROOT."""
     label = node.get("label")
     node_type = node.get("type")
+    if not top and node_type == "clause" and label == "主要子句":
+        node["role"] = "CONJ"
+    elif not top and node.get("role") == "ROOT":
+        node["role"] = "CONJ" if node_type == "clause" else "HEAD"
+
     if node_type == "word":
         if label in _PHRASE_LEVEL_LABELS:
             node["type"] = "phrase"

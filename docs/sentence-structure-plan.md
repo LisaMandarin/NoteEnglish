@@ -8,7 +8,7 @@
 **Phase 1（可靠性修復）+ Phase 2（心智圖對齊）+ Phase 3（golden 迴歸）皆已完成**，等使用者實際使用確認。Phase 2 詳見下方「步驟 2」。相關程式碼：
 
 - `backend/app/services/gemini.py` — 分析主流程 `ai_analyze_structure`、prompt、驗證器、spaCy fallback
-- `backend/app/services/structure.py` — 快取（記憶體 L1 + Supabase L2，key = sentence_hash + `PARSE_PROMPT_VERSION`，目前 **8**）
+- `backend/app/services/structure.py` — 快取（記憶體 L1 + Supabase L2，key = sentence_hash + `PARSE_PROMPT_VERSION`，目前 **10**）
 - `backend/app/services/nlp.py` — spaCy 工具（`strip_invisible`、`is_complete_sentence`、`analyze_tokens`）
 - `backend/app/models/parse.py` — `StructureNode` schema（Role/NodeType/Pattern/Label 皆為 Literal enum）
 - `frontend/src/components/SentenceStructure/`（`SentenceSkeleton.tsx`、`syntaxConfig.ts`）+ `frontend/src/types.ts`
@@ -102,15 +102,25 @@ Phase 2 改動後全跑一次，對照此基準（degraded 數量不應增加）
 8. Golden suite（15 句真實 Gemini 呼叫）追加 badge 一致性檢查：每個有核心角色（S/V/O...）子句必須有 display_pattern；`sentence_type` 與已知合句/非合句分類相符；合句頂層不得殘留單一 pattern。**結果：15/15 通過**（同一批已知 degraded-serve 句子，見上方殘留清單，未新增）。
 9. UI 驗證：以臨時 harness（`preview-main.tsx` + Vite，跑完即刪除）灌真實 v9 分析結果，用 headless Chrome 截圖桌面（1200px）與手機（390px）寬度，確認 badge 正確顯示且無橫向溢出；發現手機寬度下 badge 列會被截斷，已修正為 `flex-wrap` 並加 `max-width: 100%` 到 `.skel-box`/`.skel-box__content`。
 
+### ✅ 步驟 3：Phase 2 修正 — 合句並列子句 role 誤標（2026-07-04 完成，使用者實測發現）
+
+使用者在 `main` 上實測 yet-compound 例句，截圖顯示兩個並列主要子句的 badge 都多了「（S）」後綴（如「SVO 主要子句 (S)」），因為 Gemini 把並列主要子句標成 `role=S` 而非 `role=CONJ`；前端 `isCoreSlot` 判斷 role 落在 S/V/O/IO/DO/SC/OC 時會加上槽位後綴，`role=S` 誤觸發。SVIODO 那句（"She gave him a book."）完全正確。
+
+修正：
+
+1. Prompt 規則 2 明確要求並列主要子句一律 `role=CONJ`，並列出禁止值（S/O/SC/OC/ROOT）。
+2. `_repair_node_levels` 加確定性防線：任何非頂層、label=主要子句 的 clause 節點一律強制 `role=CONJ`（不管模型給什麼），不只依賴 prompt 聽話。
+3. 新增單元測試 `test_coordinate_main_clause_mislabeled_s_is_forced_to_conj` 重現此 bug 場景。
+4. `PARSE_PROMPT_VERSION` 9→**10**。
+
+驗證：單元測試 90 個全過；golden suite 15/15 重跑通過，degraded-serve 案例與之前基準相同（3 句，未新增）。
+
 ## 下一步
 
-Phase 1/2/3 的既定範圍都已完成並自動化驗證過（單元測試 89 個、golden suite 15/15）。尚未做的是**人工在瀏覽器實際操作確認**（CLAUDE.md 規定的驗證守則，自動截圖只涵蓋臨時 harness，不是完整登入後的 app 流程；`/api/parse` 需要 Supabase Bearer token，agent 無法自行登入，這三項需使用者親自操作）：
+Phase 1/2/3 的既定範圍都已完成並自動化驗證過（單元測試 90 個、golden suite 15/15，含步驟 3 的合句 role 修正）。尚未做的是**人工在瀏覽器實際操作確認**（CLAUDE.md 規定的驗證守則；`/api/parse` 需要 Supabase Bearer token，agent 無法自行登入，需使用者親自操作）：
 
-1. 開 dev server，貼一個合句（如 yet-compound 例句）跑分析，確認頂層顯示「合句」badge、不疊加單一 pattern，展開後每個子句各自的 pattern + 成分序列正確。
-2. 貼一個 SVOO 句子（如 "She gave him a book."），確認 badge 顯示 **SVIODO**。
-3. 手機寬度（瀏覽器窄視窗或實機）確認 badge 列不溢出、不遮擋。
-
-第 4 項（舊快取版本失效）已改用單元測試鎖定機制本身，不需人工確認：`test_cache_lookup_and_save_use_current_prompt_version`（`backend/tests/test_structure.py`）驗證 `get_structure` 的 Supabase 查詢與寫入都以當下的 `PARSE_PROMPT_VERSION` 為 key 的一部分，所以 v8 以前的快取列在 v9 查詢中必定 miss，保證會重新呼叫 Gemini。
+1. 重新測一次 yet-compound 例句，確認「（S）」後綴已消失，兩個子句 badge 乾淨顯示「SVO 主要子句」「SVC 主要子句」。
+2. 手機寬度（瀏覽器窄視窗或實機）確認 badge 列不溢出、不遮擋。
 
 若使用者之後想再做「句子功能」（直述/疑問/祈使/感嘆），可作為 Phase 2 的追加項目，做法與 `sentence_type` 類似（多半可從樹的 ROOT 子句判斷，但疑問句/感嘆句需要看句尾標點與詞序，比 sentence_type 複雜一些）。
 
