@@ -104,12 +104,13 @@ Phase 2 改動後全跑一次，對照此基準（degraded 數量不應增加）
 
 ## 下一步
 
-Phase 1/2/3 的既定範圍都已完成並自動化驗證過（單元測試 88 個、golden suite 15/15）。尚未做的是**人工在瀏覽器實際操作確認**（CLAUDE.md 規定的驗證守則，自動截圖只涵蓋臨時 harness，不是完整 app 流程）：
+Phase 1/2/3 的既定範圍都已完成並自動化驗證過（單元測試 89 個、golden suite 15/15）。尚未做的是**人工在瀏覽器實際操作確認**（CLAUDE.md 規定的驗證守則，自動截圖只涵蓋臨時 harness，不是完整登入後的 app 流程；`/api/parse` 需要 Supabase Bearer token，agent 無法自行登入，這三項需使用者親自操作）：
 
 1. 開 dev server，貼一個合句（如 yet-compound 例句）跑分析，確認頂層顯示「合句」badge、不疊加單一 pattern，展開後每個子句各自的 pattern + 成分序列正確。
 2. 貼一個 SVOO 句子（如 "She gave him a book."），確認 badge 顯示 **SVIODO**。
 3. 手機寬度（瀏覽器窄視窗或實機）確認 badge 列不溢出、不遮擋。
-4. 確認舊快取（prompt v8 以前分析過的句子）重新開啟時會用 v9 重新分析，不會殘留缺欄位的舊格式。
+
+第 4 項（舊快取版本失效）已改用單元測試鎖定機制本身，不需人工確認：`test_cache_lookup_and_save_use_current_prompt_version`（`backend/tests/test_structure.py`）驗證 `get_structure` 的 Supabase 查詢與寫入都以當下的 `PARSE_PROMPT_VERSION` 為 key 的一部分，所以 v8 以前的快取列在 v9 查詢中必定 miss，保證會重新呼叫 Gemini。
 
 若使用者之後想再做「句子功能」（直述/疑問/祈使/感嘆），可作為 Phase 2 的追加項目，做法與 `sentence_type` 類似（多半可從樹的 ROOT 子句判斷，但疑問句/感嘆句需要看句尾標點與詞序，比 sentence_type 複雜一些）。
 
