@@ -98,7 +98,7 @@ export default function HomeDashboard({
             <span className="min-w-0 flex-1">
               <span
                 id="new-session-heading"
-                className="block font-[var(--font-heading)] text-2xl font-semibold"
+                className="block [font-family:var(--font-heading)] text-2xl font-semibold text-white"
               >
                 開始新的學習紀錄
               </span>
