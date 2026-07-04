@@ -77,6 +77,12 @@ h1, h2, h3 {
     font-family: var(--font-heading);
   }
 
+/* antd/dist/reset.css is unlayered, so its h1 margin-bottom always beats
+   Tailwind's layered mb-* utilities regardless of specificity. */
+.app-title-heading {
+  margin-bottom: 0;
+}
+
 /* ── Summary Print Window ────────────────────────────────────────────────────── */
 
 .summary-print-root {

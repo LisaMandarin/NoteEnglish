@@ -3,6 +3,7 @@ import type { ComponentType } from "react";
 import {
   CloseOutlined,
   FolderOpenOutlined,
+  HomeOutlined,
   LogoutOutlined,
   MenuOutlined,
   PlusOutlined,
@@ -11,6 +12,7 @@ import {
 } from "@ant-design/icons";
 import { Button, Tooltip } from "antd";
 import { useTranslation } from "../../context/translationContext";
+import AppTitle from "../MainSection/AppTitle";
 import SidebarIconButton from "./SidebarIconButton";
 import SidebarPanelContent from "./SidebarPanelContent";
 
@@ -47,6 +49,8 @@ export default function AppSidebar({
   onSignOut,
   onShowUsage,
   onShowTranslate,
+  onShowHome,
+  isHomeActive,
 }: {
   activePanel: string | null;
   isSidebarOpen: boolean;
@@ -56,6 +60,8 @@ export default function AppSidebar({
   onSignOut: () => void;
   onShowUsage: () => void;
   onShowTranslate: () => void;
+  onShowHome: () => void;
+  isHomeActive: boolean;
 }): React.ReactElement {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const {
@@ -80,6 +86,11 @@ export default function AppSidebar({
     if (activePanel) onTogglePanel(activePanel);
   }
 
+  function handleShowHome(): void {
+    onShowHome();
+    setIsMobileMenuOpen(false);
+  }
+
   return (
     <>
       {/* ===== MOBILE (< lg) ===== */}
@@ -101,12 +112,36 @@ export default function AppSidebar({
         </button>
 
         <div
-          className={`fixed left-18 top-4 z-40 flex flex-row gap-3 transition-all duration-300 ${
+          className={`fixed left-18 top-4 z-40 flex h-12 items-center transition-all duration-300 ${
+            isMobileMenuOpen
+              ? "-translate-x-8 opacity-0 pointer-events-none"
+              : "translate-x-0 opacity-100"
+          }`}
+        >
+          <AppTitle title="句句通" className="flex items-center gap-2" />
+        </div>
+
+        <div
+          className={`fixed left-18 right-4 top-4 z-40 flex flex-row gap-2 overflow-x-auto py-1 transition-all duration-300 ${
             isMobileMenuOpen
               ? "translate-x-0 opacity-100"
               : "-translate-x-8 opacity-0 pointer-events-none"
           }`}
         >
+          <Tooltip title="首頁" placement="bottom">
+            <Button
+              aria-label="首頁"
+              onClick={handleShowHome}
+              icon={<HomeOutlined aria-hidden="true" />}
+              shape="circle"
+              size="large"
+              className="flex h-12 w-12 items-center justify-center border-0 text-xl shadow-sm transition"
+              style={{
+                backgroundColor: isHomeActive ? "var(--accent)" : "rgb(255 255 255 / 0.8)",
+                color: isHomeActive ? "#ffffff" : "var(--accent)",
+              }}
+            />
+          </Tooltip>
           <Tooltip title="開新學習紀錄" placement="bottom">
             <Button
               aria-label="開新學習紀錄"
@@ -168,6 +203,20 @@ export default function AppSidebar({
       <aside className="hidden lg:flex overflow-hidden rounded-[28px] bg-[color-mix(in_srgb,var(--accent)_16%,white)] shadow-sm">
         <div className="flex w-22 shrink-0 flex-col items-center justify-between px-4 py-5">
           <div className="flex flex-col gap-3">
+            <Tooltip title="首頁" placement="right">
+              <Button
+                aria-label="首頁"
+                onClick={handleShowHome}
+                icon={<HomeOutlined aria-hidden="true" />}
+                shape="circle"
+                size="large"
+                className="flex h-12 w-12 items-center justify-center border-0 text-xl shadow-sm transition"
+                style={{
+                  backgroundColor: isHomeActive ? "var(--accent)" : "rgb(255 255 255 / 0.8)",
+                  color: isHomeActive ? "#ffffff" : "var(--accent)",
+                }}
+              />
+            </Tooltip>
             <Tooltip title="開新學習紀錄" placement="right">
               <Button
                 aria-label="開新學習紀錄"
