@@ -29,5 +29,12 @@ class Settings:
     supabase_anon_key = os.getenv("SUPABASE_ANON_KEY", "")
     supabase_service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
+    # SMTP configuration for the 問題回報 (issue report) mailer.
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER", "")
+    smtp_password = os.getenv("SMTP_PASSWORD", "")
+    issue_report_recipient = os.getenv("ISSUE_REPORT_RECIPIENT", "lisa_chuang@mail2000.com.tw")
+
 # Singleton settings instance used across the app.
 settings = Settings()

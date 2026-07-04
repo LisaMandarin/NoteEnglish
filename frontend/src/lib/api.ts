@@ -127,6 +127,21 @@ export async function listAdminUsers(page = 1, perPage = 50): Promise<AdminUser[
   return apiFetch(`/api/admin/users?page=${page}&per_page=${perPage}`) as Promise<AdminUser[]>;
 }
 
+export async function submitIssueReport({ title, severity, description }: {
+  title?: string;
+  severity?: string;
+  description: string;
+}): Promise<{ ok: boolean }> {
+  return apiFetch("/api/issue-report", {
+    method: "POST",
+    body: JSON.stringify({
+      title: title || null,
+      severity: severity || null,
+      description,
+    }),
+  }) as Promise<{ ok: boolean }>;
+}
+
 export async function saveSession({ sessionId, text, sentences }: {
   sessionId: string | null;
   text: string;

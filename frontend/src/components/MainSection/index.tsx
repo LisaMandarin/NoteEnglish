@@ -4,6 +4,7 @@ import AppTextarea from "./AppTextarea";
 import TranslationsList from "../Translations";
 import TipBox from "./TipBox";
 import TokenUsageView from "../shared/TokenUsageView";
+import IssueReportForm from "../IssueReport/IssueReportForm";
 import { useTranslation } from "../../context/translationContext";
 import HomeDashboard from "./HomeDashboard";
 
@@ -11,10 +12,12 @@ export default function AppMainSection({
   mainView,
   username,
   onShowTranslate,
+  onDoneReport,
 }: {
-  mainView: "home" | "translate" | "usage";
+  mainView: "home" | "translate" | "usage" | "report";
   username: string;
   onShowTranslate: () => void;
+  onDoneReport: () => void;
 }): React.ReactElement {
   const {
     state: { sessionLoading, sentences },
@@ -32,6 +35,8 @@ export default function AppMainSection({
 
   if (mainView === "usage") {
     content = <TokenUsageView />;
+  } else if (mainView === "report") {
+    content = <IssueReportForm onDone={onDoneReport} />;
   } else if (mainView === "home") {
     content = (
       <HomeDashboard username={username} onShowTranslate={onShowTranslate} />

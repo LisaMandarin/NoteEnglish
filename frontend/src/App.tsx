@@ -3,6 +3,7 @@ import type { User } from "@supabase/supabase-js";
 import { TranslationProvider } from "./context/translationContext";
 import AppMainSection from "./components/MainSection";
 import AppSidebar from "./components/AppSidebar";
+import IssueReportBadge from "./components/IssueReport/IssueReportBadge";
 import SummaryWindow from "./components/SummaryWindow";
 import VocabPrintWindow from "./components/Vocab/VocabPrintWindow";
 import LoginPage from "./components/Auth/LoginPage";
@@ -28,7 +29,7 @@ async function ensureProfile(user: User): Promise<void> {
   await ensureProfileApi(displayName);
 }
 
-type MainView = "home" | "translate" | "usage";
+type MainView = "home" | "translate" | "usage" | "report";
 
 function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): React.ReactElement {
   const [activePanel, setActivePanel] = useState<string | null>(null);
@@ -48,6 +49,10 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
 
   function handleShowTranslate(): void {
     setMainView("translate");
+  }
+
+  function handleShowReport(): void {
+    setMainView("report");
   }
 
   function handleShowHome(): void {
@@ -80,6 +85,7 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
             mainView={mainView}
             username={username}
             onShowTranslate={handleShowTranslate}
+            onDoneReport={handleShowHome}
           />
         </div>
         <footer className="mx-auto mt-10 max-w-7xl text-center text-sm text-(--text-main) opacity-60">
@@ -87,6 +93,7 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
           <p className="m-0">Created by Min-ting (Lisa) Chuang.</p>
         </footer>
       </div>
+      <IssueReportBadge onClick={handleShowReport} />
     </TranslationProvider>
   );
 }
