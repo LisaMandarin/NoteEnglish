@@ -1,7 +1,7 @@
 import { useRef, useState } from "react"
 import { Typography, Input, Button, Alert, Modal } from "antd"
 import { useTranslation } from "../../context/translationContext"
-import { ocrImage } from "../../lib/api"
+import { ocrImage, SESSION_EXPIRED_MESSAGE } from "../../lib/api"
 import { fileToCompressedBase64, ImagePrepError } from "../../lib/image"
 import sampleArticles from "../../data/sampleArticles"
 const { Text } = Typography
@@ -35,7 +35,7 @@ function parseApiError(raw: string, fallback: string = "翻譯失敗，請稍後
   if (low.includes("network") || low.includes("fetch") || low.includes("connect")) {
     return { message: "無法連線至伺服器，請確認網路連線。", technical: detail };
   }
-  if (low.includes("not authenticated") || low.includes("401")) {
+  if (low.includes("not authenticated") || low.includes("401") || detail === SESSION_EXPIRED_MESSAGE) {
     return { message: "驗證已過期，請重新登入。", technical: detail };
   }
   return { message: fallback, technical: detail };
