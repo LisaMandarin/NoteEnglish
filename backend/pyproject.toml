@@ -19,7 +19,8 @@ dependencies = [
     "spacy (>=3.7.4,<3.8.0)",
     # Model wheel published by spaCy; keeps deployments deterministic without runtime downloads.
     "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl",
-    "google-genai (>=1.56.0,<2.0.0)"
+    "google-genai (>=1.56.0,<2.0.0)",
+    "edge-tts (>=7.2.8,<8.0.0)"
 ]
 
 

@@ -5,11 +5,10 @@ import {
   ApartmentOutlined,
   FormOutlined,
   MoreOutlined,
-  SoundOutlined,
 } from "@ant-design/icons";
 import type { Sentence, VocabItem } from "../../types";
 import VocabCards from "../Vocab/VocabCards";
-import { speak } from "../../lib/speech";
+import TtsButton from "../shared/TtsButton";
 import { useSentenceStructure } from "../../hooks/useSentenceStructure";
 import SentenceSkeleton from "../SentenceStructure/SentenceSkeleton";
 const { Text } = Typography;
@@ -139,14 +138,11 @@ export default function SentenceItem({
       <div className="flex-1 min-w-0">
         <div className="flex flex-row items-baseline gap-2">
           <div className="flex flex-col items-center gap-1">
-            <button
-              type="button"
-              onClick={() => speak(sentence.original)}
+            <TtsButton
+              text={sentence.original}
+              ariaLabel="Pronounce sentence"
               className="flex size-8 items-center justify-center text-gray-400 hover:text-(--accent) transition-colors cursor-pointer"
-              aria-label="Pronounce sentence"
-            >
-              <SoundOutlined />
-            </button>
+            />
             <Dropdown
               menu={{ items: moreMenuItems }}
               placement="bottomLeft"

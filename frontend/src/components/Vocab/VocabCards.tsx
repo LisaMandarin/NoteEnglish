@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { VocabItem } from "../../types";
-import { CheckOutlined, DeleteTwoTone, EditTwoTone, MinusCircleOutlined, PlusCircleOutlined, QuestionCircleOutlined, SoundOutlined } from '@ant-design/icons';
-import { speak } from "../../lib/speech";
+import { CheckOutlined, DeleteTwoTone, EditTwoTone, MinusCircleOutlined, PlusCircleOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import TtsButton from "../shared/TtsButton";
 import { Modal, Tooltip } from 'antd';
 import {
   DndContext,
@@ -230,15 +230,11 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: 
           </span>
         </Tooltip>
         {head && !readOnly && (
-          <button
-            type="button"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => { e.stopPropagation(); speak(head); }}
+          <TtsButton
+            text={head}
+            ariaLabel={`Pronounce ${head}`}
             className="ml-auto text-gray-400 hover:text-(--accent) transition-colors cursor-pointer"
-            aria-label={`Pronounce ${head}`}
-          >
-            <SoundOutlined />
-          </button>
+          />
         )}
       </div>
 
@@ -331,15 +327,11 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: 
                 {v.example && (
                   <div className="rounded-lg bg-gray-100 px-3 py-2 text-sm flex items-start gap-2">
                     {!readOnly && (
-                      <button
-                        type="button"
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => { e.stopPropagation(); speak(v.example!); }}
+                      <TtsButton
+                        text={v.example!}
+                        ariaLabel="Pronounce example"
                         className="mt-0.5 shrink-0 text-gray-400 hover:text-(--accent) transition-colors cursor-pointer"
-                        aria-label="Pronounce example"
-                      >
-                        <SoundOutlined />
-                      </button>
+                      />
                     )}
                     <HighlightedExample example={v.example} lemma={v.lemma} text={v.text} />
                   </div>
