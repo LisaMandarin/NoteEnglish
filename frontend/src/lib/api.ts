@@ -82,6 +82,24 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
   return response.json();
 }
 
+export async function fetchTtsAudio(text: string): Promise<Blob> {
+  const token = await getAccessToken();
+  const response = await fetch(`${API_BASE}/api/tts`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ text }),
+  });
+
+  if (!response.ok) {
+    return throwForResponse(response);
+  }
+
+  return response.blob();
+}
+
 export async function ensureProfile(displayName: string): Promise<unknown> {
   return apiFetch("/api/profile/ensure", {
     method: "POST",

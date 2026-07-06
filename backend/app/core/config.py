@@ -24,6 +24,9 @@ class Settings:
     gemini_api_key = os.getenv("GEMINI_API_KEY", "")
     gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
+    # Text-to-speech voice used by edge-tts for the /api/tts route.
+    tts_voice = os.getenv("TTS_VOICE", "en-US-JennyNeural")
+
     # Supabase configuration for authenticated session/profile APIs.
     supabase_url = os.getenv("SUPABASE_URL", "")
     supabase_anon_key = os.getenv("SUPABASE_ANON_KEY", "")
