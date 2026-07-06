@@ -41,6 +41,28 @@ async function getAccessToken(): Promise<string> {
   return token;
 }
 
+export const SESSION_EXPIRED_MESSAGE = "驗證已過期，請重新登入。";
+
+async function throwForResponse(response: Response): Promise<never> {
+  const text = await response.text();
+
+  if (response.status === 401) {
+    let detail: unknown;
+    try {
+      detail = JSON.parse(text)?.detail;
+    } catch {
+      detail = undefined;
+    }
+
+    if (detail === "session_expired") {
+      await supabase.auth.signOut({ scope: "local" });
+      throw new Error(SESSION_EXPIRED_MESSAGE);
+    }
+  }
+
+  throw new Error(`HTTP ${response.status}${text ? `: ${text}` : ""}`);
+}
+
 export async function apiFetch(path: string, options: RequestInit = {}): Promise<unknown> {
   const token = await getAccessToken();
   const response = await fetch(`${API_BASE}${path}`, {
@@ -53,8 +75,7 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
   });
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`HTTP ${response.status}${text ? `: ${text}` : ""}`);
+    return throwForResponse(response);
   }
 
   if (response.status === 204) return null;

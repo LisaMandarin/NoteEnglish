@@ -63,12 +63,12 @@ class ParseTimestampTests(unittest.TestCase):
         }
         for ts, (micro, label) in cases.items():
             with self.subTest(label):
-                dt = supabase._parse_timestamp_utc(ts)
+                dt = supabase.parse_timestamp_utc(ts)
                 self.assertEqual(dt.microsecond, micro)
                 self.assertEqual(dt.tzinfo, timezone.utc)
 
     def test_naive_timestamp_is_assumed_utc(self):
-        dt = supabase._parse_timestamp_utc("2026-06-10T03:07:47")
+        dt = supabase.parse_timestamp_utc("2026-06-10T03:07:47")
         self.assertEqual(dt.tzinfo, timezone.utc)
 
 

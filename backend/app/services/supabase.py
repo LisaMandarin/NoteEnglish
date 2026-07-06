@@ -434,7 +434,7 @@ def log_api_usage(user_id: str, endpoint: str, model: str, usage: dict) -> None:
 _FRACTIONAL_SECONDS_RE = re.compile(r"\.(\d+)")
 
 
-def _parse_timestamp_utc(ts: str) -> datetime:
+def parse_timestamp_utc(ts: str) -> datetime:
     """Parse an ISO 8601 timestamp into a UTC-aware datetime.
 
     Supabase trims trailing zeros from fractional seconds, yielding values
@@ -491,7 +491,7 @@ def get_usage_stats(user_id: str) -> dict:
     monthly: dict[str, int] = {}
 
     for row in rows:
-        dt = _parse_timestamp_utc(row["created_at"])
+        dt = parse_timestamp_utc(row["created_at"])
         tokens: int = row.get("total_tokens") or 0
 
         if dt >= today_start:

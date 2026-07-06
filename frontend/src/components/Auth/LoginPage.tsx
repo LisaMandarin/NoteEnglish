@@ -1,17 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { Button, Input } from "antd";
 import { supabase } from "../../lib/supabase";
+import { PASSWORD_RULES_TEXT, validatePassword } from "../../lib/authValidation";
 
-const PASSWORD_RULES_TEXT =
-  "密碼只能使用英文字母和數字，且至少需要 6 個字元。";
 const DEMO_CREDENTIALS = {
   email: "testuser@example.com",
   password: "test1234",
 };
-
-function validatePassword(password: string): boolean {
-  return /^[A-Za-z0-9]{6,}$/.test(password);
-}
 
 function translateAuthError(message: string): string {
   const lower = message.toLowerCase();
@@ -59,6 +54,10 @@ function getValidationError({ mode, displayName, email, password, confirmPasswor
     return "請輸入電子郵件。";
   }
 
+  if (mode === "forgot_password") {
+    return "";
+  }
+
   if (!password.trim()) {
     return "請輸入密碼。";
   }
@@ -84,6 +83,7 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState("sign_in");
 
@@ -93,10 +93,27 @@ export default function LoginPage() {
     setError("");
   }
 
+  function showForgotPassword(): void {
+    setError("");
+    setSuccessMessage("");
+    setPassword("");
+    setConfirmPassword("");
+    setMode("forgot_password");
+  }
+
+  function backToSignIn(): void {
+    setError("");
+    setSuccessMessage("");
+    setPassword("");
+    setConfirmPassword("");
+    setMode("sign_in");
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setLoading(true);
     setError("");
+    setSuccessMessage("");
 
     try {
       const validationError = getValidationError({
@@ -109,6 +126,20 @@ export default function LoginPage() {
 
       if (validationError) {
         throw new Error(validationError);
+      }
+
+      if (mode === "forgot_password") {
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+          email.trim(),
+          {
+            redirectTo: `${window.location.origin}${window.location.pathname}?view=reset-password`,
+          }
+        );
+
+        if (resetError) throw resetError;
+
+        setSuccessMessage("重設密碼信件已寄出，請至信箱查看連結。");
+        return;
       }
 
       if (mode === "sign_up") {
@@ -153,7 +184,9 @@ export default function LoginPage() {
             <p className="mb-8 text-base text-black/70">
               {mode === "sign_in"
                 ? "登入以繼續您儲存的學習進度。"
-                : "建立帳號，儲存您的翻譯與單字筆記。"}
+                : mode === "sign_up"
+                ? "建立帳號，儲存您的翻譯與單字筆記。"
+                : "輸入您的電子郵件，我們會寄送重設密碼的連結給您。"}
             </p>
 
             {mode === "sign_in" ? (
@@ -224,20 +257,35 @@ export default function LoginPage() {
                 />
               </label>
 
-              <label className="flex flex-col gap-2 text-[0.95rem] font-semibold">
-                <span>密碼</span>
-                <Input.Password
-                  allowClear
-                  className="rounded-2xl border border-black/15 bg-white text-inherit transition"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="請輸入密碼"
-                  autoComplete={
-                    mode === "sign_in" ? "current-password" : "new-password"
-                  }
-                  size="large"
-                />
-              </label>
+              {mode !== "forgot_password" ? (
+                <label className="flex flex-col gap-2 text-[0.95rem] font-semibold">
+                  <span>密碼</span>
+                  <Input.Password
+                    allowClear
+                    className="rounded-2xl border border-black/15 bg-white text-inherit transition"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="請輸入密碼"
+                    autoComplete={
+                      mode === "sign_in" ? "current-password" : "new-password"
+                    }
+                    size="large"
+                  />
+                </label>
+              ) : null}
+
+              {mode === "sign_in" ? (
+                <Button
+                  type="link"
+                  size="small"
+                  className="self-end p-0"
+                  style={{ color: "var(--accent)" }}
+                  disabled={loading}
+                  onClick={showForgotPassword}
+                >
+                  忘記密碼？
+                </Button>
+              ) : null}
 
               {mode === "sign_up" ? (
                 <>
@@ -262,6 +310,9 @@ export default function LoginPage() {
               ) : null}
 
               {error ? <p className="m-0 text-sm text-red-600">{error}</p> : null}
+              {successMessage ? (
+                <p className="m-0 text-sm text-green-700">{successMessage}</p>
+              ) : null}
 
               <Button
                 block
@@ -275,7 +326,11 @@ export default function LoginPage() {
                   height: "3.5rem",
                 }}
               >
-                {mode === "sign_in" ? "登入" : "建立帳號"}
+                {mode === "sign_in"
+                  ? "登入"
+                  : mode === "sign_up"
+                  ? "建立帳號"
+                  : "傳送重設密碼連結"}
               </Button>
 
               <Button
@@ -284,6 +339,10 @@ export default function LoginPage() {
                 size="large"
                 disabled={loading}
                 onClick={() => {
+                  if (mode === "forgot_password") {
+                    backToSignIn();
+                    return;
+                  }
                   setError("");
                   setPassword("");
                   setConfirmPassword("");
@@ -294,7 +353,9 @@ export default function LoginPage() {
               >
                 {mode === "sign_in"
                   ? "還沒有帳號？立即註冊"
-                  : "已有帳號？前往登入"}
+                  : mode === "sign_up"
+                  ? "已有帳號？前往登入"
+                  : "返回登入"}
               </Button>
             </form>
           </div>
