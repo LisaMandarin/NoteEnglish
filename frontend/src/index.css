@@ -22,6 +22,9 @@
   --c-pp: #c0512c;
   --c-conj: #6a5bb0;
   --c-mod: #8a8780;
+  /* Quiz answer-feedback colors (correct / wrong states) */
+  --quiz-correct: #15803d;
+  --quiz-wrong: #dc2626;
   color: var(--text-main);
 
   font-synthesis: none;
@@ -81,6 +84,61 @@ h1, h2, h3 {
    Tailwind's layered mb-* utilities regardless of specificity. */
 .app-title-heading {
   margin-bottom: 0;
+}
+
+/* ── Quiz ─────────────────────────────────────────────────────────────────── */
+
+/* Like .app-title-heading above: antd reset.css is unlayered, so its plain
+   `button` color/background rules beat Tailwind's layered utilities. Quiz
+   option buttons and letter tiles get their state colors here instead. */
+.quiz-choice {
+  border-color: color-mix(in srgb, var(--card-border) 30%, transparent);
+  background: #fff;
+  color: var(--text-main);
+}
+.quiz-choice:enabled:hover {
+  border-color: var(--accent);
+}
+.quiz-choice--correct {
+  border-color: color-mix(in srgb, var(--quiz-correct) 60%, white);
+  background: color-mix(in srgb, var(--quiz-correct) 8%, white);
+  color: var(--quiz-correct);
+  font-weight: 500;
+}
+.quiz-choice--wrong {
+  border-color: color-mix(in srgb, var(--quiz-wrong) 55%, white);
+  background: color-mix(in srgb, var(--quiz-wrong) 7%, white);
+  color: var(--quiz-wrong);
+}
+.quiz-choice--muted {
+  border-color: color-mix(in srgb, var(--card-border) 20%, transparent);
+  background: transparent;
+  color: var(--text-main);
+  opacity: 0.5;
+}
+
+.quiz-tile {
+  border-color: color-mix(in srgb, var(--card-border) 30%, transparent);
+  background: #fff;
+  color: var(--text-main);
+}
+.quiz-tile:enabled:hover {
+  border-color: var(--accent);
+}
+.quiz-tile--filled {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, white);
+  color: var(--accent);
+}
+.quiz-tile--empty {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--card-border) 40%, transparent);
+  background: transparent;
+}
+.quiz-tile--used {
+  border-color: color-mix(in srgb, var(--card-border) 15%, transparent);
+  background: transparent;
+  opacity: 0.3;
 }
 
 /* ── Summary Print Window ────────────────────────────────────────────────────── */

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Checkbox } from "antd";
-import { PrinterOutlined } from "@ant-design/icons";
+import { FormOutlined, PrinterOutlined } from "@ant-design/icons";
 import type { Sentence, VocabItem } from "../../types";
 
 function collectVocab(sentences: Sentence[]): VocabItem[] {
@@ -22,7 +22,15 @@ function collectVocab(sentences: Sentence[]): VocabItem[] {
   return result;
 }
 
-export default function SummaryExportBar({ sentences, sessionTitle }: { sentences: Sentence[]; sessionTitle: string }): React.ReactElement {
+export default function SummaryExportBar({
+  sentences,
+  sessionTitle,
+  onStartQuiz,
+}: {
+  sentences: Sentence[];
+  sessionTitle: string;
+  onStartQuiz: () => void;
+}): React.ReactElement {
   const [includeTranslation, setIncludeTranslation] = useState(true);
   const [includeVocab, setIncludeVocab] = useState(true);
   const [includeNote, setIncludeNote] = useState(true);
@@ -104,6 +112,17 @@ export default function SummaryExportBar({ sentences, sessionTitle }: { sentence
           className="transition-colors duration-500"
         >
           列印單字卡
+        </Button>
+      </div>
+      <div>
+        <Button
+          type="primary"
+          icon={<FormOutlined />}
+          disabled={collectVocab(sentences).length === 0}
+          onClick={onStartQuiz}
+          className="transition-colors"
+        >
+          單字測驗
         </Button>
       </div>
     </div>

@@ -30,7 +30,7 @@ async function ensureProfile(user: User): Promise<void> {
   await ensureProfileApi(displayName);
 }
 
-type MainView = "home" | "translate" | "usage" | "report";
+type MainView = "home" | "translate" | "usage" | "report" | "quiz";
 
 function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): React.ReactElement {
   const [activePanel, setActivePanel] = useState<string | null>(null);
@@ -54,6 +54,10 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
 
   function handleShowReport(): void {
     setMainView("report");
+  }
+
+  function handleShowQuiz(): void {
+    setMainView("quiz");
   }
 
   function handleShowHome(): void {
@@ -87,6 +91,7 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
             username={username}
             onShowTranslate={handleShowTranslate}
             onDoneReport={handleShowHome}
+            onShowQuiz={handleShowQuiz}
           />
         </div>
         <footer className="mx-auto mt-10 max-w-7xl text-center text-sm text-(--text-main) opacity-60">

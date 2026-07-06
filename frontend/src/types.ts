@@ -63,6 +63,46 @@ export type Session = {
   sentenceCount?: number;
 };
 
+// ── Quiz (phase 1: generated on the frontend from the current session's vocab) ──
+
+export type QuizTypeKey = "cloze" | "matching" | "spelling";
+export type SpellingMode = "typing" | "scramble";
+
+export type ClozeQuestion = {
+  kind: "cloze";
+  // Original sentence with the target word replaced by a blank placeholder.
+  sentenceWithBlank: string;
+  options: string[];
+  answerIndex: number;
+  vocab: VocabItem;
+};
+
+export type MatchingQuestion = {
+  kind: "matching";
+  // Options are Chinese translations; the prompt word comes from `vocab`.
+  options: string[];
+  answerIndex: number;
+  vocab: VocabItem;
+};
+
+export type SpellingQuestion = {
+  kind: "spelling";
+  mode: SpellingMode;
+  // Lowercased word the user must spell.
+  answer: string;
+  // Pre-shuffled letters for scramble mode (same multiset as `answer`).
+  scrambledLetters: string[];
+  vocab: VocabItem;
+};
+
+export type QuizQuestion = ClozeQuestion | MatchingQuestion | SpellingQuestion;
+
+export type QuizAnswerRecord = {
+  question: QuizQuestion;
+  userAnswer: string;
+  correct: boolean;
+};
+
 export type UsageHourlyItem = { hour: number; tokens: number };
 export type UsageRecentHourItem = { timestamp: string; tokens: number };
 export type UsageDailyItem = { date: string; tokens: number };

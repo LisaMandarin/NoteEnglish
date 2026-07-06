@@ -8,7 +8,7 @@ import SentenceItem from "./SentenceItem";
 import SummaryExportBar from "./SummaryExportBar";
 const { Text } = Typography;
 
-export default function TranslationsList(): React.ReactElement {
+export default function TranslationsList({ onStartQuiz }: { onStartQuiz: () => void }): React.ReactElement {
   const {
     state: { sentences, saving, currentSession },
     actions: { updateSentenceVocab, removeSentenceVocab, reorderSentenceVocab, updateSentenceNote },
@@ -81,7 +81,11 @@ export default function TranslationsList(): React.ReactElement {
           />
         ))}
       </ol>
-      <SummaryExportBar sentences={sentences} sessionTitle={currentSession?.title ?? ""} />
+      <SummaryExportBar
+        sentences={sentences}
+        sessionTitle={currentSession?.title ?? ""}
+        onStartQuiz={onStartQuiz}
+      />
       <div
         onMouseUp={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
