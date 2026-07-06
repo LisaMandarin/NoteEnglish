@@ -7,15 +7,47 @@ export default function AdminLoginPage(): React.ReactElement {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<"sign_in" | "forgot_password">("sign_in");
+
+  function showForgotPassword(): void {
+    setError("");
+    setSuccessMessage("");
+    setPassword("");
+    setMode("forgot_password");
+  }
+
+  function backToSignIn(): void {
+    setError("");
+    setSuccessMessage("");
+    setPassword("");
+    setMode("sign_in");
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setLoading(true);
     setError("");
+    setSuccessMessage("");
 
     try {
       if (!email.trim()) throw new Error("Email is required.");
+
+      if (mode === "forgot_password") {
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+          email.trim(),
+          {
+            redirectTo: `${window.location.origin}${window.location.pathname}?view=reset-password`,
+          }
+        );
+
+        if (resetError) throw resetError;
+
+        setSuccessMessage("A password reset link has been sent to your email.");
+        return;
+      }
+
       if (!password.trim()) throw new Error("Password is required.");
 
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
@@ -46,7 +78,9 @@ export default function AdminLoginPage(): React.ReactElement {
               Admin Dashboard
             </p>
             <p className="mb-8 text-base text-black/70">
-              Sign in with your admin account to continue.
+              {mode === "sign_in"
+                ? "Sign in with your admin account to continue."
+                : "Enter your email and we'll send you a password reset link."}
             </p>
 
             <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
@@ -64,20 +98,38 @@ export default function AdminLoginPage(): React.ReactElement {
                 />
               </label>
 
-              <label className="flex flex-col gap-2 text-[0.95rem] font-semibold">
-                <span>Password</span>
-                <Input.Password
-                  allowClear
-                  className="rounded-2xl border border-black/15 bg-white text-inherit transition"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  autoComplete="current-password"
-                  size="large"
-                />
-              </label>
+              {mode === "sign_in" ? (
+                <label className="flex flex-col gap-2 text-[0.95rem] font-semibold">
+                  <span>Password</span>
+                  <Input.Password
+                    allowClear
+                    className="rounded-2xl border border-black/15 bg-white text-inherit transition"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    autoComplete="current-password"
+                    size="large"
+                  />
+                </label>
+              ) : null}
+
+              {mode === "sign_in" ? (
+                <Button
+                  type="link"
+                  size="small"
+                  className="self-end p-0"
+                  style={{ color: "var(--accent)" }}
+                  disabled={loading}
+                  onClick={showForgotPassword}
+                >
+                  Forgot password?
+                </Button>
+              ) : null}
 
               {error ? <p className="m-0 text-sm text-red-600">{error}</p> : null}
+              {successMessage ? (
+                <p className="m-0 text-sm text-green-700">{successMessage}</p>
+              ) : null}
 
               <Button
                 block
@@ -91,8 +143,20 @@ export default function AdminLoginPage(): React.ReactElement {
                   height: "3.5rem",
                 }}
               >
-                Sign in
+                {mode === "sign_in" ? "Sign in" : "Send reset link"}
               </Button>
+
+              {mode === "forgot_password" ? (
+                <Button
+                  block
+                  type="default"
+                  size="large"
+                  disabled={loading}
+                  onClick={backToSignIn}
+                >
+                  Back to sign in
+                </Button>
+              ) : null}
             </form>
           </div>
         </div>

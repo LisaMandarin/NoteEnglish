@@ -8,6 +8,7 @@ import SummaryWindow from "./components/SummaryWindow";
 import VocabPrintWindow from "./components/Vocab/VocabPrintWindow";
 import LoginPage from "./components/Auth/LoginPage";
 import AdminLoginPage from "./components/Auth/AdminLoginPage";
+import ResetPasswordPage from "./components/Auth/ResetPasswordPage";
 import AdminDashboard from "./components/Admin";
 import { supabase } from "./lib/supabase";
 import { ensureProfile as ensureProfileApi } from "./lib/api";
@@ -104,6 +105,7 @@ export default function App(): React.ReactElement {
   const params = new URLSearchParams(window.location.search);
   const isSummaryView = params.get("view") === "summary";
   const isVocabPrintView = params.get("view") === "vocab-print";
+  const isResetPasswordView = params.get("view") === "reset-password";
   const isAdminDashboard = window.location.pathname === "/admin-dashboard";
 
   useEffect(() => {
@@ -153,6 +155,10 @@ export default function App(): React.ReactElement {
 
   if (isVocabPrintView) {
     return <VocabPrintWindow />;
+  }
+
+  if (isResetPasswordView) {
+    return <ResetPasswordPage />;
   }
 
   if (!authReady) {
