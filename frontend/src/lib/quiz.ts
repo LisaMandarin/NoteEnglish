@@ -18,6 +18,10 @@ export type QuizConfig = {
   // type. Comprehension questions are not counted against the cap — they cost
   // an AI call, so all of them are always included.
   questionLimit: number | null;
+  // How many dictation questions to include (random pick among eligible
+  // sentences). A number is an explicit user choice and is guaranteed within
+  // questionLimit; null mixes dictation into the shared pool like any type.
+  dictationLimit?: number | null;
 };
 
 export type QuizExtras = {
@@ -237,14 +241,15 @@ export function buildQuiz(
 ): QuizQuestion[] {
   const pool = collectQuizVocab(sentences);
   const extraVocab = extras.extraVocab ?? [];
-  const questions: QuizQuestion[] = [];
+  const wordQuestions: QuizQuestion[] = [];
+  const dictationQuestions: QuizQuestion[] = [];
 
   for (const type of config.types) {
     if (type === "comprehension") continue;
     if (type === "dictation") {
       for (const sentence of sentences) {
         const question = buildDictationQuestion(sentence);
-        if (question) questions.push(question);
+        if (question) dictationQuestions.push(question);
       }
       continue;
     }
@@ -253,12 +258,27 @@ export function buildQuiz(
       if (type === "cloze") question = buildClozeQuestion(entry, pool, extraVocab);
       else if (type === "matching") question = buildMatchingQuestion(entry, pool, extraVocab);
       else question = buildSpellingQuestion(entry, config.spellingMode);
-      if (question) questions.push(question);
+      if (question) wordQuestions.push(question);
     }
   }
 
-  const shuffled = shuffle(questions);
-  const capped = config.questionLimit == null ? shuffled : shuffled.slice(0, config.questionLimit);
+  const dictationLimit = config.dictationLimit ?? null;
+  let capped: QuizQuestion[];
+  if (dictationLimit == null) {
+    // No explicit dictation choice: every question competes for the cap equally.
+    const shuffled = shuffle([...wordQuestions, ...dictationQuestions]);
+    capped = config.questionLimit == null ? shuffled : shuffled.slice(0, config.questionLimit);
+  } else {
+    // The user asked for exactly this many dictation questions — pick them
+    // at random and guarantee them within the overall cap.
+    let dictation = shuffle(dictationQuestions).slice(0, dictationLimit);
+    if (config.questionLimit != null) dictation = dictation.slice(0, config.questionLimit);
+    const remaining =
+      config.questionLimit == null
+        ? wordQuestions.length
+        : Math.max(config.questionLimit - dictation.length, 0);
+    capped = shuffle([...shuffle(wordQuestions).slice(0, remaining), ...dictation]);
+  }
 
   const comprehension = config.types.includes("comprehension")
     ? extras.comprehension ?? []

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Checkbox, Radio } from "antd";
+import { Button, Checkbox, InputNumber, Radio } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
 import type { QuizTypeKey, SpellingMode } from "../../types";
 import type { QuizConfig } from "../../lib/quiz";
@@ -43,11 +43,17 @@ export default function QuizSetup({
   );
   const [spellingMode, setSpellingMode] = useState<SpellingMode>("scramble");
   const [limit, setLimit] = useState<number>(10);
+  // null until the user picks a number; then it caps how many dictation
+  // questions get drawn from the eligible sentences.
+  const [dictationCount, setDictationCount] = useState<number | null>(null);
 
-  const totalSelected = selectedTypes.reduce(
-    (sum, key) => (key === "comprehension" ? sum : sum + counts[key]),
-    0,
-  );
+  const dictationSelected = selectedTypes.includes("dictation");
+  const effectiveDictation = Math.min(dictationCount ?? counts.dictation, counts.dictation);
+  const totalSelected = selectedTypes.reduce((sum, key) => {
+    if (key === "comprehension") return sum;
+    if (key === "dictation") return sum + effectiveDictation;
+    return sum + counts[key];
+  }, 0);
   const comprehensionSelected = selectedTypes.includes("comprehension");
   const canStart = totalSelected > 0 || comprehensionSelected;
 
@@ -68,6 +74,7 @@ export default function QuizSetup({
       types: selectedTypes,
       spellingMode,
       questionLimit: effectiveLimit === 0 ? null : effectiveLimit,
+      dictationLimit: dictationSelected ? effectiveDictation : null,
     });
   }
 
@@ -93,6 +100,21 @@ export default function QuizSetup({
                 </span>
               </Checkbox>
               <span className="text-sm opacity-60">{row.description}</span>
+              {row.key === "dictation" && dictationSelected && counts.dictation > 1 && (
+                <span className="flex items-center gap-1 text-sm">
+                  本次出
+                  <InputNumber
+                    size="small"
+                    min={1}
+                    max={counts.dictation}
+                    value={effectiveDictation}
+                    onChange={(value: number | null) => setDictationCount(value)}
+                    style={{ width: 60 }}
+                    aria-label="聽寫題數"
+                  />
+                  題
+                </span>
+              )}
             </div>
           ))}
 
