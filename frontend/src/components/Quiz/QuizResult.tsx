@@ -4,11 +4,15 @@ import type { QuizAnswerRecord, QuizQuestion } from "../../types";
 function promptOf(question: QuizQuestion): string {
   if (question.kind === "cloze") return question.sentenceWithBlank;
   if (question.kind === "matching") return question.vocab.lemma || question.vocab.text;
-  return (question.vocab.translation ?? "").trim() || (question.vocab.definition ?? "").trim();
+  if (question.kind === "spelling") {
+    return (question.vocab.translation ?? "").trim() || (question.vocab.definition ?? "").trim();
+  }
+  if (question.kind === "dictation") return question.translation || "聽寫句子";
+  return question.question;
 }
 
 function correctAnswerOf(question: QuizQuestion): string {
-  if (question.kind === "spelling") return question.answer;
+  if (question.kind === "spelling" || question.kind === "dictation") return question.answer;
   return question.options[question.answerIndex];
 }
 

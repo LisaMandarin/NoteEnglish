@@ -412,6 +412,171 @@ def save_parse(
         logger.warning("Failed to cache sentence parse (hash=%s)", sentence_hash)
 
 
+def get_quiz_questions(user_id: str, session_id: str) -> list[dict]:
+    """Cached comprehension questions for a session, ordered by index."""
+    query = parse.urlencode(
+        {
+            "session_id": f"eq.{session_id}",
+            "user_id": f"eq.{user_id}",
+            "select": "question,options,answer_index,explanation",
+            "order": "question_index.asc",
+        }
+    )
+    return _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/quiz_questions?{query}",
+        headers=_service_headers(),
+    ) or []
+
+
+def replace_quiz_questions(user_id: str, session_id: str, questions: list[dict]) -> None:
+    """Overwrite a session's cached comprehension questions."""
+    query = parse.urlencode({"session_id": f"eq.{session_id}", "user_id": f"eq.{user_id}"})
+    _request_json(
+        "DELETE",
+        f"{settings.supabase_url}/rest/v1/quiz_questions?{query}",
+        headers=_service_headers(),
+    )
+    rows = [
+        {
+            "session_id": session_id,
+            "user_id": user_id,
+            "question_index": idx,
+            "question": question["question"],
+            "options": question["options"],
+            "answer_index": question["answer_index"],
+            "explanation": question.get("explanation") or "",
+        }
+        for idx, question in enumerate(questions)
+    ]
+    if rows:
+        _request_json(
+            "POST",
+            f"{settings.supabase_url}/rest/v1/quiz_questions",
+            headers=_service_headers(),
+            payload=rows,
+        )
+
+
+def insert_quiz_results(user_id: str, session_id: str | None, results: list[dict]) -> None:
+    rows = [
+        {
+            "user_id": user_id,
+            "session_id": session_id,
+            "quiz_type": result["quiz_type"],
+            "lemma": result.get("lemma") or None,
+            "pos": result.get("pos") or None,
+            "correct": result["correct"],
+        }
+        for result in results
+    ]
+    if rows:
+        _request_json(
+            "POST",
+            f"{settings.supabase_url}/rest/v1/quiz_results",
+            headers=_service_headers(),
+            payload=rows,
+        )
+
+
+def update_word_mastery(user_id: str, results: list[dict]) -> None:
+    """Fold vocab-question results into per-word counters.
+
+    Keyed by (user_id, lemma, pos) — the app's vocab identity — because
+    vocab_notes rows are deleted and reinserted on every session save. A
+    mastery-update failure must not fail the request: quiz_results already
+    holds the raw data, so the counters can always be rebuilt."""
+    counters: dict[tuple[str, str], dict[str, int]] = {}
+    for result in results:
+        lemma = (result.get("lemma") or "").strip().lower()
+        if not lemma:
+            continue  # dictation/comprehension results carry no word identity
+        pos = (result.get("pos") or "").strip().lower()
+        entry = counters.setdefault((lemma, pos), {"correct": 0, "wrong": 0})
+        entry["correct" if result["correct"] else "wrong"] += 1
+    if not counters:
+        return
+
+    try:
+        lemma_list = ",".join(
+            '"{}"'.format(lemma.replace('"', "")) for lemma, _ in counters
+        )
+        query = parse.urlencode(
+            {
+                "user_id": f"eq.{user_id}",
+                "lemma": f"in.({lemma_list})",
+                "select": "lemma,pos,correct_count,wrong_count,level,next_review_at",
+            }
+        )
+        existing_rows = _request_json(
+            "GET",
+            f"{settings.supabase_url}/rest/v1/word_mastery?{query}",
+            headers=_service_headers(),
+        ) or []
+        existing = {(row["lemma"], row["pos"]): row for row in existing_rows}
+
+        now = datetime.now(timezone.utc).isoformat()
+        payload = []
+        for (lemma, pos), counts in counters.items():
+            row = existing.get((lemma, pos), {})
+            payload.append(
+                {
+                    "user_id": user_id,
+                    "lemma": lemma,
+                    "pos": pos,
+                    "correct_count": int(row.get("correct_count", 0)) + counts["correct"],
+                    "wrong_count": int(row.get("wrong_count", 0)) + counts["wrong"],
+                    "last_result_at": now,
+                }
+            )
+        _request_json(
+            "POST",
+            f"{settings.supabase_url}/rest/v1/word_mastery"
+            "?on_conflict=user_id,lemma,pos",
+            headers=_service_headers("resolution=merge-duplicates,return=minimal"),
+            payload=payload,
+        )
+    except Exception:
+        logger.warning("Failed to update word mastery for user=%s", user_id)
+
+
+def get_vocab_pool(user_id: str, limit: int = 1000) -> list[dict]:
+    """The user's vocab across all sessions, deduped by (lemma, pos) — used as
+    the cross-article distractor pool for quiz multiple-choice options."""
+    query = parse.urlencode(
+        {
+            "user_id": f"eq.{user_id}",
+            "select": "lemma,pos,selected_text,translation",
+            "limit": limit,
+        }
+    )
+    rows = _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/vocab_notes?{query}",
+        headers=_service_headers(),
+    ) or []
+
+    seen: set[tuple[str, str]] = set()
+    items: list[dict] = []
+    for row in rows:
+        lemma = (row.get("lemma") or "").strip()
+        if not lemma:
+            continue
+        key = (lemma.lower(), (row.get("pos") or "").strip().lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        items.append(
+            {
+                "lemma": lemma,
+                "pos": row.get("pos"),
+                "text": row.get("selected_text"),
+                "translation": row.get("translation"),
+            }
+        )
+    return items
+
+
 def log_api_usage(user_id: str, endpoint: str, model: str, usage: dict) -> None:
     try:
         _request_json(

@@ -1425,6 +1425,98 @@ def ai_analyze_structure(sentence: str) -> tuple[dict, dict]:
     raise last_error
 
 
+# --- Reading-comprehension quiz generation --------------------------------------
+
+class _GeminiQuizQuestion(BaseModel):
+    """Strict shape expected from the comprehension-quiz prompt."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    question: str
+    options: list[str]
+    answer_index: int
+    explanation: str
+
+
+# Question quality (plausible distractors, inference questions) benefits from
+# some planning room, unlike the mechanical translate/OCR prompts.
+_QUIZ_THINKING_BUDGET = 1024
+
+
+def ai_generate_quiz(article: str) -> tuple[list[dict], dict]:
+    """Generate 3-5 multiple-choice reading-comprehension questions for an
+    article. Returns (questions, usage); each question dict matches
+    app.models.quiz.ComprehensionQuestion. Raises HTTPException(502) when no
+    attempt yields valid questions."""
+    prompt = (
+        "You are creating a reading-comprehension quiz for an English learner "
+        "whose native language is Traditional Chinese (zh-TW).\n\n"
+        "Create 3 to 5 multiple-choice questions testing understanding of the "
+        "article below: main idea, key details, inference, or vocabulary in "
+        "context. Questions and options are in English at the article's level.\n\n"
+        "Return ONLY a JSON array. Each item has EXACTLY these keys:\n"
+        '- "question": the question (one sentence)\n'
+        '- "options": EXACTLY 4 plausible options; only one is correct\n'
+        '- "answer_index": integer 0-3, the index of the correct option\n'
+        '- "explanation": ONE short Traditional Chinese (zh-TW) sentence '
+        "explaining why the answer is correct\n\n"
+        "Rules:\n"
+        "- Every question must be answerable from the article alone.\n"
+        "- Wrong options must be clearly wrong per the article, yet tempting.\n"
+        "- Vary the position of the correct option across questions.\n"
+        "- No markdown, no commentary.\n\n"
+        f"Article:\n{article}"
+    )
+    strict_reminder = (
+        "\n\nCRITICAL: Return ONLY a valid JSON array of 3-5 objects with keys "
+        "question, options (exactly 4 strings), answer_index (0-3), explanation."
+    )
+
+    usage = {"prompt_tokens": 0, "response_tokens": 0, "total_tokens": 0}
+    last_error: HTTPException | None = None
+
+    # An invalid shape is usually a transient model slip; one retry with the
+    # constraint restated recovers it (same policy as ai_translate_list).
+    for attempt in range(2):
+        try:
+            response = client.models.generate_content(
+                model=settings.gemini_model,
+                contents=prompt + (strict_reminder if attempt else ""),
+                config={
+                    "response_mime_type": "application/json",
+                    "temperature": 0.4,
+                    "thinking_config": {"thinking_budget": _QUIZ_THINKING_BUDGET},
+                },
+            )
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Gemini API request failed: {e}")
+
+        attempt_usage = _extract_usage(response)
+        for key in usage:
+            usage[key] += attempt_usage[key]
+
+        try:
+            data = json.loads(response.text)
+            if not isinstance(data, list) or not (1 <= len(data) <= 8):
+                raise ValueError(f"expected a JSON array of 1-8 questions, got {type(data).__name__}")
+            validated = [_GeminiQuizQuestion.model_validate(item) for item in data]
+            for item in validated:
+                if len(item.options) != 4:
+                    raise ValueError("each question must have exactly 4 options")
+                if not 0 <= item.answer_index <= 3:
+                    raise ValueError("answer_index must be 0-3")
+        except (json.JSONDecodeError, ValidationError, ValueError) as e:
+            last_error = HTTPException(
+                status_code=502,
+                detail=f"Gemini quiz generation returned invalid data: {e}",
+            )
+            continue
+
+        return [item.model_dump() for item in validated], usage
+
+    raise last_error
+
+
 _POS_MAP = {
     "noun": "n.",
     "pronoun": "pron.",

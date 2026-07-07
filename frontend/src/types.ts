@@ -63,9 +63,11 @@ export type Session = {
   sentenceCount?: number;
 };
 
-// ── Quiz (phase 1: generated on the frontend from the current session's vocab) ──
+// ── Quiz ──────────────────────────────────────────────────────────────────────
+// cloze/matching/spelling/dictation are generated on the frontend from the
+// current session; comprehension questions come from POST /api/quiz/generate.
 
-export type QuizTypeKey = "cloze" | "matching" | "spelling";
+export type QuizTypeKey = "cloze" | "matching" | "spelling" | "dictation" | "comprehension";
 export type SpellingMode = "typing" | "scramble";
 
 export type ClozeQuestion = {
@@ -95,11 +97,48 @@ export type SpellingQuestion = {
   vocab: VocabItem;
 };
 
-export type QuizQuestion = ClozeQuestion | MatchingQuestion | SpellingQuestion;
+export type DictationQuestion = {
+  kind: "dictation";
+  // The original sentence the TTS audio reads out.
+  answer: string;
+  // Its translation, revealed only after answering.
+  translation: string;
+};
+
+export type ComprehensionQuizQuestion = {
+  kind: "comprehension";
+  question: string;
+  options: string[];
+  answerIndex: number;
+  // Short zh-TW explanation of the correct answer, shown after answering.
+  explanation?: string;
+};
+
+export type QuizQuestion =
+  | ClozeQuestion
+  | MatchingQuestion
+  | SpellingQuestion
+  | DictationQuestion
+  | ComprehensionQuizQuestion;
 
 export type QuizAnswerRecord = {
   question: QuizQuestion;
   userAnswer: string;
+  correct: boolean;
+};
+
+// Shapes exchanged with the quiz API routes.
+export type VocabPoolItem = {
+  lemma: string;
+  pos?: string | null;
+  text?: string | null;
+  translation?: string | null;
+};
+
+export type QuizResultPayloadItem = {
+  quiz_type: QuizTypeKey;
+  lemma?: string;
+  pos?: string;
   correct: boolean;
 };
 
