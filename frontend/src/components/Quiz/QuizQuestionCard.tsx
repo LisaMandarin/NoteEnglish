@@ -303,21 +303,30 @@ export default function QuizQuestionCard({
   question,
   index,
   total,
-  onDone,
+  onAnswered,
+  onNext,
 }: {
   question: QuizQuestion;
   index: number;
   total: number;
-  onDone: (record: QuizAnswerRecord) => void;
+  // Fired the moment the user answers (drives records and the progress bar).
+  onAnswered: (record: QuizAnswerRecord) => void;
+  // Fired when the user advances past the feedback.
+  onNext: () => void;
 }): React.ReactElement {
   const [record, setRecord] = useState<QuizAnswerRecord | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const isLast = index + 1 === total;
 
+  function submitRecord(next: QuizAnswerRecord): void {
+    setRecord(next);
+    onAnswered(next);
+  }
+
   function answerChoice(optionIndex: number): void {
     if (record || question.kind === "spelling" || question.kind === "dictation") return;
     setSelectedIndex(optionIndex);
-    setRecord({
+    submitRecord({
       question,
       userAnswer: question.options[optionIndex],
       correct: optionIndex === question.answerIndex,
@@ -326,7 +335,7 @@ export default function QuizQuestionCard({
 
   function answerSpelling(attempt: string): void {
     if (record || question.kind !== "spelling") return;
-    setRecord({
+    submitRecord({
       question,
       userAnswer: attempt,
       correct: attempt.trim().toLowerCase() === question.answer,
@@ -335,7 +344,7 @@ export default function QuizQuestionCard({
 
   function answerDictation(attempt: string): void {
     if (record || question.kind !== "dictation") return;
-    setRecord({
+    submitRecord({
       question,
       userAnswer: attempt,
       correct: diffDictation(question.answer, attempt).correct,
@@ -409,7 +418,7 @@ export default function QuizQuestionCard({
       )}
 
       {record && (
-        <Button type="primary" size="large" onClick={() => onDone(record)}>
+        <Button type="primary" size="large" onClick={onNext}>
           {isLast ? "查看成績" : "下一題"}
         </Button>
       )}

@@ -144,12 +144,14 @@ export default function QuizView({ onExit }: { onExit: () => void }): React.Reac
     }
   }
 
-  function handleQuestionDone(record: QuizAnswerRecord): void {
-    const nextRecords = [...records, record];
-    setRecords(nextRecords);
+  function handleAnswered(record: QuizAnswerRecord): void {
+    setRecords((prev) => [...prev, record]);
+  }
+
+  function handleNext(): void {
     if (currentIndex + 1 >= questions.length) {
       setPhase("result");
-      void submitResults(nextRecords);
+      void submitResults(records);
     } else {
       setCurrentIndex((i) => i + 1);
     }
@@ -196,7 +198,7 @@ export default function QuizView({ onExit }: { onExit: () => void }): React.Reac
         ) : phase === "running" ? (
           <div className="space-y-5">
             <Progress
-              percent={Math.round((currentIndex / questions.length) * 100)}
+              percent={Math.round((records.length / questions.length) * 100)}
               showInfo={false}
               strokeColor="var(--accent)"
             />
@@ -205,7 +207,8 @@ export default function QuizView({ onExit }: { onExit: () => void }): React.Reac
               question={questions[currentIndex]}
               index={currentIndex}
               total={questions.length}
-              onDone={handleQuestionDone}
+              onAnswered={handleAnswered}
+              onNext={handleNext}
             />
           </div>
         ) : (
