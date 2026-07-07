@@ -5,6 +5,7 @@ import TranslationsList from "../Translations";
 import TipBox from "./TipBox";
 import TokenUsageView from "../shared/TokenUsageView";
 import IssueReportForm from "../IssueReport/IssueReportForm";
+import QuizView from "../Quiz";
 import { useTranslation } from "../../context/translationContext";
 import HomeDashboard from "./HomeDashboard";
 
@@ -13,11 +14,13 @@ export default function AppMainSection({
   username,
   onShowTranslate,
   onDoneReport,
+  onShowQuiz,
 }: {
-  mainView: "home" | "translate" | "usage" | "report";
+  mainView: "home" | "translate" | "usage" | "report" | "quiz";
   username: string;
   onShowTranslate: () => void;
   onDoneReport: () => void;
+  onShowQuiz: () => void;
 }): React.ReactElement {
   const {
     state: { sessionLoading, sentences },
@@ -35,6 +38,8 @@ export default function AppMainSection({
 
   if (mainView === "usage") {
     content = <TokenUsageView />;
+  } else if (mainView === "quiz") {
+    content = <QuizView onExit={onShowTranslate} />;
   } else if (mainView === "report") {
     content = <IssueReportForm onDone={onDoneReport} />;
   } else if (mainView === "home") {
@@ -64,7 +69,7 @@ export default function AppMainSection({
                 />
               )}
             </div>
-            <TranslationsList />
+            <TranslationsList onStartQuiz={onShowQuiz} />
           </div>
         </div>
       </div>
