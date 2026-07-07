@@ -8,6 +8,7 @@ import type {
 } from "../../types";
 import { diffDictation, type DiffToken } from "../../lib/quiz";
 import QuizAudioButton from "./QuizAudioButton";
+import QuizAudioPlayer from "./QuizAudioPlayer";
 
 const KIND_LABELS: Record<QuizQuestion["kind"], string> = {
   cloze: "克漏字",
@@ -254,9 +255,11 @@ function DictationAnswer({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <QuizAudioButton text={question.answer} ariaLabel="播放句子" />
-        <span className="text-base opacity-70">聽音檔，寫出你聽到的句子（可重複播放）</span>
+      <div className="space-y-2">
+        <p className="m-0 text-base opacity-70">
+          聽音檔，寫出你聽到的句子（可重複播放、拖曳進度條、調整速度）
+        </p>
+        <QuizAudioPlayer text={question.answer} />
       </div>
 
       <Input.TextArea

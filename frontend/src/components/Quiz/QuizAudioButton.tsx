@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
 import { Button } from "antd";
 import { LoadingOutlined, SoundOutlined } from "@ant-design/icons";
-import { claimPlayback, getTtsAudioUrl, releasePlayback, speak } from "../../lib/speech";
+import { speak } from "../../lib/speech";
+import { useTtsPlayer } from "../../hooks/useTtsPlayer";
 
-// Minimal one-tap TTS play/replay button for quiz prompts. Unlike TtsButton's
-// popover player, a quiz answer only needs "hear it again", not seek/speed.
+// Minimal one-tap TTS replay button for short prompts (a single word). For
+// sentence-length audio with seek/speed, use QuizAudioPlayer instead.
 export default function QuizAudioButton({
   text,
   ariaLabel,
@@ -12,39 +12,14 @@ export default function QuizAudioButton({
   text: string;
   ariaLabel: string;
 }): React.ReactElement {
-  const [loading, setLoading] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const stopPlayback = useRef<() => void>(() => {
-    audioRef.current?.pause();
-  }).current;
-
-  useEffect(() => {
-    return () => {
-      const audio = audioRef.current;
-      if (audio) {
-        audio.pause();
-        audio.removeAttribute("src");
-      }
-      releasePlayback(stopPlayback);
-    };
-  }, [stopPlayback]);
+  const player = useTtsPlayer(text);
 
   async function play(): Promise<void> {
-    if (loading) return;
-    setLoading(true);
+    if (player.loading) return;
     try {
-      const url = await getTtsAudioUrl(text);
-      if (!audioRef.current) audioRef.current = new Audio();
-      const audio = audioRef.current;
-      if (audio.src !== url) audio.src = url;
-      audio.currentTime = 0;
-      claimPlayback(stopPlayback);
-      await audio.play();
+      await player.play({ restart: true });
     } catch {
       speak(text);
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -52,7 +27,7 @@ export default function QuizAudioButton({
     <Button
       shape="circle"
       onClick={() => void play()}
-      icon={loading ? <LoadingOutlined spin /> : <SoundOutlined />}
+      icon={player.loading ? <LoadingOutlined spin /> : <SoundOutlined />}
       aria-label={ariaLabel}
     />
   );
