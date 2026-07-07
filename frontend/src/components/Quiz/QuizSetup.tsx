@@ -13,12 +13,9 @@ const TYPE_ROWS: { key: FrontendTypeKey; label: string; description: string }[] 
   { key: "dictation", label: "聽寫", description: "聽句子錄音，寫出完整句子" },
 ];
 
-// value 0 stands for "no cap" (Radio values must be non-null).
-const LIMIT_OPTIONS: { label: string; value: number }[] = [
-  { label: "10 題", value: 10 },
-  { label: "20 題", value: 20 },
-  { label: "全部", value: 0 },
-];
+// value 0 stands for "no cap" (Radio values must be non-null). A cap is only
+// offered when the selected types can actually produce more than that many.
+const LIMIT_STEPS = [10, 20];
 
 export type ComprehensionSetupState = {
   // False when the article has no saved session yet (AI questions need one).
@@ -54,6 +51,11 @@ export default function QuizSetup({
   const comprehensionSelected = selectedTypes.includes("comprehension");
   const canStart = totalSelected > 0 || comprehensionSelected;
 
+  // Only caps smaller than the available total make sense as choices; when the
+  // stored choice is no longer offered (types were deselected), fall back to 全部.
+  const limitChoices = LIMIT_STEPS.filter((step) => step < totalSelected);
+  const effectiveLimit = limitChoices.includes(limit) ? limit : 0;
+
   function toggleType(key: QuizTypeKey, checked: boolean): void {
     setSelectedTypes((prev) =>
       checked ? [...prev, key] : prev.filter((t) => t !== key),
@@ -65,7 +67,7 @@ export default function QuizSetup({
     onStart({
       types: selectedTypes,
       spellingMode,
-      questionLimit: limit === 0 ? null : limit,
+      questionLimit: effectiveLimit === 0 ? null : effectiveLimit,
     });
   }
 
@@ -138,18 +140,27 @@ export default function QuizSetup({
         </div>
       )}
 
-      <div>
-        <h3 className="mb-3 text-base font-semibold">題數</h3>
-        <Radio.Group
-          value={limit}
-          onChange={(e) => setLimit(e.target.value as number)}
-          options={LIMIT_OPTIONS}
-          optionType="button"
-        />
-        {comprehensionSelected && (
-          <p className="m-0 mt-2 text-sm opacity-60">閱讀理解題不計入題數，會全部出現</p>
-        )}
-      </div>
+      {totalSelected > 0 && (
+        <div>
+          <h3 className="mb-3 text-base font-semibold">題數</h3>
+          {limitChoices.length > 0 ? (
+            <Radio.Group
+              value={effectiveLimit}
+              onChange={(e) => setLimit(e.target.value as number)}
+              options={[
+                ...limitChoices.map((step) => ({ label: `${step} 題`, value: step })),
+                { label: `全部（${totalSelected} 題）`, value: 0 },
+              ]}
+              optionType="button"
+            />
+          ) : (
+            <p className="m-0 text-sm opacity-70">共 {totalSelected} 題，全部出題</p>
+          )}
+          {comprehensionSelected && (
+            <p className="m-0 mt-2 text-sm opacity-60">閱讀理解題不計入題數，會全部出現</p>
+          )}
+        </div>
+      )}
 
       <Button
         type="primary"

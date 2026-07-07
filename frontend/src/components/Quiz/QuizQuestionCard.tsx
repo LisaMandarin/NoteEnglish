@@ -253,9 +253,11 @@ function DictationAnswer({
     onSubmit(typed.trim());
   }
 
+  // flex gap instead of space-y: antd's unlayered reset zeroes textarea/button
+  // margins, which would swallow space-y's sibling margins here.
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
+    <div className="flex flex-col items-start gap-4">
+      <div className="w-full space-y-2">
         <p className="m-0 text-base opacity-70">
           聽音檔，寫出你聽到的句子（可重複播放、拖曳進度條、調整速度）
         </p>
@@ -263,6 +265,7 @@ function DictationAnswer({
       </div>
 
       <Input.TextArea
+        className="w-full"
         autoFocus
         value={typed}
         disabled={record != null}
@@ -284,7 +287,7 @@ function DictationAnswer({
       )}
 
       {diff && (
-        <div className="space-y-2 rounded-xl border-2 border-(--card-border)/20 px-4 py-3">
+        <div className="w-full space-y-2 rounded-xl border-2 border-(--card-border)/20 px-4 py-3">
           <DiffLine label="正確句子" tokens={diff.expectedTokens} />
           <DiffLine label="你的答案" tokens={diff.attemptTokens} />
           {question.translation && (
