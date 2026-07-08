@@ -133,6 +133,18 @@ export type VocabPoolItem = {
   pos?: string | null;
   text?: string | null;
   translation?: string | null;
+  definition?: string | null;
+};
+
+// Per-word mastery from GET /api/quiz/mastery. level: 1 = 學習中, 2 = 已掌握;
+// words that were never quizzed have no row.
+export type WordMasteryItem = {
+  lemma: string;
+  pos: string;
+  level: number;
+  correct_count: number;
+  wrong_count: number;
+  next_review_at?: string | null;
 };
 
 export type QuizResultPayloadItem = {
@@ -161,6 +173,8 @@ export type SessionRecord = {
   source_text?: string;
   updated_at: string;
   created_at?: string;
+  // Weighted quiz accuracy 0-100; null/absent when the session has no results.
+  proficiency?: number | null;
 };
 
 export type SessionPage = {

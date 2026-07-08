@@ -3,7 +3,9 @@ import type {
   ComprehensionQuizQuestion,
   DictationQuestion,
   MatchingQuestion,
+  QuizAnswerRecord,
   QuizQuestion,
+  QuizResultPayloadItem,
   QuizTypeKey,
   Sentence,
   SpellingMode,
@@ -284,6 +286,44 @@ export function buildQuiz(
     ? extras.comprehension ?? []
     : [];
   return comprehension.length > 0 ? shuffle([...capped, ...comprehension]) : capped;
+}
+
+// 今日複習: one question per due word — matching or spelling only (the types
+// that need no sentence context), picked at random among the eligible ones.
+// Distractors come from the review pool itself.
+export function buildReviewQuiz(words: VocabItem[], spellingMode: SpellingMode): QuizQuestion[] {
+  const entries: QuizVocabEntry[] = words.map((vocab) => ({
+    vocab,
+    sentence: { original: "", translation: "", vocab: [] as VocabItem[] },
+  }));
+  const questions: QuizQuestion[] = [];
+  for (const entry of entries) {
+    const candidates: QuizQuestion[] = [];
+    const matching = buildMatchingQuestion(entry, entries, []);
+    if (matching) candidates.push(matching);
+    const spelling = buildSpellingQuestion(entry, spellingMode);
+    if (spelling) candidates.push(spelling);
+    if (candidates.length > 0) {
+      questions.push(candidates[Math.floor(Math.random() * candidates.length)]);
+    }
+  }
+  return shuffle(questions);
+}
+
+// Map finished-quiz records to the POST /api/quiz/results payload.
+export function toResultPayload(records: QuizAnswerRecord[]): QuizResultPayloadItem[] {
+  return records.map((record) => {
+    const question = record.question;
+    const item: QuizResultPayloadItem = {
+      quiz_type: question.kind,
+      correct: record.correct,
+    };
+    if (question.kind === "cloze" || question.kind === "matching" || question.kind === "spelling") {
+      item.lemma = question.vocab.lemma;
+      item.pos = question.vocab.pos;
+    }
+    return item;
+  });
 }
 
 // ── Dictation word diff ───────────────────────────────────────────────────────

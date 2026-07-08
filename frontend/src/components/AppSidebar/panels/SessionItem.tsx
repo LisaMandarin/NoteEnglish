@@ -104,9 +104,14 @@ export default function SessionItem({
           >
             {/* Session title (or first 80 chars of source text as fallback) */}
             <p className="m-0 text-base font-semibold text-black/85">{title}</p>
-            {/* Last-updated timestamp */}
-            <div className="text-xs leading-tight text-black/55">
+            {/* Last-updated timestamp + quiz proficiency */}
+            <div className="flex items-center gap-2 text-xs leading-tight text-black/55">
               {formatUpdatedAt(session.updated_at)}
+              {typeof session.proficiency === "number" && (
+                <span className="rounded-full bg-(--accent)/12 px-1.5 py-0.5 font-semibold text-(--accent)">
+                  熟練度 {session.proficiency}%
+                </span>
+              )}
             </div>
           </button>
           {/* Edit icon — always visible on touch, hover-only on desktop */}

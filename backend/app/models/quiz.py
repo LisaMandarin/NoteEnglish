@@ -45,7 +45,26 @@ class VocabPoolItem(BaseModel):
     pos: str | None = None
     text: str | None = None
     translation: str | None = None
+    definition: str | None = None
 
 
 class VocabPoolResponse(BaseModel):
+    items: list[VocabPoolItem]
+
+
+class WordMasteryItem(BaseModel):
+    lemma: str
+    pos: str = ""
+    # 1 = 學習中, 2 = 已掌握 (unquizzed words simply have no row).
+    level: int
+    correct_count: int
+    wrong_count: int
+    next_review_at: str | None = None
+
+
+class WordMasteryResponse(BaseModel):
+    items: list[WordMasteryItem]
+
+
+class ReviewWordsResponse(BaseModel):
     items: list[VocabPoolItem]

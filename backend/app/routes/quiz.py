@@ -8,13 +8,17 @@ from app.models.quiz import (
     QuizGenerateResponse,
     QuizResultsRequest,
     QuizResultsResponse,
+    ReviewWordsResponse,
     VocabPoolResponse,
+    WordMasteryResponse,
 )
 from app.services.gemini import ai_generate_quiz
 from app.services.supabase import (
     get_quiz_questions,
+    get_review_words,
     get_session_detail,
     get_vocab_pool,
+    get_word_mastery,
     insert_quiz_results,
     log_api_usage,
     replace_quiz_questions,
@@ -68,3 +72,15 @@ def quiz_results(req: QuizResultsRequest, user: dict = Depends(require_user)):
 @router.get("/quiz/vocab-pool", response_model=VocabPoolResponse)
 def quiz_vocab_pool(user: dict = Depends(require_user)):
     return {"items": get_vocab_pool(user["id"])}
+
+
+# Per-word mastery levels for the badges on vocab cards.
+@router.get("/quiz/mastery", response_model=WordMasteryResponse)
+def quiz_mastery(user: dict = Depends(require_user)):
+    return {"items": get_word_mastery(user["id"])}
+
+
+# Words due for spaced-repetition review (今日複習), with their vocab fields.
+@router.get("/quiz/review-words", response_model=ReviewWordsResponse)
+def quiz_review_words(user: dict = Depends(require_user)):
+    return {"items": get_review_words(user["id"])}

@@ -152,3 +152,23 @@ class VocabPoolTests(unittest.TestCase):
 
         get_pool.assert_called_once_with("user-1")
         self.assertEqual(res, {"items": pool})
+
+
+class MasteryAndReviewTests(unittest.TestCase):
+    def test_mastery_returns_rows(self):
+        rows = [{"lemma": "abandon", "pos": "v.", "level": 2, "correct_count": 3,
+                 "wrong_count": 1, "next_review_at": "2026-07-12T00:00:00+00:00"}]
+        with patch.object(quiz_route, "get_word_mastery", return_value=rows) as get_rows:
+            res = quiz_route.quiz_mastery(user=USER)
+
+        get_rows.assert_called_once_with("user-1")
+        self.assertEqual(res, {"items": rows})
+
+    def test_review_words_returns_due_vocab(self):
+        words = [{"lemma": "abandon", "pos": "v.", "text": "abandon",
+                  "translation": "放棄", "definition": "to give up"}]
+        with patch.object(quiz_route, "get_review_words", return_value=words) as get_words:
+            res = quiz_route.quiz_review_words(user=USER)
+
+        get_words.assert_called_once_with("user-1")
+        self.assertEqual(res, {"items": words})

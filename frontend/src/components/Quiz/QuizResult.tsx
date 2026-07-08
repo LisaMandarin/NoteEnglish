@@ -24,7 +24,7 @@ export default function QuizResult({
 }: {
   records: QuizAnswerRecord[];
   onRetry: () => void;
-  onReconfigure: () => void;
+  onReconfigure?: () => void;
   onExit: () => void;
 }): React.ReactElement {
   const correctCount = records.filter((r) => r.correct).length;
@@ -76,9 +76,11 @@ export default function QuizResult({
         <Button type="primary" size="large" onClick={onRetry}>
           再測一次
         </Button>
-        <Button size="large" onClick={onReconfigure}>
-          重新設定
-        </Button>
+        {onReconfigure && (
+          <Button size="large" onClick={onReconfigure}>
+            重新設定
+          </Button>
+        )}
         <Button size="large" onClick={onExit}>
           返回文章
         </Button>

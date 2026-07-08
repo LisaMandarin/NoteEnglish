@@ -6,6 +6,7 @@ import TipBox from "./TipBox";
 import TokenUsageView from "../shared/TokenUsageView";
 import IssueReportForm from "../IssueReport/IssueReportForm";
 import QuizView from "../Quiz";
+import ReviewQuiz from "../Quiz/ReviewQuiz";
 import { useTranslation } from "../../context/translationContext";
 import HomeDashboard from "./HomeDashboard";
 
@@ -15,12 +16,16 @@ export default function AppMainSection({
   onShowTranslate,
   onDoneReport,
   onShowQuiz,
+  onStartReview,
+  onShowHome,
 }: {
-  mainView: "home" | "translate" | "usage" | "report" | "quiz";
+  mainView: "home" | "translate" | "usage" | "report" | "quiz" | "review";
   username: string;
   onShowTranslate: () => void;
   onDoneReport: () => void;
   onShowQuiz: () => void;
+  onStartReview: () => void;
+  onShowHome: () => void;
 }): React.ReactElement {
   const {
     state: { sessionLoading, sentences },
@@ -40,11 +45,17 @@ export default function AppMainSection({
     content = <TokenUsageView />;
   } else if (mainView === "quiz") {
     content = <QuizView onExit={onShowTranslate} />;
+  } else if (mainView === "review") {
+    content = <ReviewQuiz onExit={onShowHome} />;
   } else if (mainView === "report") {
     content = <IssueReportForm onDone={onDoneReport} />;
   } else if (mainView === "home") {
     content = (
-      <HomeDashboard username={username} onShowTranslate={onShowTranslate} />
+      <HomeDashboard
+        username={username}
+        onShowTranslate={onShowTranslate}
+        onStartReview={onStartReview}
+      />
     );
   } else {
     content = (

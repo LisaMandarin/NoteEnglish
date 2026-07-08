@@ -1,40 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Progress, message } from "antd";
+import { Button, message } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { useTranslation } from "../../context/translationContext";
 import {
   buildQuiz,
   countAvailableQuestions,
+  toResultPayload,
   type QuizConfig,
 } from "../../lib/quiz";
 import { generateQuiz, getVocabPool, submitQuizResults } from "../../lib/api";
+import { invalidateWordMastery } from "../../lib/mastery";
 import type {
   ComprehensionQuizQuestion,
   QuizAnswerRecord,
   QuizQuestion,
-  QuizResultPayloadItem,
   VocabItem,
 } from "../../types";
 import QuizSetup from "./QuizSetup";
-import QuizQuestionCard from "./QuizQuestionCard";
-import QuizResult from "./QuizResult";
+import QuizRunner from "./QuizRunner";
 
-type QuizPhase = "setup" | "running" | "result";
-
-function toResultPayload(records: QuizAnswerRecord[]): QuizResultPayloadItem[] {
-  return records.map((record) => {
-    const question = record.question;
-    const item: QuizResultPayloadItem = {
-      quiz_type: question.kind,
-      correct: record.correct,
-    };
-    if (question.kind === "cloze" || question.kind === "matching" || question.kind === "spelling") {
-      item.lemma = question.vocab.lemma;
-      item.pos = question.vocab.pos;
-    }
-    return item;
-  });
-}
+type QuizPhase = "setup" | "running";
 
 export default function QuizView({ onExit }: { onExit: () => void }): React.ReactElement {
   const {
@@ -43,8 +28,8 @@ export default function QuizView({ onExit }: { onExit: () => void }): React.Reac
   const [phase, setPhase] = useState<QuizPhase>("setup");
   const [config, setConfig] = useState<QuizConfig | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [records, setRecords] = useState<QuizAnswerRecord[]>([]);
+  // Bumped per start so QuizRunner remounts with fresh state.
+  const [runId, setRunId] = useState(0);
   // Cross-article distractor pool; empty until fetched (quiz works without it).
   const [vocabPool, setVocabPool] = useState<VocabItem[]>([]);
   // AI comprehension questions, cached for the visit once generated/fetched.
@@ -114,8 +99,7 @@ export default function QuizView({ onExit }: { onExit: () => void }): React.Reac
     if (nextQuestions.length === 0) return;
     setConfig(nextConfig);
     setQuestions(nextQuestions);
-    setCurrentIndex(0);
-    setRecords([]);
+    setRunId((id) => id + 1);
     setPhase("running");
   }
 
@@ -139,29 +123,10 @@ export default function QuizView({ onExit }: { onExit: () => void }): React.Reac
         session_id: currentSession?.id ?? null,
         results: toResultPayload(all),
       });
+      invalidateWordMastery();
     } catch {
       message.warning("測驗結果未能存檔，但不影響本次成績顯示");
     }
-  }
-
-  function handleAnswered(record: QuizAnswerRecord): void {
-    setRecords((prev) => [...prev, record]);
-  }
-
-  function handleNext(): void {
-    if (currentIndex + 1 >= questions.length) {
-      setPhase("result");
-      void submitResults(records);
-    } else {
-      setCurrentIndex((i) => i + 1);
-    }
-  }
-
-  function handleReconfigure(): void {
-    setPhase("setup");
-    setQuestions([]);
-    setRecords([]);
-    setCurrentIndex(0);
   }
 
   return (
@@ -195,27 +160,13 @@ export default function QuizView({ onExit }: { onExit: () => void }): React.Reac
             starting={starting}
             onStart={(nextConfig) => void startQuiz(nextConfig)}
           />
-        ) : phase === "running" ? (
-          <div className="space-y-5">
-            <Progress
-              percent={Math.round((records.length / questions.length) * 100)}
-              showInfo={false}
-              strokeColor="var(--accent)"
-            />
-            <QuizQuestionCard
-              key={currentIndex}
-              question={questions[currentIndex]}
-              index={currentIndex}
-              total={questions.length}
-              onAnswered={handleAnswered}
-              onNext={handleNext}
-            />
-          </div>
         ) : (
-          <QuizResult
-            records={records}
+          <QuizRunner
+            key={runId}
+            questions={questions}
+            onFinished={(records) => void submitResults(records)}
             onRetry={() => config && void startQuiz(config)}
-            onReconfigure={handleReconfigure}
+            onReconfigure={() => setPhase("setup")}
             onExit={onExit}
           />
         )}

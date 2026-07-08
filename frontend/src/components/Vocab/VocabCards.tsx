@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { VocabItem } from "../../types";
 import { CheckOutlined, DeleteTwoTone, EditTwoTone, MinusCircleOutlined, PlusCircleOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import TtsButton from "../shared/TtsButton";
+import { useWordMastery } from "../../hooks/useWordMastery";
+import { masteryKey } from "../../lib/mastery";
 import { Modal, Tooltip } from 'antd';
 import {
   DndContext,
@@ -146,6 +148,26 @@ function buildUpdates(d: EditDraft): Partial<VocabItem> {
   return { ...rest, ...otherFields };
 }
 
+// Quiz-derived mastery badge (學習中/已掌握); unquizzed words show nothing.
+function MasteryBadge({ v, readOnly }: { v: VocabItem; readOnly: boolean }) {
+  const mastery = useWordMastery();
+  if (readOnly || !mastery) return null;
+  const item = mastery.get(masteryKey(v.lemma || v.text, v.pos));
+  if (!item) return null;
+  const mastered = item.level >= 2;
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+        mastered
+          ? "bg-(--quiz-correct)/12 text-(--quiz-correct)"
+          : "bg-amber-100 text-amber-700"
+      }`}
+    >
+      {mastered ? "已掌握" : "學習中"}
+    </span>
+  );
+}
+
 export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: { v: VocabItem; onDelete?: () => void; onEdit?: (updates: Partial<VocabItem>) => void; dragProps?: object; readOnly?: boolean }) {
   const head = (v.lemma ?? v.text ?? "").trim();
   const hasContent = v.definition || v.example || [1,2,3,4,5].some(i => (v as Record<string, unknown>)[`other_${i}`]);
@@ -229,6 +251,7 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: 
             {v.pos ?? "—"}
           </span>
         </Tooltip>
+        <MasteryBadge v={v} readOnly={readOnly} />
         {head && !readOnly && (
           <TtsButton
             text={head}

@@ -8,6 +8,7 @@ import type {
   StructureNode,
   TokenUsageData,
   VocabPoolItem,
+  WordMasteryItem,
 } from "../types";
 
 type ApiSessionShape = {
@@ -170,6 +171,16 @@ export async function submitQuizResults(payload: {
 
 export async function getVocabPool(): Promise<VocabPoolItem[]> {
   const res = (await apiFetch("/api/quiz/vocab-pool")) as { items?: VocabPoolItem[] };
+  return res.items ?? [];
+}
+
+export async function getWordMastery(): Promise<WordMasteryItem[]> {
+  const res = (await apiFetch("/api/quiz/mastery")) as { items?: WordMasteryItem[] };
+  return res.items ?? [];
+}
+
+export async function getReviewWords(): Promise<VocabPoolItem[]> {
+  const res = (await apiFetch("/api/quiz/review-words")) as { items?: VocabPoolItem[] };
   return res.items ?? [];
 }
 
