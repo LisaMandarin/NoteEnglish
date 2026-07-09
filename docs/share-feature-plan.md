@@ -18,28 +18,20 @@
 
 ---
 
-## Step 1：資料庫 migration
+## Step 1：資料庫 migration ✅（檔案已建立 2026-07-09，分支 `share`）
 
-新增檔案 `supabase/migrations/<執行當天日期>000000_create_sharing.sql`（日期格式參照現有檔案，如 `20260703000000_create_sentence_parses.sql`）：
+檔案：`supabase/migrations/20260709000001_create_sharing.sql`
 
-```sql
--- 分享 token：不可猜測、可撤銷（設回 null），不要直接用 session id 當連結
-alter table study_sessions
-  add column share_token uuid unique default null;
-
--- 收藏表：存引用，不存副本
-create table shared_favorites (
-  user_id    uuid not null references auth.users(id) on delete cascade,
-  session_id uuid not null references study_sessions(id) on delete cascade,
-  created_at timestamptz not null default now(),
-  primary key (user_id, session_id)
-);
-```
+實作時與原草稿的差異（皆為配合 repo 慣例）：
+- `user_id` 不加 `references auth.users(id)`——比照 quiz 表（`quiz_results`、`word_mastery`）的寫法，只留 `UUID NOT NULL`；真正需要的 cascade 是 `session_id → study_sessions`。
+- 加了 `shared_favorites_session_idx`（session_id 索引），供 cascade 刪除與反向查詢用。
+- 比照既有 migrations 補了 `ENABLE ROW LEVEL SECURITY`（無 policy = 只有後端 service role 能碰）。
 
 重點：
 - `on delete cascade` 讓「老師刪文章 → 所有人的收藏自動消失」在資料庫層自動達成，後端不需寫清理邏輯。
 - ⚠️ dev 和 prod 是**同一個 Supabase 專案**，migration 一套用就是正式環境生效，套用前先確認 SQL 無誤。
 
+**待辦**：把 SQL 貼進 Supabase Dashboard SQL editor 執行（本 repo 的 migration 都是手動套用）。
 **驗證**：在 Supabase Dashboard SQL editor 確認欄位與表存在；手動刪一筆測試 session，確認 `shared_favorites` 連動刪除。
 
 ---
