@@ -144,7 +144,9 @@ def list_sessions(user_id: str, limit: int = 5, offset: int = 0) -> dict:
     items = rows[:limit]
     scores = proficiency_by_session(user_id, [str(row["id"]) for row in items])
     for row in items:
-        row["proficiency"] = scores.get(str(row["id"]))
+        session_scores = scores.get(str(row["id"])) or {}
+        row["word_proficiency"] = session_scores.get("word")
+        row["article_proficiency"] = session_scores.get("article")
     return {"items": items, "has_more": has_more}
 
 
@@ -669,16 +671,21 @@ def get_review_words(user_id: str, limit: int = 50) -> list[dict]:
     return words
 
 
-# Weights for the article-proficiency score; renormalized over the components
-# that actually have results (word 題 60%, comprehension 25%, dictation 15%).
-_PROFICIENCY_WEIGHTS = {"word": 0.60, "comprehension": 0.25, "dictation": 0.15}
+# Two separate proficiency scores per session, each from the LATEST quiz run
+# only (no weights, no history): word = cloze/matching/spelling, article =
+# comprehension/dictation. A run is identified by answered_at — all rows of one
+# results submission share the same insert timestamp.
 _WORD_QUIZ_TYPES = {"cloze", "matching", "spelling"}
+_ARTICLE_QUIZ_TYPES = {"comprehension", "dictation"}
 
 
-def proficiency_by_session(user_id: str, session_ids: list[str]) -> dict[str, int]:
-    """Weighted accuracy (0-100) per session from all recorded quiz results.
-    Sessions with no results are absent from the returned dict. Failures
-    return {} — the score is decoration and must never break session lists."""
+def proficiency_by_session(
+    user_id: str, session_ids: list[str]
+) -> dict[str, dict[str, int]]:
+    """Per session: {"word": 0-100, "article": 0-100}, each the plain accuracy
+    of that group's questions in the most recent run containing them; the key
+    is absent when the group was never quizzed. Failures return {} — the score
+    is decoration and must never break session lists."""
     if not session_ids:
         return {}
     try:
@@ -687,7 +694,7 @@ def proficiency_by_session(user_id: str, session_ids: list[str]) -> dict[str, in
             {
                 "user_id": f"eq.{user_id}",
                 "session_id": f"in.({id_list})",
-                "select": "session_id,quiz_type,correct",
+                "select": "session_id,quiz_type,correct,answered_at",
                 "limit": 10000,
             }
         )
@@ -700,28 +707,31 @@ def proficiency_by_session(user_id: str, session_ids: list[str]) -> dict[str, in
         logger.warning("Failed to load quiz results for proficiency: user=%s", user_id)
         return {}
 
-    stats: dict[str, dict[str, list[int]]] = {}
+    # latest[(session, group)] = [answered_at, correct, total]
+    latest: dict[tuple[str, str], list] = {}
     for row in rows:
         quiz_type = row.get("quiz_type")
-        group = "word" if quiz_type in _WORD_QUIZ_TYPES else quiz_type
-        if group not in _PROFICIENCY_WEIGHTS:
+        if quiz_type in _WORD_QUIZ_TYPES:
+            group = "word"
+        elif quiz_type in _ARTICLE_QUIZ_TYPES:
+            group = "article"
+        else:
             continue
-        session_groups = stats.setdefault(str(row["session_id"]), {})
-        tally = session_groups.setdefault(group, [0, 0])
-        tally[0] += 1 if row.get("correct") else 0
-        tally[1] += 1
+        answered_at = row.get("answered_at") or ""
+        key = (str(row["session_id"]), group)
+        tally = latest.get(key)
+        if tally is None or answered_at > tally[0]:
+            tally = [answered_at, 0, 0]
+            latest[key] = tally
+        elif answered_at < tally[0]:
+            continue
+        tally[1] += 1 if row.get("correct") else 0
+        tally[2] += 1
 
-    scores: dict[str, int] = {}
-    for session_id, groups in stats.items():
-        weight_sum = sum(_PROFICIENCY_WEIGHTS[g] for g in groups)
-        if weight_sum <= 0:
-            continue
-        weighted = sum(
-            _PROFICIENCY_WEIGHTS[g] * (correct / total)
-            for g, (correct, total) in groups.items()
-            if total > 0
-        )
-        scores[session_id] = round(100 * weighted / weight_sum)
+    scores: dict[str, dict[str, int]] = {}
+    for (session_id, group), (_, correct, total) in latest.items():
+        if total > 0:
+            scores.setdefault(session_id, {})[group] = round(100 * correct / total)
     return scores
 
 

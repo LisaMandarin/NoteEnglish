@@ -173,8 +173,10 @@ export type SessionRecord = {
   source_text?: string;
   updated_at: string;
   created_at?: string;
-  // Weighted quiz accuracy 0-100; null/absent when the session has no results.
-  proficiency?: number | null;
+  // Accuracy 0-100 of the LATEST quiz run per group; null/absent when that
+  // group was never quizzed. word = 克漏字/字義配對/拼字, article = 理解問答/聽寫.
+  word_proficiency?: number | null;
+  article_proficiency?: number | null;
 };
 
 export type SessionPage = {

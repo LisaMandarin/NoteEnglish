@@ -9,6 +9,7 @@ import {
 import { useTranslation } from "../../context/translationContext";
 import { getReviewWords, listSessions } from "../../lib/api";
 import { formatUpdatedAt } from "../../lib/formatUpdatedAt";
+import ProficiencyBadges from "../shared/ProficiencyBadges";
 import type { SessionRecord } from "../../types";
 
 const RECENT_SESSION_LIMIT = 5;
@@ -253,12 +254,15 @@ export default function HomeDashboard({
                             ? "正在開啟學習紀錄⋯⋯"
                             : preview || formatUpdatedAt(session.updated_at)}
                         </span>
-                      </span>
-                      {typeof session.proficiency === "number" && (
-                        <span className="shrink-0 rounded-full bg-(--accent)/12 px-2 py-0.5 text-xs font-semibold text-(--accent)">
-                          熟練度 {session.proficiency}%
+                        {/* Mobile: badges under the title so they don't squeeze it out */}
+                        <span className="mt-1 flex flex-wrap items-center gap-1.5 sm:hidden">
+                          <ProficiencyBadges session={session} />
                         </span>
-                      )}
+                      </span>
+                      {/* Desktop: badges inline before the date */}
+                      <span className="hidden shrink-0 items-center gap-1.5 sm:flex">
+                        <ProficiencyBadges session={session} />
+                      </span>
                       <span className="hidden shrink-0 text-xs font-medium text-black/45 sm:block">
                         {formatUpdatedAt(session.updated_at)}
                       </span>

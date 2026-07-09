@@ -54,26 +54,31 @@ class ComputeMasteryUpdateTests(unittest.TestCase):
 class ProficiencyTests(unittest.TestCase):
     def _rows(self):
         return [
-            # session-1: word 3/4 correct, dictation 1/2, no comprehension.
-            {"session_id": "session-1", "quiz_type": "cloze", "correct": True},
-            {"session_id": "session-1", "quiz_type": "matching", "correct": True},
-            {"session_id": "session-1", "quiz_type": "spelling", "correct": True},
-            {"session_id": "session-1", "quiz_type": "spelling", "correct": False},
-            {"session_id": "session-1", "quiz_type": "dictation", "correct": True},
-            {"session_id": "session-1", "quiz_type": "dictation", "correct": False},
-            # session-2: comprehension only, all correct.
-            {"session_id": "session-2", "quiz_type": "comprehension", "correct": True},
-            {"session_id": "session-2", "quiz_type": "comprehension", "correct": True},
+            # session-1, older word run (2/4): must be ignored — latest run wins.
+            {"session_id": "session-1", "quiz_type": "cloze", "correct": True, "answered_at": "2026-07-08T10:00:00+00:00"},
+            {"session_id": "session-1", "quiz_type": "cloze", "correct": True, "answered_at": "2026-07-08T10:00:00+00:00"},
+            {"session_id": "session-1", "quiz_type": "matching", "correct": False, "answered_at": "2026-07-08T10:00:00+00:00"},
+            {"session_id": "session-1", "quiz_type": "spelling", "correct": False, "answered_at": "2026-07-08T10:00:00+00:00"},
+            # session-1, latest word run: all correct → 100%.
+            {"session_id": "session-1", "quiz_type": "cloze", "correct": True, "answered_at": "2026-07-09T10:00:00+00:00"},
+            {"session_id": "session-1", "quiz_type": "matching", "correct": True, "answered_at": "2026-07-09T10:00:00+00:00"},
+            # session-1, article group (dictation 1/2, earlier run than the word one).
+            {"session_id": "session-1", "quiz_type": "dictation", "correct": True, "answered_at": "2026-07-08T10:00:00+00:00"},
+            {"session_id": "session-1", "quiz_type": "dictation", "correct": False, "answered_at": "2026-07-08T10:00:00+00:00"},
+            # session-2: comprehension only, 1/2 → article 50%, no word score.
+            {"session_id": "session-2", "quiz_type": "comprehension", "correct": True, "answered_at": "2026-07-09T09:00:00+00:00"},
+            {"session_id": "session-2", "quiz_type": "comprehension", "correct": False, "answered_at": "2026-07-09T09:00:00+00:00"},
         ]
 
-    def test_weighted_score_renormalizes_missing_components(self):
+    def test_latest_run_per_group_no_weights_no_history(self):
         with patch.object(sb, "_request_json", return_value=self._rows()):
             scores = sb.proficiency_by_session("user-1", ["session-1", "session-2"])
 
-        # session-1: (.75*.60 + .5*.15) / (.60+.15) = .525/.75 → 70%.
-        self.assertEqual(scores["session-1"], 70)
-        # session-2: comprehension 1.0 over weight .25 → 100%.
-        self.assertEqual(scores["session-2"], 100)
+        # Word score = latest word run only (2/2), not the older 2/4 run.
+        # Article score = latest dictation run (1/2); groups stay independent.
+        self.assertEqual(scores["session-1"], {"word": 100, "article": 50})
+        # Never took a word quiz → no "word" key at all.
+        self.assertEqual(scores["session-2"], {"article": 50})
 
     def test_failure_returns_empty_and_never_raises(self):
         with patch.object(sb, "_request_json", side_effect=RuntimeError("boom")):
