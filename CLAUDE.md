@@ -17,7 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Constraints
 
 - Python 3.10–3.12 only (spaCy wheels don't support 3.13+)
-- `GEMINI_API_KEY` is required for all AI routes: `/api/translate`, `/api/vocab/lookup`, `/api/parse`, and `/api/ocr`
+- `GEMINI_API_KEY` is required for all AI routes: `/api/translate`, `/api/vocab/lookup`, `/api/parse`, `/api/ocr`, and `/api/quiz/generate`
 - All routes except `/api/health` and `/api/debug/*` require a valid Supabase Bearer token
 
 ## Working Rules

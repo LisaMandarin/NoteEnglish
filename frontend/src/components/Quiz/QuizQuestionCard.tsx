@@ -1,17 +1,21 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button, Input, Tag } from "antd";
 import type {
-  ClozeQuestion,
-  MatchingQuestion,
+  DictationQuestion,
   QuizAnswerRecord,
   QuizQuestion,
   SpellingQuestion,
 } from "../../types";
+import { diffDictation, type DiffToken } from "../../lib/quiz";
+import QuizAudioButton from "./QuizAudioButton";
+import QuizAudioPlayer from "./QuizAudioPlayer";
 
 const KIND_LABELS: Record<QuizQuestion["kind"], string> = {
   cloze: "克漏字",
   matching: "字義配對",
   spelling: "拼字",
+  dictation: "聽寫",
+  comprehension: "閱讀理解",
 };
 
 function PosBadge({ pos }: { pos?: string }): React.ReactElement | null {
@@ -35,22 +39,24 @@ function optionClassName(state: "idle" | "correct" | "wrong" | "muted"): string 
 }
 
 function ChoiceOptions({
-  question,
+  options,
+  answerIndex,
   record,
   selectedIndex,
   onSelect,
 }: {
-  question: ClozeQuestion | MatchingQuestion;
+  options: string[];
+  answerIndex: number;
   record: QuizAnswerRecord | null;
   selectedIndex: number | null;
   onSelect: (optionIndex: number) => void;
 }): React.ReactElement {
   return (
     <div className="space-y-3">
-      {question.options.map((option, idx) => {
+      {options.map((option, idx) => {
         let state: "idle" | "correct" | "wrong" | "muted" = "idle";
         if (record) {
-          if (idx === question.answerIndex) state = "correct";
+          if (idx === answerIndex) state = "correct";
           else if (idx === selectedIndex) state = "wrong";
           else state = "muted";
         }
@@ -76,6 +82,7 @@ function SpellingHint({ question }: { question: SpellingQuestion }): React.React
   return (
     <div className="space-y-1">
       <p className="m-0 flex items-center gap-2 text-lg">
+        <QuizAudioButton text={question.answer} ariaLabel="播放單字發音" />
         <span className="font-medium">{translation || definition}</span>
         <PosBadge pos={question.vocab.pos} />
       </p>
@@ -206,25 +213,120 @@ function TypingAnswer({
   );
 }
 
+function DiffLine({ label, tokens }: { label: string; tokens: DiffToken[] }): React.ReactElement {
+  return (
+    <p className="m-0 text-base leading-relaxed">
+      <span className="mr-2 text-sm opacity-60">{label}</span>
+      {tokens.map((token, idx) => (
+        <span
+          key={idx}
+          className={
+            token.ok
+              ? "text-(--quiz-correct)"
+              : "rounded bg-(--quiz-wrong)/10 px-0.5 text-(--quiz-wrong) font-medium"
+          }
+        >
+          {token.text}{" "}
+        </span>
+      ))}
+    </p>
+  );
+}
+
+function DictationAnswer({
+  question,
+  record,
+  onSubmit,
+}: {
+  question: DictationQuestion;
+  record: QuizAnswerRecord | null;
+  onSubmit: (attempt: string) => void;
+}): React.ReactElement {
+  const [typed, setTyped] = useState("");
+  const diff = useMemo(
+    () => (record ? diffDictation(question.answer, record.userAnswer) : null),
+    [record, question.answer],
+  );
+
+  function submit(): void {
+    if (record || !typed.trim()) return;
+    onSubmit(typed.trim());
+  }
+
+  // flex gap instead of space-y: antd's unlayered reset zeroes textarea/button
+  // margins, which would swallow space-y's sibling margins here.
+  return (
+    <div className="flex flex-col items-start gap-4">
+      <div className="w-full space-y-2">
+        <p className="m-0 text-base opacity-70">
+          聽音檔，寫出你聽到的句子（可重複播放、拖曳進度條、調整速度）
+        </p>
+        <QuizAudioPlayer text={question.answer} />
+      </div>
+
+      <Input.TextArea
+        className="w-full"
+        autoFocus
+        value={typed}
+        disabled={record != null}
+        placeholder="輸入你聽到的句子"
+        autoSize={{ minRows: 2, maxRows: 4 }}
+        autoCapitalize="off"
+        autoComplete="off"
+        spellCheck={false}
+        onChange={(e) => setTyped(e.target.value)}
+        onPressEnter={(e) => {
+          e.preventDefault();
+          submit();
+        }}
+      />
+      {!record && (
+        <Button type="primary" size="large" disabled={!typed.trim()} onClick={submit}>
+          確認
+        </Button>
+      )}
+
+      {diff && (
+        <div className="w-full space-y-2 rounded-xl border-2 border-(--card-border)/20 px-4 py-3">
+          <DiffLine label="正確句子" tokens={diff.expectedTokens} />
+          <DiffLine label="你的答案" tokens={diff.attemptTokens} />
+          {question.translation && (
+            <p className="m-0 text-sm opacity-60">{question.translation}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function QuizQuestionCard({
   question,
   index,
   total,
-  onDone,
+  onAnswered,
+  onNext,
 }: {
   question: QuizQuestion;
   index: number;
   total: number;
-  onDone: (record: QuizAnswerRecord) => void;
+  // Fired the moment the user answers (drives records and the progress bar).
+  onAnswered: (record: QuizAnswerRecord) => void;
+  // Fired when the user advances past the feedback.
+  onNext: () => void;
 }): React.ReactElement {
   const [record, setRecord] = useState<QuizAnswerRecord | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const isLast = index + 1 === total;
 
+  function submitRecord(next: QuizAnswerRecord): void {
+    setRecord(next);
+    onAnswered(next);
+  }
+
   function answerChoice(optionIndex: number): void {
-    if (record || question.kind === "spelling") return;
+    if (record || question.kind === "spelling" || question.kind === "dictation") return;
     setSelectedIndex(optionIndex);
-    setRecord({
+    submitRecord({
       question,
       userAnswer: question.options[optionIndex],
       correct: optionIndex === question.answerIndex,
@@ -233,15 +335,28 @@ export default function QuizQuestionCard({
 
   function answerSpelling(attempt: string): void {
     if (record || question.kind !== "spelling") return;
-    setRecord({
+    submitRecord({
       question,
       userAnswer: attempt,
       correct: attempt.trim().toLowerCase() === question.answer,
     });
   }
 
-  const correctAnswer =
-    question.kind === "spelling" ? question.answer : question.options[question.answerIndex];
+  function answerDictation(attempt: string): void {
+    if (record || question.kind !== "dictation") return;
+    submitRecord({
+      question,
+      userAnswer: attempt,
+      correct: diffDictation(question.answer, attempt).correct,
+    });
+  }
+
+  let correctAnswer = "";
+  if (question.kind === "spelling" || question.kind === "dictation") {
+    correctAnswer = question.answer;
+  } else {
+    correctAnswer = question.options[question.answerIndex];
+  }
 
   return (
     <div className="space-y-6">
@@ -260,6 +375,9 @@ export default function QuizQuestionCard({
         </p>
       )}
       {question.kind === "spelling" && <SpellingHint question={question} />}
+      {question.kind === "comprehension" && (
+        <p className="m-0 text-lg leading-relaxed">{question.question}</p>
+      )}
 
       {question.kind === "spelling" ? (
         question.mode === "scramble" ? (
@@ -267,9 +385,12 @@ export default function QuizQuestionCard({
         ) : (
           <TypingAnswer record={record} onSubmit={answerSpelling} />
         )
+      ) : question.kind === "dictation" ? (
+        <DictationAnswer question={question} record={record} onSubmit={answerDictation} />
       ) : (
         <ChoiceOptions
-          question={question}
+          options={question.options}
+          answerIndex={question.answerIndex}
           record={record}
           selectedIndex={selectedIndex}
           onSelect={answerChoice}
@@ -285,12 +406,19 @@ export default function QuizQuestionCard({
           }`}
           role="status"
         >
-          {record.correct ? "答對了！" : `答錯了，正確答案：${correctAnswer}`}
+          {record.correct
+            ? "答對了！"
+            : question.kind === "dictation"
+              ? "有些地方不對，看看上面的比對結果"
+              : `答錯了，正確答案：${correctAnswer}`}
+          {question.kind === "comprehension" && question.explanation && (
+            <p className="m-0 mt-1 text-sm font-normal opacity-80">{question.explanation}</p>
+          )}
         </div>
       )}
 
       {record && (
-        <Button type="primary" size="large" onClick={() => onDone(record)}>
+        <Button type="primary" size="large" onClick={onNext}>
           {isLast ? "查看成績" : "下一題"}
         </Button>
       )}

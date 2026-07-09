@@ -12,6 +12,7 @@ from app.routes.ocr import router as ocr_router
 from app.routes.parse import router as parse_router
 from app.routes.issue_report import router as issue_report_router
 from app.routes.tts import router as tts_router
+from app.routes.quiz import router as quiz_router
 from app.core.config import settings
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -41,3 +42,4 @@ app.include_router(ocr_router, prefix="/api")
 app.include_router(parse_router, prefix="/api")
 app.include_router(issue_report_router, prefix="/api")
 app.include_router(tts_router, prefix="/api")
+app.include_router(quiz_router, prefix="/api")

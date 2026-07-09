@@ -2,7 +2,7 @@ import json
 import logging
 import re
 import ssl
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib import error, parse, request
 
@@ -141,7 +141,13 @@ def list_sessions(user_id: str, limit: int = 5, offset: int = 0) -> dict:
     )
     rows = data or []
     has_more = len(rows) > limit
-    return {"items": rows[:limit], "has_more": has_more}
+    items = rows[:limit]
+    scores = proficiency_by_session(user_id, [str(row["id"]) for row in items])
+    for row in items:
+        session_scores = scores.get(str(row["id"])) or {}
+        row["word_proficiency"] = session_scores.get("word")
+        row["article_proficiency"] = session_scores.get("article")
+    return {"items": items, "has_more": has_more}
 
 
 def get_session_detail(user_id: str, session_id: str) -> dict:
@@ -410,6 +416,361 @@ def save_parse(
         )
     except Exception:
         logger.warning("Failed to cache sentence parse (hash=%s)", sentence_hash)
+
+
+def get_quiz_questions(user_id: str, session_id: str) -> list[dict]:
+    """Cached comprehension questions for a session, ordered by index."""
+    query = parse.urlencode(
+        {
+            "session_id": f"eq.{session_id}",
+            "user_id": f"eq.{user_id}",
+            "select": "question,options,answer_index,explanation",
+            "order": "question_index.asc",
+        }
+    )
+    return _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/quiz_questions?{query}",
+        headers=_service_headers(),
+    ) or []
+
+
+def replace_quiz_questions(user_id: str, session_id: str, questions: list[dict]) -> None:
+    """Overwrite a session's cached comprehension questions."""
+    query = parse.urlencode({"session_id": f"eq.{session_id}", "user_id": f"eq.{user_id}"})
+    _request_json(
+        "DELETE",
+        f"{settings.supabase_url}/rest/v1/quiz_questions?{query}",
+        headers=_service_headers(),
+    )
+    rows = [
+        {
+            "session_id": session_id,
+            "user_id": user_id,
+            "question_index": idx,
+            "question": question["question"],
+            "options": question["options"],
+            "answer_index": question["answer_index"],
+            "explanation": question.get("explanation") or "",
+        }
+        for idx, question in enumerate(questions)
+    ]
+    if rows:
+        _request_json(
+            "POST",
+            f"{settings.supabase_url}/rest/v1/quiz_questions",
+            headers=_service_headers(),
+            payload=rows,
+        )
+
+
+def insert_quiz_results(user_id: str, session_id: str | None, results: list[dict]) -> None:
+    rows = [
+        {
+            "user_id": user_id,
+            "session_id": session_id,
+            "quiz_type": result["quiz_type"],
+            "lemma": result.get("lemma") or None,
+            "pos": result.get("pos") or None,
+            "correct": result["correct"],
+        }
+        for result in results
+    ]
+    if rows:
+        _request_json(
+            "POST",
+            f"{settings.supabase_url}/rest/v1/quiz_results",
+            headers=_service_headers(),
+            payload=rows,
+        )
+
+
+# Mastery levels: 0 = never quizzed (no row), 1 = 學習中, 2 = 已掌握.
+MASTERY_LEARNING = 1
+MASTERY_MASTERED = 2
+
+# Spaced-repetition ladder in days. A wrong answer resets the position to 0
+# (review again tomorrow); each correct review climbs to the next step.
+_REVIEW_LADDER = [1, 3, 7, 14]
+
+
+def _next_interval_days(current: int) -> int:
+    for step in _REVIEW_LADDER:
+        if step > current:
+            return step
+    return _REVIEW_LADDER[-1]
+
+
+def compute_mastery_update(
+    existing_row: dict,
+    counts: dict[str, int],
+    correct_type_count: int,
+    now: datetime,
+) -> dict:
+    """Level and SRS fields for one word after a batch of quiz results.
+
+    Mastered requires correct answers in at least two different quiz types;
+    any wrong answer in the batch drops the word back to learning and resets
+    its review to tomorrow."""
+    had_wrong = counts["wrong"] > 0
+    level = (
+        MASTERY_MASTERED
+        if not had_wrong and correct_type_count >= 2
+        else MASTERY_LEARNING
+    )
+    if had_wrong:
+        interval = 0
+        next_review = now + timedelta(days=1)
+    else:
+        interval = _next_interval_days(int(existing_row.get("review_interval_days", 0)))
+        next_review = now + timedelta(days=interval)
+    return {
+        "correct_count": int(existing_row.get("correct_count", 0)) + counts["correct"],
+        "wrong_count": int(existing_row.get("wrong_count", 0)) + counts["wrong"],
+        "level": level,
+        "review_interval_days": interval,
+        "next_review_at": next_review.isoformat(),
+        "last_result_at": now.isoformat(),
+    }
+
+
+def update_word_mastery(user_id: str, results: list[dict]) -> None:
+    """Fold vocab-question results into per-word counters, mastery levels, and
+    the spaced-repetition schedule.
+
+    Keyed by (user_id, lemma, pos) — the app's vocab identity — because
+    vocab_notes rows are deleted and reinserted on every session save. A
+    mastery-update failure must not fail the request: quiz_results already
+    holds the raw data, so everything here can always be rebuilt."""
+    counters: dict[tuple[str, str], dict[str, int]] = {}
+    for result in results:
+        lemma = (result.get("lemma") or "").strip().lower()
+        if not lemma:
+            continue  # dictation/comprehension results carry no word identity
+        pos = (result.get("pos") or "").strip().lower()
+        entry = counters.setdefault((lemma, pos), {"correct": 0, "wrong": 0})
+        entry["correct" if result["correct"] else "wrong"] += 1
+    if not counters:
+        return
+
+    try:
+        lemma_list = ",".join(
+            '"{}"'.format(lemma.replace('"', "")) for lemma, _ in counters
+        )
+        query = parse.urlencode(
+            {
+                "user_id": f"eq.{user_id}",
+                "lemma": f"in.({lemma_list})",
+                "select": "lemma,pos,correct_count,wrong_count,level,review_interval_days",
+            }
+        )
+        existing_rows = _request_json(
+            "GET",
+            f"{settings.supabase_url}/rest/v1/word_mastery?{query}",
+            headers=_service_headers(),
+        ) or []
+        existing = {(row["lemma"], row["pos"]): row for row in existing_rows}
+
+        # Distinct quiz types answered correctly per word (including the batch
+        # just inserted into quiz_results), for the two-different-types rule.
+        # Normalized in Python because PostgREST cannot lower() a filter.
+        types_query = parse.urlencode(
+            {
+                "user_id": f"eq.{user_id}",
+                "correct": "eq.true",
+                "select": "lemma,pos,quiz_type",
+                "limit": 10000,
+            }
+        )
+        correct_rows = _request_json(
+            "GET",
+            f"{settings.supabase_url}/rest/v1/quiz_results?{types_query}",
+            headers=_service_headers(),
+        ) or []
+        correct_types: dict[tuple[str, str], set[str]] = {}
+        for row in correct_rows:
+            key = (
+                (row.get("lemma") or "").strip().lower(),
+                (row.get("pos") or "").strip().lower(),
+            )
+            if key in counters:
+                correct_types.setdefault(key, set()).add(row["quiz_type"])
+
+        now = datetime.now(timezone.utc)
+        payload = []
+        for (lemma, pos), counts in counters.items():
+            update = compute_mastery_update(
+                existing.get((lemma, pos), {}),
+                counts,
+                len(correct_types.get((lemma, pos), set())),
+                now,
+            )
+            payload.append({"user_id": user_id, "lemma": lemma, "pos": pos, **update})
+        _request_json(
+            "POST",
+            f"{settings.supabase_url}/rest/v1/word_mastery"
+            "?on_conflict=user_id,lemma,pos",
+            headers=_service_headers("resolution=merge-duplicates,return=minimal"),
+            payload=payload,
+        )
+    except Exception:
+        logger.warning("Failed to update word mastery for user=%s", user_id)
+
+
+def get_word_mastery(user_id: str, limit: int = 2000) -> list[dict]:
+    """Every mastery row for the user, for badges on vocab cards."""
+    query = parse.urlencode(
+        {
+            "user_id": f"eq.{user_id}",
+            "select": "lemma,pos,level,correct_count,wrong_count,next_review_at",
+            "limit": limit,
+        }
+    )
+    return _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/word_mastery?{query}",
+        headers=_service_headers(),
+    ) or []
+
+
+def get_review_words(user_id: str, limit: int = 50) -> list[dict]:
+    """Words due for review (next_review_at <= now), joined with their vocab
+    fields so the frontend can build matching/spelling questions. Words whose
+    vocab notes were deleted are skipped — there is nothing to quiz."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    query = parse.urlencode(
+        {
+            "user_id": f"eq.{user_id}",
+            "next_review_at": f"lte.{now_iso}",
+            "select": "lemma,pos",
+            "order": "next_review_at.asc",
+            "limit": limit,
+        }
+    )
+    due_rows = _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/word_mastery?{query}",
+        headers=_service_headers(),
+    ) or []
+    if not due_rows:
+        return []
+
+    pool = {
+        (
+            (item.get("lemma") or "").strip().lower(),
+            (item.get("pos") or "").strip().lower(),
+        ): item
+        for item in get_vocab_pool(user_id)
+    }
+    words: list[dict] = []
+    for row in due_rows:
+        key = ((row.get("lemma") or "").lower(), (row.get("pos") or "").lower())
+        item = pool.get(key)
+        if item:
+            words.append(item)
+    return words
+
+
+# Two separate proficiency scores per session, each from the LATEST quiz run
+# only (no weights, no history): word = cloze/matching/spelling, article =
+# comprehension/dictation. A run is identified by answered_at — all rows of one
+# results submission share the same insert timestamp.
+_WORD_QUIZ_TYPES = {"cloze", "matching", "spelling"}
+_ARTICLE_QUIZ_TYPES = {"comprehension", "dictation"}
+
+
+def proficiency_by_session(
+    user_id: str, session_ids: list[str]
+) -> dict[str, dict[str, int]]:
+    """Per session: {"word": 0-100, "article": 0-100}, each the plain accuracy
+    of that group's questions in the most recent run containing them; the key
+    is absent when the group was never quizzed. Failures return {} — the score
+    is decoration and must never break session lists."""
+    if not session_ids:
+        return {}
+    try:
+        id_list = ",".join(f'"{sid}"' for sid in session_ids)
+        query = parse.urlencode(
+            {
+                "user_id": f"eq.{user_id}",
+                "session_id": f"in.({id_list})",
+                "select": "session_id,quiz_type,correct,answered_at",
+                "limit": 10000,
+            }
+        )
+        rows = _request_json(
+            "GET",
+            f"{settings.supabase_url}/rest/v1/quiz_results?{query}",
+            headers=_service_headers(),
+        ) or []
+    except Exception:
+        logger.warning("Failed to load quiz results for proficiency: user=%s", user_id)
+        return {}
+
+    # latest[(session, group)] = [answered_at, correct, total]
+    latest: dict[tuple[str, str], list] = {}
+    for row in rows:
+        quiz_type = row.get("quiz_type")
+        if quiz_type in _WORD_QUIZ_TYPES:
+            group = "word"
+        elif quiz_type in _ARTICLE_QUIZ_TYPES:
+            group = "article"
+        else:
+            continue
+        answered_at = row.get("answered_at") or ""
+        key = (str(row["session_id"]), group)
+        tally = latest.get(key)
+        if tally is None or answered_at > tally[0]:
+            tally = [answered_at, 0, 0]
+            latest[key] = tally
+        elif answered_at < tally[0]:
+            continue
+        tally[1] += 1 if row.get("correct") else 0
+        tally[2] += 1
+
+    scores: dict[str, dict[str, int]] = {}
+    for (session_id, group), (_, correct, total) in latest.items():
+        if total > 0:
+            scores.setdefault(session_id, {})[group] = round(100 * correct / total)
+    return scores
+
+
+def get_vocab_pool(user_id: str, limit: int = 1000) -> list[dict]:
+    """The user's vocab across all sessions, deduped by (lemma, pos) — used as
+    the cross-article distractor pool for quiz multiple-choice options."""
+    query = parse.urlencode(
+        {
+            "user_id": f"eq.{user_id}",
+            "select": "lemma,pos,selected_text,translation,definition",
+            "limit": limit,
+        }
+    )
+    rows = _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/vocab_notes?{query}",
+        headers=_service_headers(),
+    ) or []
+
+    seen: set[tuple[str, str]] = set()
+    items: list[dict] = []
+    for row in rows:
+        lemma = (row.get("lemma") or "").strip()
+        if not lemma:
+            continue
+        key = (lemma.lower(), (row.get("pos") or "").strip().lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        items.append(
+            {
+                "lemma": lemma,
+                "pos": row.get("pos"),
+                "text": row.get("selected_text"),
+                "translation": row.get("translation"),
+                "definition": row.get("definition"),
+            }
+        )
+    return items
 
 
 def log_api_usage(user_id: str, endpoint: str, model: str, usage: dict) -> None:

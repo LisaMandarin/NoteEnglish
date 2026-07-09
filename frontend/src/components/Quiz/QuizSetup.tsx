@@ -1,26 +1,46 @@
 import { useState } from "react";
-import { Button, Checkbox, Radio } from "antd";
+import { Button, Checkbox, InputNumber, Radio } from "antd";
+import {
+  BookOutlined,
+  FileTextOutlined,
+  InfoCircleOutlined,
+  ReloadOutlined,
+} from "@ant-design/icons";
 import type { QuizTypeKey, SpellingMode } from "../../types";
 import type { QuizConfig } from "../../lib/quiz";
 
-const TYPE_ROWS: { key: QuizTypeKey; label: string; description: string }[] = [
+type FrontendTypeKey = Exclude<QuizTypeKey, "comprehension">;
+
+const TYPE_ROWS: { key: FrontendTypeKey; label: string; description: string }[] = [
   { key: "cloze", label: "克漏字", description: "把文章句子挖空，選出正確的單字" },
   { key: "matching", label: "字義配對", description: "選出單字的中文意思" },
-  { key: "spelling", label: "拼字", description: "依中文釋義拼出英文單字" },
+  { key: "spelling", label: "拼字", description: "聽發音、看中文釋義，拼出英文單字" },
+  { key: "dictation", label: "聽寫", description: "聽句子錄音，寫出完整句子" },
 ];
 
-// value 0 stands for "no cap" (Radio values must be non-null).
-const LIMIT_OPTIONS: { label: string; value: number }[] = [
-  { label: "10 題", value: 10 },
-  { label: "20 題", value: 20 },
-  { label: "全部", value: 0 },
-];
+// value 0 stands for "no cap" (Radio values must be non-null). A cap is only
+// offered when the selected types can actually produce more than that many.
+const LIMIT_STEPS = [10, 20];
+
+export type ComprehensionSetupState = {
+  // False when the article has no saved session yet (AI questions need one).
+  available: boolean;
+  // Cached question count from a previous generate; null before the first one.
+  count: number | null;
+  regenerating: boolean;
+  onRegenerate: () => void;
+};
 
 export default function QuizSetup({
   counts,
+  comprehension,
+  starting,
   onStart,
 }: {
-  counts: Record<QuizTypeKey, number>;
+  counts: Record<FrontendTypeKey, number>;
+  comprehension: ComprehensionSetupState;
+  // True while AI questions are being generated for quiz start.
+  starting: boolean;
   onStart: (config: QuizConfig) => void;
 }): React.ReactElement {
   const [selectedTypes, setSelectedTypes] = useState<QuizTypeKey[]>(
@@ -28,8 +48,24 @@ export default function QuizSetup({
   );
   const [spellingMode, setSpellingMode] = useState<SpellingMode>("scramble");
   const [limit, setLimit] = useState<number>(10);
+  // null until the user picks a number; then it caps how many dictation
+  // questions get drawn from the eligible sentences.
+  const [dictationCount, setDictationCount] = useState<number | null>(null);
 
-  const totalSelected = selectedTypes.reduce((sum, key) => sum + counts[key], 0);
+  const dictationSelected = selectedTypes.includes("dictation");
+  const effectiveDictation = Math.min(dictationCount ?? counts.dictation, counts.dictation);
+  const totalSelected = selectedTypes.reduce((sum, key) => {
+    if (key === "comprehension") return sum;
+    if (key === "dictation") return sum + effectiveDictation;
+    return sum + counts[key];
+  }, 0);
+  const comprehensionSelected = selectedTypes.includes("comprehension");
+  const canStart = totalSelected > 0 || comprehensionSelected;
+
+  // Only caps smaller than the available total make sense as choices; when the
+  // stored choice is no longer offered (types were deselected), fall back to 全部.
+  const limitChoices = LIMIT_STEPS.filter((step) => step < totalSelected);
+  const effectiveLimit = limitChoices.includes(limit) ? limit : 0;
 
   function toggleType(key: QuizTypeKey, checked: boolean): void {
     setSelectedTypes((prev) =>
@@ -38,11 +74,12 @@ export default function QuizSetup({
   }
 
   function handleStart(): void {
-    if (totalSelected === 0) return;
+    if (!canStart || starting) return;
     onStart({
       types: selectedTypes,
       spellingMode,
-      questionLimit: limit === 0 ? null : limit,
+      questionLimit: effectiveLimit === 0 ? null : effectiveLimit,
+      dictationLimit: dictationSelected ? effectiveDictation : null,
     });
   }
 
@@ -60,12 +97,59 @@ export default function QuizSetup({
               >
                 <span className="font-medium">{row.label}</span>
                 <span className="ml-2 text-sm opacity-60">
-                  {counts[row.key] > 0 ? `${counts[row.key]} 題` : "無可出題的單字"}
+                  {counts[row.key] > 0
+                    ? `${counts[row.key]} 題`
+                    : row.key === "dictation"
+                      ? "沒有適合聽寫的句子"
+                      : "無可出題的單字"}
                 </span>
               </Checkbox>
               <span className="text-sm opacity-60">{row.description}</span>
+              {row.key === "dictation" && dictationSelected && counts.dictation > 1 && (
+                <span className="flex items-center gap-1 text-sm">
+                  本次出
+                  <InputNumber
+                    size="small"
+                    min={1}
+                    max={counts.dictation}
+                    value={effectiveDictation}
+                    onChange={(value: number | null) => setDictationCount(value)}
+                    style={{ width: 60 }}
+                    aria-label="聽寫題數"
+                  />
+                  題
+                </span>
+              )}
             </div>
           ))}
+
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <Checkbox
+              checked={comprehensionSelected}
+              disabled={!comprehension.available}
+              onChange={(e) => toggleType("comprehension", e.target.checked)}
+            >
+              <span className="font-medium">閱讀理解</span>
+              <span className="ml-2 text-sm opacity-60">
+                {!comprehension.available
+                  ? "文章儲存後才能出題"
+                  : comprehension.count != null
+                    ? `${comprehension.count} 題`
+                    : "AI 出 3–5 題"}
+              </span>
+            </Checkbox>
+            <span className="text-sm opacity-60">AI 根據文章內容出選擇題，題目會保存下來</span>
+            {comprehension.count != null && (
+              <Button
+                size="small"
+                icon={<ReloadOutlined />}
+                loading={comprehension.regenerating}
+                onClick={comprehension.onRegenerate}
+              >
+                重新出題
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -83,17 +167,55 @@ export default function QuizSetup({
         </div>
       )}
 
-      <div>
-        <h3 className="mb-3 text-base font-semibold">題數</h3>
-        <Radio.Group
-          value={limit}
-          onChange={(e) => setLimit(e.target.value as number)}
-          options={LIMIT_OPTIONS}
-          optionType="button"
-        />
+      {totalSelected > 0 && (
+        <div>
+          <h3 className="mb-3 text-base font-semibold">題數</h3>
+          {limitChoices.length > 0 ? (
+            <Radio.Group
+              value={effectiveLimit}
+              onChange={(e) => setLimit(e.target.value as number)}
+              options={[
+                ...limitChoices.map((step) => ({ label: `${step} 題`, value: step })),
+                { label: `全部（${totalSelected} 題）`, value: 0 },
+              ]}
+              optionType="button"
+            />
+          ) : (
+            <p className="m-0 text-sm opacity-70">共 {totalSelected} 題，全部出題</p>
+          )}
+          {comprehensionSelected && (
+            <p className="m-0 mt-2 text-sm opacity-60">閱讀理解題不計入題數，會全部出現</p>
+          )}
+        </div>
+      )}
+
+      {/* How the two session-card proficiency scores are computed */}
+      <div className="rounded-xl border border-(--card-border) bg-(--card-bg) p-4 text-sm">
+        <h3 className="m-0 mb-2 flex items-center gap-1.5 text-sm font-semibold">
+          <InfoCircleOutlined aria-hidden="true" />
+          熟練度計算方式
+        </h3>
+        <ul className="m-0 list-none space-y-1 p-0 opacity-80">
+          <li>
+            <FileTextOutlined aria-hidden="true" className="mr-1.5 text-(--accent)" />
+            文章熟練度＝最近一次測驗中「閱讀理解、聽寫」的答對率
+          </li>
+          <li>
+            <BookOutlined aria-hidden="true" className="mr-1.5 text-(--accent)" />
+            單字熟練度＝最近一次測驗中「克漏字、字義配對、拼字」的答對率
+          </li>
+          <li>只採計最近一次的成績，重新測驗就會更新，分數顯示在首頁和歷史紀錄的文章卡片上。</li>
+          <li>單字在兩種不同題型都答對過會標示「已掌握」，答錯則回到「學習中」。</li>
+        </ul>
       </div>
 
-      <Button type="primary" size="large" disabled={totalSelected === 0} onClick={handleStart}>
+      <Button
+        type="primary"
+        size="large"
+        disabled={!canStart}
+        loading={starting}
+        onClick={handleStart}
+      >
         開始測驗
       </Button>
     </div>

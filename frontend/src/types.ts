@@ -63,9 +63,11 @@ export type Session = {
   sentenceCount?: number;
 };
 
-// ── Quiz (phase 1: generated on the frontend from the current session's vocab) ──
+// ── Quiz ──────────────────────────────────────────────────────────────────────
+// cloze/matching/spelling/dictation are generated on the frontend from the
+// current session; comprehension questions come from POST /api/quiz/generate.
 
-export type QuizTypeKey = "cloze" | "matching" | "spelling";
+export type QuizTypeKey = "cloze" | "matching" | "spelling" | "dictation" | "comprehension";
 export type SpellingMode = "typing" | "scramble";
 
 export type ClozeQuestion = {
@@ -95,11 +97,60 @@ export type SpellingQuestion = {
   vocab: VocabItem;
 };
 
-export type QuizQuestion = ClozeQuestion | MatchingQuestion | SpellingQuestion;
+export type DictationQuestion = {
+  kind: "dictation";
+  // The original sentence the TTS audio reads out.
+  answer: string;
+  // Its translation, revealed only after answering.
+  translation: string;
+};
+
+export type ComprehensionQuizQuestion = {
+  kind: "comprehension";
+  question: string;
+  options: string[];
+  answerIndex: number;
+  // Short zh-TW explanation of the correct answer, shown after answering.
+  explanation?: string;
+};
+
+export type QuizQuestion =
+  | ClozeQuestion
+  | MatchingQuestion
+  | SpellingQuestion
+  | DictationQuestion
+  | ComprehensionQuizQuestion;
 
 export type QuizAnswerRecord = {
   question: QuizQuestion;
   userAnswer: string;
+  correct: boolean;
+};
+
+// Shapes exchanged with the quiz API routes.
+export type VocabPoolItem = {
+  lemma: string;
+  pos?: string | null;
+  text?: string | null;
+  translation?: string | null;
+  definition?: string | null;
+};
+
+// Per-word mastery from GET /api/quiz/mastery. level: 1 = 學習中, 2 = 已掌握;
+// words that were never quizzed have no row.
+export type WordMasteryItem = {
+  lemma: string;
+  pos: string;
+  level: number;
+  correct_count: number;
+  wrong_count: number;
+  next_review_at?: string | null;
+};
+
+export type QuizResultPayloadItem = {
+  quiz_type: QuizTypeKey;
+  lemma?: string;
+  pos?: string;
   correct: boolean;
 };
 
@@ -122,6 +173,10 @@ export type SessionRecord = {
   source_text?: string;
   updated_at: string;
   created_at?: string;
+  // Accuracy 0-100 of the LATEST quiz run per group; null/absent when that
+  // group was never quizzed. word = 克漏字/字義配對/拼字, article = 理解問答/聽寫.
+  word_proficiency?: number | null;
+  article_proficiency?: number | null;
 };
 
 export type SessionPage = {

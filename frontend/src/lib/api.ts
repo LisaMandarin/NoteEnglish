@@ -1,11 +1,14 @@
 import { supabase } from "./supabase";
 import type {
   ParseResult,
+  QuizResultPayloadItem,
   Sentence,
   SentenceType,
   SessionPage,
   StructureNode,
   TokenUsageData,
+  VocabPoolItem,
+  WordMasteryItem,
 } from "../types";
 
 type ApiSessionShape = {
@@ -135,6 +138,50 @@ export async function ocrImage(imageBase64: string, mimeType: string): Promise<{
 
 export async function getTokenUsage(): Promise<TokenUsageData> {
   return apiFetch("/api/usage") as Promise<TokenUsageData>;
+}
+
+// Backend shape of a comprehension question (snake_case answer_index).
+export type GeneratedQuizQuestion = {
+  question: string;
+  options: string[];
+  answer_index: number;
+  explanation?: string;
+};
+
+export async function generateQuiz(
+  sessionId: string,
+  regenerate = false,
+): Promise<GeneratedQuizQuestion[]> {
+  const res = (await apiFetch("/api/quiz/generate", {
+    method: "POST",
+    body: JSON.stringify({ session_id: sessionId, regenerate }),
+  })) as { questions?: GeneratedQuizQuestion[] };
+  return res.questions ?? [];
+}
+
+export async function submitQuizResults(payload: {
+  session_id: string | null;
+  results: QuizResultPayloadItem[];
+}): Promise<{ saved: number }> {
+  return apiFetch("/api/quiz/results", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }) as Promise<{ saved: number }>;
+}
+
+export async function getVocabPool(): Promise<VocabPoolItem[]> {
+  const res = (await apiFetch("/api/quiz/vocab-pool")) as { items?: VocabPoolItem[] };
+  return res.items ?? [];
+}
+
+export async function getWordMastery(): Promise<WordMasteryItem[]> {
+  const res = (await apiFetch("/api/quiz/mastery")) as { items?: WordMasteryItem[] };
+  return res.items ?? [];
+}
+
+export async function getReviewWords(): Promise<VocabPoolItem[]> {
+  const res = (await apiFetch("/api/quiz/review-words")) as { items?: VocabPoolItem[] };
+  return res.items ?? [];
 }
 
 export async function parseSentence(sentence: string): Promise<ParseResult> {

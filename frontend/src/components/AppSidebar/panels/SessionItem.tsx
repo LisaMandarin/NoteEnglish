@@ -2,6 +2,7 @@ import type { Dispatch, MouseEvent, RefObject, SetStateAction } from "react";
 import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import type { SessionRecord } from "../../../types";
 import { formatUpdatedAt } from "../../../lib/formatUpdatedAt";
+import ProficiencyBadges from "../../shared/ProficiencyBadges";
 
 export default function SessionItem({
   session,
@@ -104,9 +105,10 @@ export default function SessionItem({
           >
             {/* Session title (or first 80 chars of source text as fallback) */}
             <p className="m-0 text-base font-semibold text-black/85">{title}</p>
-            {/* Last-updated timestamp */}
-            <div className="text-xs leading-tight text-black/55">
+            {/* Last-updated timestamp + article/word proficiency badges */}
+            <div className="flex flex-wrap items-center gap-2 text-xs leading-tight text-black/55">
               {formatUpdatedAt(session.updated_at)}
+              <ProficiencyBadges session={session} />
             </div>
           </button>
           {/* Edit icon — always visible on touch, hover-only on desktop */}
