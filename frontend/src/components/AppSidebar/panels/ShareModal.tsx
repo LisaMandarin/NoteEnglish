@@ -1,7 +1,13 @@
-import { useEffect, useState } from "react";
-import { Button, Input, Modal, Popconfirm, message } from "antd";
+import { useEffect, useMemo, useState } from "react";
+import { Button, ConfigProvider, Input, Modal, Popconfirm, message } from "antd";
 import { CopyOutlined, LinkOutlined } from "@ant-design/icons";
 import { createShareLink, revokeShareLink } from "../../../lib/api";
+
+// AntD derives hover/active shades in JS, so it needs a concrete color value —
+// resolve the project's --accent from index.css instead of hardcoding it.
+function readAccentColor(): string {
+  return getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+}
 
 // Opening the modal generates (or fetches — the endpoint is idempotent) the
 // share link right away: clicking 分享 already expresses the intent to share,
@@ -21,6 +27,7 @@ export default function ShareModal({
   const [loading, setLoading] = useState(false);
   const [revoking, setRevoking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const accentColor = useMemo(readAccentColor, []);
 
   useEffect(() => {
     if (!open || !sessionId) return;
@@ -74,48 +81,49 @@ export default function ShareModal({
   }
 
   return (
-    <Modal
-      title={
-        <span>
-          <LinkOutlined className="mr-2 text-(--accent)" />
-          分享文章
-        </span>
-      }
-      open={open}
-      onCancel={onClose}
-      footer={null}
-      width={480}
-    >
-      <p className="mb-4 mt-2 text-sm text-black/70">
-        任何登入 NoteEnglish 的使用者，拿到連結都能以<strong>唯讀</strong>
-        模式閱讀這篇文章（含翻譯、單字卡與筆記），也可以收藏或複製成自己的筆記。
-      </p>
-      {loading && <p className="m-0 text-sm text-black/60">正在產生分享連結⋯⋯</p>}
-      {error && <p className="m-0 text-sm text-red-600">{error}</p>}
-      {!loading && !error && token && (
-        <>
-          <div className="flex gap-2">
-            <Input readOnly value={shareUrl} onFocus={(e) => e.target.select()} />
-            <Button type="primary" icon={<CopyOutlined />} onClick={handleCopy}>
-              複製
-            </Button>
-          </div>
-          <div className="mt-4 flex justify-end">
-            <Popconfirm
-              title="取消分享？"
-              description="連結會立即失效，其他人的收藏也會看不到這篇文章。"
-              okText="取消分享"
-              cancelText="保留"
-              okButtonProps={{ danger: true }}
-              onConfirm={handleRevoke}
-            >
-              <Button danger size="small" loading={revoking}>
-                取消分享
+    <ConfigProvider theme={accentColor ? { token: { colorPrimary: accentColor } } : undefined}>
+      <Modal
+        title={
+          <span>
+            <LinkOutlined className="mr-2 text-(--accent)" />
+            分享文章
+          </span>
+        }
+        open={open}
+        onCancel={onClose}
+        footer={null}
+        width={480}
+      >
+        <p className="mb-4 mt-2 text-sm text-black/70">
+          取得連結的已登入使用者，可以唯讀查看這篇學習紀錄，並可收藏或複製成自己的筆記。
+        </p>
+        {loading && <p className="m-0 text-sm text-black/60">正在產生分享連結⋯⋯</p>}
+        {error && <p className="m-0 text-sm text-red-600">{error}</p>}
+        {!loading && !error && token && (
+          <>
+            <div className="flex gap-2">
+              <Input readOnly value={shareUrl} onFocus={(e) => e.target.select()} />
+              <Button type="primary" icon={<CopyOutlined />} onClick={handleCopy}>
+                複製
               </Button>
-            </Popconfirm>
-          </div>
-        </>
-      )}
-    </Modal>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Popconfirm
+                title="取消分享？"
+                description="連結會立即失效，其他人的收藏也會看不到這篇文章。"
+                okText="取消分享"
+                cancelText="保留"
+                okButtonProps={{ danger: true }}
+                onConfirm={handleRevoke}
+              >
+                <Button danger size="small" loading={revoking}>
+                  取消分享
+                </Button>
+              </Popconfirm>
+            </div>
+          </>
+        )}
+      </Modal>
+    </ConfigProvider>
   );
 }
