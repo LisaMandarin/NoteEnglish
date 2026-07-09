@@ -15,7 +15,7 @@ export default function ProficiencyBadges({
     badges.push({
       key: "article",
       icon: <FileTextOutlined aria-hidden="true" />,
-      tip: "文章熟練度(理解問答、聽寫)",
+      tip: "文章熟練度(閱讀理解、聽寫)",
       value: session.article_proficiency,
     });
   }

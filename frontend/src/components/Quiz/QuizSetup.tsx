@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { Button, Checkbox, InputNumber, Radio } from "antd";
-import { ReloadOutlined } from "@ant-design/icons";
+import {
+  BookOutlined,
+  FileTextOutlined,
+  InfoCircleOutlined,
+  ReloadOutlined,
+} from "@ant-design/icons";
 import type { QuizTypeKey, SpellingMode } from "../../types";
 import type { QuizConfig } from "../../lib/quiz";
 
@@ -183,6 +188,26 @@ export default function QuizSetup({
           )}
         </div>
       )}
+
+      {/* How the two session-card proficiency scores are computed */}
+      <div className="rounded-xl border border-(--card-border) bg-(--card-bg) p-4 text-sm">
+        <h3 className="m-0 mb-2 flex items-center gap-1.5 text-sm font-semibold">
+          <InfoCircleOutlined aria-hidden="true" />
+          熟練度計算方式
+        </h3>
+        <ul className="m-0 list-none space-y-1 p-0 opacity-80">
+          <li>
+            <FileTextOutlined aria-hidden="true" className="mr-1.5 text-(--accent)" />
+            文章熟練度＝最近一次測驗中「閱讀理解、聽寫」的答對率
+          </li>
+          <li>
+            <BookOutlined aria-hidden="true" className="mr-1.5 text-(--accent)" />
+            單字熟練度＝最近一次測驗中「克漏字、字義配對、拼字」的答對率
+          </li>
+          <li>只採計最近一次的成績，重新測驗就會更新，分數顯示在首頁和歷史紀錄的文章卡片上。</li>
+          <li>單字在兩種不同題型都答對過會標示「已掌握」，答錯則回到「學習中」。</li>
+        </ul>
+      </div>
 
       <Button
         type="primary"
