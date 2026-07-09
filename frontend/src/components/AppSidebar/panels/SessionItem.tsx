@@ -1,5 +1,6 @@
 import type { Dispatch, MouseEvent, RefObject, SetStateAction } from "react";
-import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
+import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined, ShareAltOutlined } from "@ant-design/icons";
+import { Tooltip } from "antd";
 import type { SessionRecord } from "../../../types";
 import { formatUpdatedAt } from "../../../lib/formatUpdatedAt";
 import ProficiencyBadges from "../../shared/ProficiencyBadges";
@@ -20,6 +21,7 @@ export default function SessionItem({
   onCancelEdit,
   onConfirmEdit,
   onDelete,
+  onShare,
 }: {
   session: SessionRecord;
   isCurrent: boolean;
@@ -36,9 +38,11 @@ export default function SessionItem({
   onCancelEdit: (e?: MouseEvent) => void;
   onConfirmEdit: (sessionId: string, title: string, e: MouseEvent) => void;
   onDelete: (sessionId: string, isCurrent: boolean, e: MouseEvent) => void;
+  onShare: (sessionId: string, e: MouseEvent) => void;
 }): React.ReactElement {
   const isEditing = editingId === session.id;
   const isDeleting = deletingId === session.id;
+  const isShared = Boolean(session.share_token);
   const title =
     session.title?.trim() ||
     session.source_text?.trim()?.slice(0, 80) ||
@@ -120,6 +124,22 @@ export default function SessionItem({
           >
             <EditOutlined style={{ fontSize: 13 }} />
           </button>
+          {/* Share icon — accent-colored and always visible when shared (doubles
+              as the 已分享 badge); gray + hover-only like the others when not */}
+          <Tooltip title={isShared ? "已分享 — 管理連結" : "分享"}>
+            <button
+              type="button"
+              onClick={(e) => onShare(session.id, e)}
+              className={`absolute bottom-2 right-8 cursor-pointer transition-opacity hover:scale-110 ${
+                isShared
+                  ? "text-(--accent) opacity-100"
+                  : "text-black/25 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 hover:text-(--accent)"
+              }`}
+              aria-label="Share session"
+            >
+              <ShareAltOutlined style={{ fontSize: 13 }} />
+            </button>
+          </Tooltip>
           {/* Delete icon — always visible on touch, hover-only on desktop */}
           <button
             type="button"

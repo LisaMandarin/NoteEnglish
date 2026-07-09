@@ -210,6 +210,8 @@ export type SessionRecord = {
   // group was never quizzed. word = 克漏字/字義配對/拼字, article = 理解問答/聽寫.
   word_proficiency?: number | null;
   article_proficiency?: number | null;
+  // null/absent = not shared. Present on GET /api/sessions items only.
+  share_token?: string | null;
 };
 
 export type SessionPage = {

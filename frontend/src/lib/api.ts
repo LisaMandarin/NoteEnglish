@@ -5,6 +5,7 @@ import type {
   Sentence,
   SentenceType,
   SessionPage,
+  ShareTokenResponse,
   StructureNode,
   TokenUsageData,
   VocabPoolItem,
@@ -127,6 +128,14 @@ export async function updateSessionTitle(sessionId: string, title: string): Prom
 
 export async function deleteSession(sessionId: string): Promise<unknown> {
   return apiFetch(`/api/sessions/${sessionId}`, { method: "DELETE" });
+}
+
+export async function createShareLink(sessionId: string): Promise<ShareTokenResponse> {
+  return apiFetch(`/api/sessions/${sessionId}/share`, { method: "POST" }) as Promise<ShareTokenResponse>;
+}
+
+export async function revokeShareLink(sessionId: string): Promise<null> {
+  return apiFetch(`/api/sessions/${sessionId}/share`, { method: "DELETE" }) as Promise<null>;
 }
 
 export async function ocrImage(imageBase64: string, mimeType: string): Promise<{ text: string }> {

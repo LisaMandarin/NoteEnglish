@@ -111,14 +111,14 @@ fork 不呼叫 Gemini（資料都已算好），成本為零。
 
 ---
 
-## Step 4：前端 — 老師端分享 UI
+## Step 4：前端 — 老師端分享 UI ✅（程式完成 2026-07-09，視覺驗證待使用者確認）
 
-- 在 session 相關 UI（建議：sidebar session 清單項目或主畫面標題列）加「分享」按鈕。
-- 點擊 → `POST /api/sessions/{id}/share` → 彈出 AntD Modal / Popover 顯示連結：
-  `{網站網址}/?shared={token}`
-- 提供「複製連結」與「取消分享」（`DELETE`）兩個動作；已分享的 session 在清單上可加個小標記。
-- API 呼叫一律走 `lib/api.ts:apiFetch`。
-- 樣式遵循 frontend/CLAUDE.md：AntD 優先、CSS 變數、不硬編色碼。
+實作紀錄：
+- 分享按鈕放在 sidebar 的 `SessionItem`（bottom-right，刪除鈕左邊）：未分享時灰色、hover 才顯示；**已分享時 accent 色常駐顯示，兼作「已分享」標記**（免加額外 badge）。
+- `ShareModal.tsx`（AntD Modal）：開啟即呼叫 `POST /api/sessions/{id}/share`（冪等）產生/取回連結；唯讀說明文字 + 連結 Input + 複製按鈕（`navigator.clipboard` + message 提示）+ 取消分享（Popconfirm 確認，說明收藏也會失效）。
+- 連結格式 `{origin}/?shared={token}`（沿用 query-param 路由模式）。
+- `lib/api.ts` 加 `createShareLink` / `revokeShareLink`；`SessionRecord` 型別加 `share_token`。
+- type-check + build 通過；**瀏覽器實測（含手機寬度）待使用者驗證**。
 
 **URL 格式說明**：沿用現有 query-param 路由模式（`App.tsx` 已用 `?view=summary` 等），用 `?shared={token}` 而非 path route，可免引入 router。
 
