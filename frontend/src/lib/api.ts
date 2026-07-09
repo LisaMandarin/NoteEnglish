@@ -5,6 +5,7 @@ import type {
   Sentence,
   SentenceType,
   SessionPage,
+  SharedSessionDetail,
   ShareTokenResponse,
   StructureNode,
   TokenUsageData,
@@ -136,6 +137,18 @@ export async function createShareLink(sessionId: string): Promise<ShareTokenResp
 
 export async function revokeShareLink(sessionId: string): Promise<null> {
   return apiFetch(`/api/sessions/${sessionId}/share`, { method: "DELETE" }) as Promise<null>;
+}
+
+export async function getSharedSession(token: string): Promise<SharedSessionDetail> {
+  return apiFetch(`/api/shared/${token}`) as Promise<SharedSessionDetail>;
+}
+
+export async function addFavorite(token: string): Promise<null> {
+  return apiFetch(`/api/shared/${token}/favorite`, { method: "POST" }) as Promise<null>;
+}
+
+export async function removeFavorite(sessionId: string): Promise<null> {
+  return apiFetch(`/api/favorites/${sessionId}`, { method: "DELETE" }) as Promise<null>;
 }
 
 export async function ocrImage(imageBase64: string, mimeType: string): Promise<{ text: string }> {

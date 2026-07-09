@@ -124,7 +124,16 @@ fork 不呼叫 Gemini（資料都已算好），成本為零。
 
 ---
 
-## Step 5：前端 — 學生端唯讀檢視（本功能最需要小心的一步）
+## Step 5：前端 — 學生端唯讀檢視 ✅（程式完成 2026-07-10，e2e 驗證待 Step 8）
+
+實作紀錄（**與原計畫的一個重要差異**）：
+- 原計畫是「`TranslationProvider` 加 readOnly 旗標擋掉自動存檔」。實作時發現摘要/列印視窗其實靠 `localStorage` 傳資料、展示元件（`SentenceItem`/`VocabCards`/`SummaryExportBar`/TTS/句構）都不依賴 context——所以 `SharedView.tsx` **完全不掛 `TranslationProvider`**，用本地 state 渲染。自動存檔路徑從架構上就不存在，比旗標更安全，也完全不用動 `translationContext.tsx`。
+- `SentenceItem`/`VocabCards` 加 `readOnly` prop：隱藏筆記編輯、單字卡編輯/刪除/拖曳、查單字提示；保留句子 TTS、句構分析（點擊才載入，走全域 parse 快取）、筆記唯讀顯示。
+- `SummaryExportBar` 的 `onStartQuiz` 改為可選：分享檢視保留「列印彙整資料」「列印單字卡」（經 localStorage，可直接重用），隱藏「單字測驗」。
+- `SharedView` 頁面：唯讀標記、標題、「由 {creator_name} 分享」、收藏/取消收藏（HeartOutlined/Filled + message 回饋）、「回到我的學習紀錄」（`location.href = pathname` 整頁重載，天然避開 view-state 殘留 bug）。404/撤銷 → 顯示「連結已失效」。
+- `App.tsx`：`?shared={token}` 且已登入 → `SharedView`；未登入 → 照常 `LoginPage`（登入不導頁、query string 自然保留，已檢查 LoginPage 不動 URL）。`view=summary`/`vocab-print` 的判斷在前，分享檢視開的列印視窗不受影響。
+- 已知取捨：唯讀單字卡沿用既有 `VocabCard readOnly`（為列印設計，會隱藏卡片上的單字 TTS 鈕）；句子 TTS 仍可用。之後想在分享檢視顯示單字 TTS 再另加 prop。
+- 「編輯副本」按鈕留給 Step 7 一起接。
 
 ### 5a. 進入點（`frontend/src/App.tsx`）
 

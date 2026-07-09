@@ -10,6 +10,7 @@ import LoginPage from "./components/Auth/LoginPage";
 import AdminLoginPage from "./components/Auth/AdminLoginPage";
 import ResetPasswordPage from "./components/Auth/ResetPasswordPage";
 import AdminDashboard from "./components/Admin";
+import SharedView from "./components/SharedView";
 import { supabase } from "./lib/supabase";
 import { ensureProfile as ensureProfileApi } from "./lib/api";
 
@@ -118,6 +119,7 @@ export default function App(): React.ReactElement {
   const isVocabPrintView = params.get("view") === "vocab-print";
   const isResetPasswordView = params.get("view") === "reset-password";
   const isAdminDashboard = window.location.pathname === "/admin-dashboard";
+  const sharedToken = params.get("shared");
 
   useEffect(() => {
     let mounted = true;
@@ -192,7 +194,13 @@ export default function App(): React.ReactElement {
   }
 
   if (!user) {
+    // Also the entry for shared links (?shared=): logging in never navigates,
+    // so the query string survives and the next render lands on SharedView.
     return <LoginPage />;
+  }
+
+  if (sharedToken) {
+    return <SharedView token={sharedToken} />;
   }
 
   return (

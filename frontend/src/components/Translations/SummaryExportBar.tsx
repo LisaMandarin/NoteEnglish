@@ -29,7 +29,8 @@ export default function SummaryExportBar({
 }: {
   sentences: Sentence[];
   sessionTitle: string;
-  onStartQuiz: () => void;
+  // Absent in the read-only shared view — the quiz works on one's own sessions.
+  onStartQuiz?: () => void;
 }): React.ReactElement {
   const [includeTranslation, setIncludeTranslation] = useState(true);
   const [includeVocab, setIncludeVocab] = useState(true);
@@ -114,17 +115,19 @@ export default function SummaryExportBar({
           列印單字卡
         </Button>
       </div>
-      <div>
-        <Button
-          type="primary"
-          icon={<FormOutlined />}
-          disabled={collectVocab(sentences).length === 0}
-          onClick={onStartQuiz}
-          className="transition-colors"
-        >
-          單字測驗
-        </Button>
-      </div>
+      {onStartQuiz && (
+        <div>
+          <Button
+            type="primary"
+            icon={<FormOutlined />}
+            disabled={collectVocab(sentences).length === 0}
+            onClick={onStartQuiz}
+            className="transition-colors"
+          >
+            單字測驗
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
