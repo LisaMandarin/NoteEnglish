@@ -61,6 +61,39 @@ export type Session = {
   createdAt: string;
   updatedAt: string;
   sentenceCount?: number;
+  // null/undefined = not shared. Mapped from GET /sessions items' share_token.
+  shareToken?: string | null;
+};
+
+// ── Sharing ───────────────────────────────────────────────────────────────────
+// Raw response shapes from the share endpoints (snake_case, converted to
+// camelCase at the call site, same as session loading).
+
+export type ShareTokenResponse = { share_token: string };
+
+// Mirrors GET /sessions/{id} so the read-only view reuses the session
+// rendering path, plus who shared it and whether the viewer favorited it.
+export type SharedSessionDetail = {
+  text: string;
+  sentences: Sentence[];
+  session: {
+    id: string;
+    title: string;
+    source_text: string;
+    created_at: string;
+    updated_at: string;
+  };
+  creator_name: string | null;
+  is_favorited: boolean;
+};
+
+export type FavoriteItem = {
+  session_id: string;
+  title: string;
+  creator_name: string | null;
+  // Current token of the shared session — open via ?shared={token}.
+  share_token: string;
+  favorited_at: string;
 };
 
 // ── Quiz ──────────────────────────────────────────────────────────────────────

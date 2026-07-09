@@ -36,7 +36,16 @@
 
 ---
 
-## Step 2：後端 API
+## Step 2：後端 API ✅（完成 2026-07-09，分支 `share`）
+
+實作紀錄：
+- 合約已依 WORKFLOW.md contract-first 流程確認：models 在 `backend/app/models/share.py` + `frontend/src/types.ts`（`ShareTokenResponse`、`SharedSessionDetail`、`FavoriteItem`）。
+- Service 函式在 `services/supabase.py` 末端「Sharing」區段；routes 在 `routes/share.py`，已註冊進 `main.py`。
+- 追加合約：`GET /sessions` 清單項目多了 `share_token` 欄位（null = 未分享），供 sidebar 顯示已分享標記。
+- 取消收藏是 `DELETE /favorites/{session_id}`（session_id 是穩定鍵，token 撤銷重發不影響）。
+- `GET /shared/{token}` 對格式錯誤、不存在、已撤銷的 token 一律回 404（不洩漏 session 存在與否）。
+- 比照既有 routes 風格：回傳 raw dict、不掛 `response_model`。
+- 產生 token 不動 `updated_at`（分享不是內容編輯，不應重排 session 清單）。
 
 ### 2a. Models（`backend/app/models/session.py` 或新檔 `share.py`）
 
@@ -87,15 +96,18 @@ fork 不呼叫 Gemini（資料都已算好），成本為零。
 
 ---
 
-## Step 3：後端測試
+## Step 3：後端測試 ✅（完成 2026-07-09）
 
-參照現有 `backend/tests/` 的寫法（如 `test_tts_route.py` 的 mock 模式），新增 `test_share_route.py`：
+`backend/tests/test_share_route.py`，11 個測試（照 `test_usage_stats.py` 模式 patch `_request_json`）：
 
-- 產生 token 冪等（連按兩次回同一個 token）
-- 非擁有者呼叫 share/revoke → 403/404
-- 撤銷後 `GET /shared/{token}` → 404
-- 收藏清單過濾掉已撤銷分享的項目
-- fork 後新 session 的 user_id 是呼叫者、內容一致
+- 產生 token 冪等（連按兩次回同一個 token）＋ 不動 updated_at
+- 非擁有者呼叫 share/revoke → 404
+- 撤銷後/格式錯誤的 token → 404（格式錯誤不發任何請求）
+- get_shared_session 以擁有者身分載入內容、正確標記 is_favorited/creator_name
+- 收藏清單過濾掉已撤銷分享的項目、標題 fallback、空清單 short-circuit
+- fork 以呼叫者 user_id 建新 session（session_id=None，絕不覆寫）
+
+驗證結果：全套件 125 passed；本機起 uvicorn 實測 `/api/health` 200、share 端點無 token 401、假 JWT 403。**帶真實 token 的 curl 留到 Step 8 e2e**（需要實際登入帳號）。
 
 ---
 
