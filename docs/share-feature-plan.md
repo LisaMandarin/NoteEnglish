@@ -159,12 +159,13 @@ fork 不呼叫 Gemini（資料都已算好），成本為零。
 
 ---
 
-## Step 6：前端 — 收藏清單
+## Step 6：前端 — 收藏清單 ✅（程式完成 2026-07-10）
 
-- Sidebar 新增「收藏」面板（參照 `components/AppSidebar/panels/` 既有 panel 寫法），`GET /api/favorites` 列出：標題、分享者、收藏時間。
-- 點項目 → 以該項的 `share_token` 開啟 `/?shared={token}` 檢視。
-- 被老師刪除或取消分享的項目不會出現（後端已過濾），前端不需特別處理。
-- ⚠️ 已知回歸：**切換/建立 session 必須重置主畫面 view**（此 bug 已回報過三次）——收藏檢視的進出同樣要遵守這條，離開分享檢視回到自己的 session 時 view 狀態要正確重置。
+實作紀錄：
+- `FavoritesPanel.tsx`（仿 HistoryPanel 樣式）：sidebar 新增愛心圖示按鈕（`favorites` panel），開啟面板即載入 `GET /api/favorites`，含重新整理按鈕、載入/錯誤/空清單狀態。
+- 每個項目顯示：標題（前綴愛心）、「由 {分享者} 分享・收藏於 {時間}」；點擊以 `location.href = ?shared={token}` 整頁導向唯讀檢視（與分享連結同一入口，view-state 因整頁重載天然重置，避開已知回歸）。
+- 被刪除/取消分享的項目後端已過濾，前端無特殊處理。
+- 取消收藏在 SharedView 內操作（面板不放刪除鈕，維持最小介面）。
 
 ---
 

@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import type {
+  FavoriteItem,
   ParseResult,
   QuizResultPayloadItem,
   Sentence,
@@ -149,6 +150,10 @@ export async function addFavorite(token: string): Promise<null> {
 
 export async function removeFavorite(sessionId: string): Promise<null> {
   return apiFetch(`/api/favorites/${sessionId}`, { method: "DELETE" }) as Promise<null>;
+}
+
+export async function listFavorites(): Promise<{ items: FavoriteItem[] }> {
+  return apiFetch("/api/favorites") as Promise<{ items: FavoriteItem[] }>;
 }
 
 export async function ocrImage(imageBase64: string, mimeType: string): Promise<{ text: string }> {

@@ -1,3 +1,4 @@
+import FavoritesPanel from "./panels/FavoritesPanel";
 import HistoryPanel from "./panels/HistoryPanel";
 import ProfilePanel from "./panels/ProfilePanel";
 import SettingsPanel from "./panels/SettingsPanel";
@@ -18,6 +19,9 @@ export default function SidebarPanelContent({ activePanel, username, email, onSi
   }
   if (activePanel === "history") {
     return <HistoryPanel activePanel={activePanel} onShowTranslate={onShowTranslate} />;
+  }
+  if (activePanel === "favorites") {
+    return <FavoritesPanel activePanel={activePanel} />;
   }
   return null;
 }

@@ -3,6 +3,7 @@ import type { ComponentType } from "react";
 import {
   CloseOutlined,
   FolderOpenOutlined,
+  HeartOutlined,
   HomeOutlined,
   LogoutOutlined,
   MenuOutlined,
@@ -37,6 +38,11 @@ const SIDEBAR_BUTTONS: SidebarButtonConfig[] = [
     key: "history",
     ariaLabel: () => "歷史學習紀錄",
     icon: FolderOpenOutlined,
+  },
+  {
+    key: "favorites",
+    ariaLabel: () => "收藏的分享學習紀錄",
+    icon: HeartOutlined,
   },
 ];
 
