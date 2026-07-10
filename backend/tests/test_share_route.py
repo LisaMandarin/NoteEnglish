@@ -1,4 +1,5 @@
 import unittest
+import uuid
 from unittest.mock import patch
 
 from fastapi import HTTPException
@@ -7,7 +8,9 @@ from app.services import supabase
 
 OWNER = "owner-1"
 VIEWER = "viewer-1"
-TOKEN = "8b2e6f0a-1d3c-4e5f-9a7b-2c4d6e8f0a1b"
+# Built at runtime from an obviously fake value so secret scanners don't
+# mistake a hardcoded random-looking UUID literal for a leaked credential.
+TOKEN = str(uuid.UUID(int=0xE2E))
 
 
 class FakeRequestJson:
