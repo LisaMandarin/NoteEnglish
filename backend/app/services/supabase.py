@@ -96,14 +96,24 @@ def get_authenticated_user(authorization: str | None) -> dict:
     if not token:
         raise HTTPException(status_code=401, detail="Missing bearer token.")
 
-    return _request_json(
-        "GET",
-        f"{settings.supabase_url}/auth/v1/user",
-        headers={
-            "apikey": settings.supabase_anon_key,
-            "Authorization": f"Bearer {token}",
-        },
-    )
+    try:
+        return _request_json(
+            "GET",
+            f"{settings.supabase_url}/auth/v1/user",
+            headers={
+                "apikey": settings.supabase_anon_key,
+                "Authorization": f"Bearer {token}",
+            },
+        )
+    except HTTPException as exc:
+        # Supabase rejects stale/revoked tokens with 401/403 and messages like
+        # "Session from session_id claim in JWT does not exist" (e.g. after a
+        # global sign-out from another device). Normalize to the session_expired
+        # contract so the client signs out locally and shows the login page
+        # instead of wedging on endless 403s.
+        if exc.status_code in (401, 403):
+            raise HTTPException(status_code=401, detail="session_expired") from exc
+        raise
 
 
 def build_session_title(text: str) -> str:
