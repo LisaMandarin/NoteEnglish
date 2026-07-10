@@ -29,6 +29,7 @@ The app is a single page with view switching via path and query params:
 | URL | View |
 |-----|------|
 | `/` | Main study page (login if unauthenticated) |
+| `/?shared={token}` | Read-only view of a shared article (sign-in required; the login page preserves the query so the link works when logged out) |
 | `/?view=summary` | Printable summary window (original + translation or vocab notes) |
 | `/?view=vocab-print` | Printable vocab cards window |
 | `/admin-dashboard` | Admin dashboard (admin login + access check) |

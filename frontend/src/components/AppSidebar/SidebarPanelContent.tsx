@@ -1,5 +1,4 @@
-import HistoryPanel from "./panels/HistoryPanel";
-import ProfilePanel from "./panels/ProfilePanel";
+import LibraryPanel from "./panels/LibraryPanel";
 import SettingsPanel from "./panels/SettingsPanel";
 
 export default function SidebarPanelContent({ activePanel, username, email, onSignOut, onShowUsage, onShowTranslate }: {
@@ -10,14 +9,18 @@ export default function SidebarPanelContent({ activePanel, username, email, onSi
   onShowUsage: () => void;
   onShowTranslate: () => void;
 }): React.ReactElement | null {
-  if (activePanel === "profile") {
-    return <ProfilePanel username={username} email={email} onSignOut={onSignOut} />;
-  }
   if (activePanel === "settings") {
-    return <SettingsPanel onShowUsage={onShowUsage} />;
+    return (
+      <SettingsPanel
+        username={username}
+        email={email}
+        onSignOut={onSignOut}
+        onShowUsage={onShowUsage}
+      />
+    );
   }
-  if (activePanel === "history") {
-    return <HistoryPanel activePanel={activePanel} onShowTranslate={onShowTranslate} />;
+  if (activePanel === "library") {
+    return <LibraryPanel onShowTranslate={onShowTranslate} />;
   }
   return null;
 }

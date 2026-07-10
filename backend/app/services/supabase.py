@@ -2,6 +2,7 @@ import json
 import logging
 import re
 import ssl
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib import error, parse, request
@@ -95,14 +96,24 @@ def get_authenticated_user(authorization: str | None) -> dict:
     if not token:
         raise HTTPException(status_code=401, detail="Missing bearer token.")
 
-    return _request_json(
-        "GET",
-        f"{settings.supabase_url}/auth/v1/user",
-        headers={
-            "apikey": settings.supabase_anon_key,
-            "Authorization": f"Bearer {token}",
-        },
-    )
+    try:
+        return _request_json(
+            "GET",
+            f"{settings.supabase_url}/auth/v1/user",
+            headers={
+                "apikey": settings.supabase_anon_key,
+                "Authorization": f"Bearer {token}",
+            },
+        )
+    except HTTPException as exc:
+        # Supabase rejects stale/revoked tokens with 401/403 and messages like
+        # "Session from session_id claim in JWT does not exist" (e.g. after a
+        # global sign-out from another device). Normalize to the session_expired
+        # contract so the client signs out locally and shows the login page
+        # instead of wedging on endless 403s.
+        if exc.status_code in (401, 403):
+            raise HTTPException(status_code=401, detail="session_expired") from exc
+        raise
 
 
 def build_session_title(text: str) -> str:
@@ -128,7 +139,7 @@ def list_sessions(user_id: str, limit: int = 5, offset: int = 0) -> dict:
     query = parse.urlencode(
         {
             "user_id": f"eq.{user_id}",
-            "select": "id,title,source_text,created_at,updated_at",
+            "select": "id,title,source_text,created_at,updated_at,share_token",
             "order": "updated_at.desc",
             "limit": limit + 1,
             "offset": offset,
@@ -936,3 +947,209 @@ def delete_session(user_id: str, session_id: str) -> None:
         f"{settings.supabase_url}/rest/v1/study_sessions?{query}",
         headers=_service_headers(),
     )
+
+
+# ── Sharing ───────────────────────────────────────────────────────────────────
+# A share token turns a session into a read-only article any signed-in user can
+# open. Favorites reference the session (never copy it); the shared_favorites
+# FK cascades on session delete, and revoking a token merely hides favorites
+# until the owner re-shares.
+
+
+def _get_shared_session_row(token: str) -> dict:
+    """Resolve a share token to its study_sessions row. 404 covers unknown,
+    revoked, and malformed tokens alike so the URL leaks nothing."""
+    try:
+        uuid.UUID(token)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Shared article not found.")
+    query = parse.urlencode(
+        {
+            "share_token": f"eq.{token}",
+            "select": "id,user_id,title,source_text,created_at,updated_at",
+        }
+    )
+    rows = _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/study_sessions?{query}",
+        headers=_service_headers(),
+    ) or []
+    if not rows:
+        raise HTTPException(status_code=404, detail="Shared article not found.")
+    return rows[0]
+
+
+def _creator_name(owner_id: str) -> str | None:
+    query = parse.urlencode({"id": f"eq.{owner_id}", "select": "display_name"})
+    rows = _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/profiles?{query}",
+        headers=_service_headers(),
+    ) or []
+    return rows[0].get("display_name") if rows else None
+
+
+def create_share_token(user_id: str, session_id: str) -> dict:
+    """Idempotent: re-sharing returns the existing token so a link once handed
+    out keeps working. The PATCH is guarded with share_token=is.null so two
+    concurrent requests cannot both mint a token and leave one caller holding
+    a link that was immediately overwritten — the loser re-reads the winner's
+    token. updated_at is left alone — sharing is not a content edit and must
+    not reorder the session list."""
+    for _ in range(2):
+        query = parse.urlencode(
+            {"id": f"eq.{session_id}", "user_id": f"eq.{user_id}", "select": "id,share_token"}
+        )
+        rows = _request_json(
+            "GET",
+            f"{settings.supabase_url}/rest/v1/study_sessions?{query}",
+            headers=_service_headers(),
+        ) or []
+        if not rows:
+            raise HTTPException(status_code=404, detail="Study session not found.")
+
+        existing = rows[0].get("share_token")
+        if existing:
+            return {"share_token": existing}
+
+        update_query = parse.urlencode(
+            {"id": f"eq.{session_id}", "user_id": f"eq.{user_id}", "share_token": "is.null"}
+        )
+        updated_rows = _request_json(
+            "PATCH",
+            f"{settings.supabase_url}/rest/v1/study_sessions?{update_query}",
+            headers=_service_headers("return=representation"),
+            payload={"share_token": str(uuid.uuid4())},
+        ) or []
+        if updated_rows:
+            return {"share_token": updated_rows[0]["share_token"]}
+        # Guarded update matched no row: another request set a token between
+        # the read and the PATCH. Loop once to pick up the winner's token.
+    raise HTTPException(status_code=500, detail="Could not create the share link.")
+
+
+def revoke_share_token(user_id: str, session_id: str) -> None:
+    query = parse.urlencode({"id": f"eq.{session_id}", "user_id": f"eq.{user_id}"})
+    updated_rows = _request_json(
+        "PATCH",
+        f"{settings.supabase_url}/rest/v1/study_sessions?{query}",
+        headers=_service_headers("return=representation"),
+        payload={"share_token": None},
+    ) or []
+    if not updated_rows:
+        raise HTTPException(status_code=404, detail="Study session not found.")
+
+
+def get_shared_session(viewer_id: str, token: str) -> dict:
+    row = _get_shared_session_row(token)
+    owner_id = str(row["user_id"])
+    session_id = str(row["id"])
+    # Reuse the owner-scoped loader; its extra study_sessions read is the price
+    # of not refactoring get_session_detail.
+    detail = get_session_detail(owner_id, session_id)
+
+    fav_query = parse.urlencode(
+        {"user_id": f"eq.{viewer_id}", "session_id": f"eq.{session_id}", "select": "session_id"}
+    )
+    fav_rows = _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/shared_favorites?{fav_query}",
+        headers=_service_headers(),
+    ) or []
+
+    detail["creator_name"] = _creator_name(owner_id)
+    detail["is_favorited"] = bool(fav_rows)
+    return detail
+
+
+def add_favorite(user_id: str, token: str) -> None:
+    row = _get_shared_session_row(token)
+    _request_json(
+        "POST",
+        f"{settings.supabase_url}/rest/v1/shared_favorites",
+        headers=_service_headers("resolution=merge-duplicates,return=minimal"),
+        payload={"user_id": user_id, "session_id": str(row["id"])},
+    )
+
+
+def remove_favorite(user_id: str, session_id: str) -> None:
+    query = parse.urlencode({"user_id": f"eq.{user_id}", "session_id": f"eq.{session_id}"})
+    _request_json(
+        "DELETE",
+        f"{settings.supabase_url}/rest/v1/shared_favorites?{query}",
+        headers=_service_headers(),
+    )
+
+
+def list_favorites(user_id: str) -> dict:
+    fav_query = parse.urlencode(
+        {
+            "user_id": f"eq.{user_id}",
+            "select": "session_id,created_at",
+            "order": "created_at.desc",
+        }
+    )
+    favorites = _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/shared_favorites?{fav_query}",
+        headers=_service_headers(),
+    ) or []
+    if not favorites:
+        return {"items": []}
+
+    # Deleted sessions are already gone from favorites via ON DELETE CASCADE;
+    # this filter additionally hides revoked (unshared) ones, which reappear if
+    # the owner re-shares.
+    session_ids = ",".join(str(fav["session_id"]) for fav in favorites)
+    session_query = parse.urlencode(
+        {
+            "id": f"in.({session_ids})",
+            "share_token": "not.is.null",
+            "select": "id,user_id,title,source_text,share_token",
+        }
+    )
+    sessions = _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/study_sessions?{session_query}",
+        headers=_service_headers(),
+    ) or []
+    sessions_by_id = {str(session["id"]): session for session in sessions}
+
+    owner_ids = {str(session["user_id"]) for session in sessions}
+    names: dict[str, str | None] = {}
+    if owner_ids:
+        profile_query = parse.urlencode(
+            {"id": f"in.({','.join(sorted(owner_ids))})", "select": "id,display_name"}
+        )
+        profile_rows = _request_json(
+            "GET",
+            f"{settings.supabase_url}/rest/v1/profiles?{profile_query}",
+            headers=_service_headers(),
+        ) or []
+        names = {str(profile["id"]): profile.get("display_name") for profile in profile_rows}
+
+    items = []
+    for fav in favorites:
+        session = sessions_by_id.get(str(fav["session_id"]))
+        if not session:
+            continue
+        title = session.get("title") or build_session_title(session.get("source_text") or "")
+        items.append(
+            {
+                "session_id": str(session["id"]),
+                "title": title,
+                "creator_name": names.get(str(session["user_id"])),
+                "share_token": session["share_token"],
+                "favorited_at": fav["created_at"],
+            }
+        )
+    return {"items": items}
+
+
+def fork_shared_session(user_id: str, token: str) -> dict:
+    """Copy a shared article into the caller's own sessions. The copy belongs
+    entirely to the caller — deleting or unsharing the original never touches
+    it. No AI calls: all fields were computed when the owner built the article."""
+    row = _get_shared_session_row(token)
+    detail = get_session_detail(str(row["user_id"]), str(row["id"]))
+    return save_session(user_id, detail["text"], detail["sentences"], None)

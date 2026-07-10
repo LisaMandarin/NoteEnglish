@@ -7,6 +7,7 @@ import { deleteSession } from "../../../lib/api";
 import { useSessionEdit } from "../hooks/useSessionEdit";
 import { useSessionHistory } from "../hooks/useSessionHistory";
 import SessionItem from "./SessionItem";
+import ShareModal from "./ShareModal";
 
 export default function HistoryPanel({ activePanel, onShowTranslate }: { activePanel: string; onShowTranslate: () => void }): React.ReactElement {
   const {
@@ -20,6 +21,7 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [loadedFromHistory, setLoadedFromHistory] = useState(false);
+  const [shareSessionId, setShareSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!sessionLoading) setPendingId(null);
@@ -62,6 +64,17 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
     setLoadedFromHistory(true);
     loadSession(sessionId);
     onShowTranslate();
+  }
+
+  function handleShare(sessionId: string, e: MouseEvent): void {
+    e?.stopPropagation();
+    setShareSessionId(sessionId);
+  }
+
+  function handleShareTokenChange(sessionId: string, token: string | null): void {
+    setHistoryItems((prev) =>
+      prev.map((s) => (s.id === sessionId ? { ...s, share_token: token } : s))
+    );
   }
 
   const resolvedCurrentId = loadedFromHistory ? (pendingId ?? currentSession?.id) : pendingId;
@@ -137,6 +150,7 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
                 onCancelEdit={cancelEdit}
                 onConfirmEdit={confirmEdit}
                 onDelete={handleDelete}
+                onShare={handleShare}
               />
             ))}
             <button
@@ -149,6 +163,12 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
           </div>
         )}
       </div>
+      <ShareModal
+        sessionId={shareSessionId}
+        open={shareSessionId !== null}
+        onClose={() => setShareSessionId(null)}
+        onTokenChange={handleShareTokenChange}
+      />
     </>
   );
 }

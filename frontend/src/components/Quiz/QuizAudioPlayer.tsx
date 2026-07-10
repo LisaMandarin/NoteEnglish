@@ -1,5 +1,6 @@
-import { Button, Select, Slider, message } from "antd";
+import { Button, Select, Slider } from "antd";
 import { CaretRightOutlined, LoadingOutlined, PauseOutlined } from "@ant-design/icons";
+import { message } from "../../lib/feedback";
 import { speak } from "../../lib/speech";
 import { RATE_OPTIONS, formatTime, useTtsPlayer } from "../../hooks/useTtsPlayer";
 

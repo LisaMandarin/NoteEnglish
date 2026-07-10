@@ -168,7 +168,10 @@ function MasteryBadge({ v, readOnly }: { v: VocabItem; readOnly: boolean }) {
   );
 }
 
-export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: { v: VocabItem; onDelete?: () => void; onEdit?: (updates: Partial<VocabItem>) => void; dragProps?: object; readOnly?: boolean }) {
+// showTts is separate from readOnly: the shared read-only view keeps the
+// pronunciation buttons, while print-oriented windows (SummaryWindow) rely on
+// the default (!readOnly) and stay silent.
+export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false, showTts = !readOnly }: { v: VocabItem; onDelete?: () => void; onEdit?: (updates: Partial<VocabItem>) => void; dragProps?: object; readOnly?: boolean; showTts?: boolean }) {
   const head = (v.lemma ?? v.text ?? "").trim();
   const hasContent = v.definition || v.example || [1,2,3,4,5].some(i => (v as Record<string, unknown>)[`other_${i}`]);
 
@@ -252,7 +255,7 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: 
           </span>
         </Tooltip>
         <MasteryBadge v={v} readOnly={readOnly} />
-        {head && !readOnly && (
+        {head && showTts && (
           <TtsButton
             text={head}
             ariaLabel={`Pronounce ${head}`}
@@ -349,7 +352,7 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: 
                 )}
                 {v.example && (
                   <div className="rounded-lg bg-gray-100 px-3 py-2 text-sm flex items-start gap-2">
-                    {!readOnly && (
+                    {showTts && (
                       <TtsButton
                         text={v.example!}
                         ariaLabel="Pronounce example"
@@ -428,7 +431,7 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false }: 
   );
 }
 
-export default function VocabCards({ vocab, sentenceIdx, hideHint, onDelete, onReorder, onEdit }: { vocab: VocabItem[]; sentenceIdx: number; hideHint?: boolean; onDelete?: (sentenceIdx: number, lemma: string, pos: string) => void; onReorder?: (sentenceIdx: number, newVocab: VocabItem[]) => void; onEdit?: (sentenceIdx: number, vocabItem: VocabItem) => void }): React.ReactElement | null {
+export default function VocabCards({ vocab, sentenceIdx, hideHint, onDelete, onReorder, onEdit, readOnly = false }: { vocab: VocabItem[]; sentenceIdx: number; hideHint?: boolean; onDelete?: (sentenceIdx: number, lemma: string, pos: string) => void; onReorder?: (sentenceIdx: number, newVocab: VocabItem[]) => void; onEdit?: (sentenceIdx: number, vocabItem: VocabItem) => void; readOnly?: boolean }): React.ReactElement | null {
   const items = useMemo(() => {
     const list = Array.isArray(vocab) ? vocab : [];
     return list.filter((v) =>
@@ -463,11 +466,21 @@ export default function VocabCards({ vocab, sentenceIdx, hideHint, onDelete, onR
   }
 
   if (items.length === 0) {
-    if (hideHint) return null;
+    if (hideHint || readOnly) return null;
     return (
       <div className="mt-3 flex items-center gap-1.5 text-sm" style={{ color: "var(--accent)", opacity: 0.55 }}>
         <span className="inline-block animate-bounce">↑</span>
         <span>選取上方英文字詞來查詢單字</span>
+      </div>
+    );
+  }
+
+  if (readOnly) {
+    return (
+      <div className="mt-4 grid grid-cols-1 min-[480px]:grid-cols-2 gap-3">
+        {sortedItems.map((v) => (
+          <VocabCard key={itemId(v)} v={v} readOnly showTts />
+        ))}
       </div>
     );
   }

@@ -89,7 +89,12 @@ export default function AppMainSection({
 
   return (
     <div>
-      <AppTitle title="句句通" className="mb-4 hidden items-center gap-2 lg:flex" />
+      {/* Logo doubles as the home link (the standalone home icon is gone) */}
+      <AppTitle
+        title="句句通"
+        className="mb-4 hidden items-center gap-2 lg:flex"
+        onClick={onShowHome}
+      />
       {content}
     </div>
   );

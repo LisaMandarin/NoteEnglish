@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { Button, Popover, Select, Slider, message } from "antd";
+import { Button, Popover, Select, Slider } from "antd";
+import { message } from "../../lib/feedback";
 import {
   CaretRightOutlined,
   LoadingOutlined,

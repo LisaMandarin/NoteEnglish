@@ -48,6 +48,7 @@ export default function SentenceItem({
   onReorder,
   onEdit,
   onNoteChange,
+  readOnly = false,
 }: {
   sentence: Sentence;
   idx: number;
@@ -57,6 +58,7 @@ export default function SentenceItem({
   onReorder?: (sentenceIdx: number, newVocab: VocabItem[]) => void;
   onEdit?: (sentenceIdx: number, vocabItem: VocabItem) => void;
   onNoteChange?: (sentenceIdx: number, note: string) => void;
+  readOnly?: boolean;
 }): React.ReactElement {
   const note = sentence.note ?? "";
   const hasNote = note.trim().length > 0;
@@ -108,12 +110,17 @@ export default function SentenceItem({
   useEffect(() => clearSaveTimer, []);
 
   const moreMenuItems: MenuProps["items"] = [
-    {
-      key: "note",
-      icon: <FormOutlined className={hasNote ? "text-(--accent)" : undefined} />,
-      label: hasNote ? "編輯筆記" : "自訂筆記",
-      onClick: openNoteEditor,
-    },
+    // Read-only viewers (shared articles) can analyze but never edit the note.
+    ...(readOnly
+      ? []
+      : [
+          {
+            key: "note",
+            icon: <FormOutlined className={hasNote ? "text-(--accent)" : undefined} />,
+            label: hasNote ? "編輯筆記" : "自訂筆記",
+            onClick: openNoteEditor,
+          },
+        ]),
     {
       key: "structure",
       icon: (
@@ -172,7 +179,7 @@ export default function SentenceItem({
               </Text>
             </div>
 
-            {editingNote ? (
+            {editingNote && !readOnly ? (
               <div className="mt-2">
                 <Input.TextArea
                   value={draftNote}
@@ -186,8 +193,8 @@ export default function SentenceItem({
             ) : (
               hasNote && (
                 <div
-                  onClick={openNoteEditor}
-                  className="mt-2 cursor-text rounded-md border border-(--card-border) bg-(--card-bg) px-3 py-2"
+                  onClick={readOnly ? undefined : openNoteEditor}
+                  className={`mt-2 rounded-md border border-(--card-border) bg-(--card-bg) px-3 py-2 ${readOnly ? "" : "cursor-text"}`}
                 >
                   <Text style={{ whiteSpace: "pre-wrap" }}>{note}</Text>
                 </div>
@@ -234,6 +241,7 @@ export default function SentenceItem({
           onDelete={onDelete}
           onReorder={onReorder}
           onEdit={onEdit}
+          readOnly={readOnly}
         />
       </div>
     </li>

@@ -55,11 +55,25 @@ All endpoints except `/api/health` and `/api/debug/*` require a Supabase Bearer 
 | `POST` | `/api/parse` | Analyze a sentence into a five-pattern constituent tree via Gemini (spaCy validates/repairs; cached in memory + Supabase) |
 | `POST` | `/api/ocr` | Extract text from a base64 image via Gemini vision (JPEG/PNG/WebP, max 8 MB) |
 | `POST` | `/api/profile/ensure` | Create or verify user profile |
-| `GET` | `/api/sessions` | List sessions (supports `limit` / `offset`) |
+| `GET` | `/api/sessions` | List sessions (supports `limit` / `offset`; items include `share_token`) |
 | `GET` | `/api/sessions/{id}` | Load a single session |
 | `POST` | `/api/sessions/save` | Save or overwrite a session |
 | `PATCH` | `/api/sessions/{id}/title` | Rename a session |
-| `DELETE` | `/api/sessions/{id}` | Delete a session |
+| `DELETE` | `/api/sessions/{id}` | Delete a session (cascade-removes everyone's favorites) |
+| `POST` | `/api/sessions/{id}/share` | Create or return the session's share token (idempotent, owner only) |
+| `DELETE` | `/api/sessions/{id}/share` | Revoke the share link (hides favorites until re-shared) |
+| `GET` | `/api/shared/{token}` | Read-only shared article (any signed-in user; 404 if revoked) |
+| `POST` | `/api/shared/{token}/favorite` | Favorite a shared article |
+| `DELETE` | `/api/favorites/{session_id}` | Remove a favorite |
+| `GET` | `/api/favorites` | List favorited shared articles (revoked/deleted ones excluded) |
+| `POST` | `/api/shared/{token}/fork` | Copy a shared article into the caller's own sessions |
+| `POST` | `/api/tts` | Synthesize speech via edge-tts (neural voice, cached) |
+| `GET` | `/api/quiz/vocab-pool` | Vocab pool across sessions for quiz building |
+| `POST` | `/api/quiz/generate` | Gemini reading-comprehension questions (cached per session) |
+| `POST` | `/api/quiz/results` | Submit quiz answers (updates word mastery / SRS) |
+| `GET` | `/api/quiz/mastery` | Word mastery levels |
+| `GET` | `/api/quiz/review-words` | Words due for SRS daily review |
+| `POST` | `/api/issue-report` | Submit a user issue report |
 | `GET` | `/api/usage` | Gemini token usage stats (hourly / daily / monthly) |
 | `GET` | `/api/admin/check` | Verify the caller has admin access |
 | `GET` | `/api/admin/users` | List all users (supports `page` / `per_page`) |

@@ -3,12 +3,10 @@ import type { ComponentType } from "react";
 import {
   CloseOutlined,
   FolderOpenOutlined,
-  HomeOutlined,
   LogoutOutlined,
   MenuOutlined,
   PlusOutlined,
   SettingOutlined,
-  UserOutlined,
 } from "@ant-design/icons";
 import { Button, Tooltip } from "antd";
 import { useTranslation } from "../../context/translationContext";
@@ -24,19 +22,14 @@ type SidebarButtonConfig = {
 
 const SIDEBAR_BUTTONS: SidebarButtonConfig[] = [
   {
-    key: "profile",
-    ariaLabel: (username: string) => `${username} 個人檔案`,
-    icon: UserOutlined,
+    key: "library",
+    ariaLabel: () => "學習紀錄與收藏",
+    icon: FolderOpenOutlined,
   },
   {
     key: "settings",
     ariaLabel: () => "設定",
     icon: SettingOutlined,
-  },
-  {
-    key: "history",
-    ariaLabel: () => "歷史學習紀錄",
-    icon: FolderOpenOutlined,
   },
 ];
 
@@ -50,7 +43,6 @@ export default function AppSidebar({
   onShowUsage,
   onShowTranslate,
   onShowHome,
-  isHomeActive,
 }: {
   activePanel: string | null;
   isSidebarOpen: boolean;
@@ -61,7 +53,6 @@ export default function AppSidebar({
   onShowUsage: () => void;
   onShowTranslate: () => void;
   onShowHome: () => void;
-  isHomeActive: boolean;
 }): React.ReactElement {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const {
@@ -118,7 +109,8 @@ export default function AppSidebar({
               : "translate-x-0 opacity-100"
           }`}
         >
-          <AppTitle title="句句通" className="flex items-center gap-2" />
+          {/* Logo doubles as the home link (the standalone home icon is gone) */}
+          <AppTitle title="句句通" className="flex items-center gap-2" onClick={handleShowHome} />
         </div>
 
         <div
@@ -128,20 +120,6 @@ export default function AppSidebar({
               : "-translate-x-8 opacity-0 pointer-events-none"
           }`}
         >
-          <Tooltip title="首頁" placement="bottom">
-            <Button
-              aria-label="首頁"
-              onClick={handleShowHome}
-              icon={<HomeOutlined aria-hidden="true" />}
-              shape="circle"
-              size="large"
-              className="flex h-12 w-12 items-center justify-center border-0 text-xl shadow-sm transition"
-              style={{
-                backgroundColor: isHomeActive ? "var(--accent)" : "rgb(255 255 255 / 0.8)",
-                color: isHomeActive ? "#ffffff" : "var(--accent)",
-              }}
-            />
-          </Tooltip>
           <Tooltip title="開新學習紀錄" placement="bottom">
             <Button
               aria-label="開新學習紀錄"
@@ -203,20 +181,6 @@ export default function AppSidebar({
       <aside className="hidden lg:flex overflow-hidden rounded-[28px] bg-[color-mix(in_srgb,var(--accent)_16%,white)] shadow-sm">
         <div className="flex w-22 shrink-0 flex-col items-center justify-between px-4 py-5">
           <div className="flex flex-col gap-3">
-            <Tooltip title="首頁" placement="right">
-              <Button
-                aria-label="首頁"
-                onClick={handleShowHome}
-                icon={<HomeOutlined aria-hidden="true" />}
-                shape="circle"
-                size="large"
-                className="flex h-12 w-12 items-center justify-center border-0 text-xl shadow-sm transition"
-                style={{
-                  backgroundColor: isHomeActive ? "var(--accent)" : "rgb(255 255 255 / 0.8)",
-                  color: isHomeActive ? "#ffffff" : "var(--accent)",
-                }}
-              />
-            </Tooltip>
             <Tooltip title="開新學習紀錄" placement="right">
               <Button
                 aria-label="開新學習紀錄"

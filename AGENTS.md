@@ -14,6 +14,8 @@ See `WORKFLOW.md` for the review handoff process between Claude Code and Codex.
 ## Non-negotiable architecture rules
 
 - `context/translationContext.tsx` is the single source of truth (`useReducer`). Every mutation auto-saves via `saveGeneratedProgress` — there is no manual save button; do not add one.
+- The read-only shared view (`SharedView.tsx`, `?shared={token}`) deliberately renders OUTSIDE `TranslationProvider` with local state, so no auto-save path can exist there. Never wrap it in the provider or route shared data through context.
+- `SummaryWindow` / `VocabPrintWindow` read their data from `localStorage` (`latestSummary` / `latestVocabPrint`, written just before `window.open`) — they do not use `TranslationContext`.
 - Vocab items are keyed by `(lemma, pos)`, not by raw selected text. Adding the same word twice should merge fields, not duplicate the card.
 - Backend vocab cache (`services/vocab_cache.py`) is in-memory only, keyed by `session_id|sentence_id|word_index`. It resets on server restart — do not assume persistence.
 - Python 3.10–3.12 only (spaCy wheels don't support 3.13+).

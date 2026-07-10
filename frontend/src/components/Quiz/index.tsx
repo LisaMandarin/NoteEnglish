@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, message } from "antd";
+import { Button } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
+import { message } from "../../lib/feedback";
 import { useTranslation } from "../../context/translationContext";
 import {
   buildQuiz,

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Button, Input, Select, message } from "antd";
+import { Button, Input, Select } from "antd";
 import { submitIssueReport } from "../../lib/api";
+import { message } from "../../lib/feedback";
 
 const { TextArea } = Input;
 
