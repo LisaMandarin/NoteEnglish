@@ -119,6 +119,49 @@ function normalizeTextPoint(node: Node, offset: number): TextPoint | null {
   return textNode ? { textNode, offset: 0 } : null;
 }
 
+function getTappedOriginalTextElement(clientX: number, clientY: number): HTMLElement | null {
+  const el = document.elementFromPoint(clientX, clientY)?.closest(ORIGINAL_TEXT_SELECTOR);
+  return el instanceof HTMLElement ? el : null;
+}
+
+// Last-resort hit test for browsers whose caret APIs fail (e.g. old Safari):
+// scan the tapped sentence's characters and find the one under the point.
+function getTextPointFromCharacterRects(clientX: number, clientY: number): TextPoint | null {
+  const el = getTappedOriginalTextElement(clientX, clientY);
+  if (!el) return null;
+
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  const range = document.createRange();
+  let node = walker.nextNode() as Text | null;
+
+  while (node) {
+    range.selectNodeContents(node);
+    const nodeRect = range.getBoundingClientRect();
+
+    if (
+      clientX >= nodeRect.left && clientX <= nodeRect.right &&
+      clientY >= nodeRect.top && clientY <= nodeRect.bottom
+    ) {
+      for (let i = 0; i < node.data.length; i += 1) {
+        range.setStart(node, i);
+        range.setEnd(node, i + 1);
+        const rect = range.getBoundingClientRect();
+
+        if (
+          clientX >= rect.left && clientX <= rect.right &&
+          clientY >= rect.top && clientY <= rect.bottom
+        ) {
+          return { textNode: node, offset: i };
+        }
+      }
+    }
+
+    node = walker.nextNode() as Text | null;
+  }
+
+  return null;
+}
+
 function getTextPointFromViewport(clientX: number, clientY: number): TextPoint | null {
   const doc = document as CaretDocument;
   const position = doc.caretPositionFromPoint?.(clientX, clientY);
@@ -127,10 +170,33 @@ function getTextPointFromViewport(clientX: number, clientY: number): TextPoint |
     return normalizeTextPoint(position.offsetNode, position.offset);
   }
 
-  const range = doc.caretRangeFromPoint?.(clientX, clientY);
-  if (!range) return null;
+  // Safari < 18.4 has no caretPositionFromPoint, and its caretRangeFromPoint
+  // returns null over `user-select: none` text (the touch-device rule in
+  // index.css). Temporarily re-enable selection on the tapped sentence while
+  // measuring, then restore.
+  if (doc.caretRangeFromPoint) {
+    const el = getTappedOriginalTextElement(clientX, clientY);
+    const prevUserSelect = el ? el.style.webkitUserSelect : "";
+    const prevStandardUserSelect = el ? el.style.userSelect : "";
 
-  return normalizeTextPoint(range.startContainer, range.startOffset);
+    if (el) {
+      el.style.webkitUserSelect = "text";
+      el.style.userSelect = "text";
+    }
+
+    try {
+      const range = doc.caretRangeFromPoint(clientX, clientY);
+      const point = range ? normalizeTextPoint(range.startContainer, range.startOffset) : null;
+      if (point) return point;
+    } finally {
+      if (el) {
+        el.style.webkitUserSelect = prevUserSelect;
+        el.style.userSelect = prevStandardUserSelect;
+      }
+    }
+  }
+
+  return getTextPointFromCharacterRects(clientX, clientY);
 }
 
 function getTextOffsetWithin(root: Element, textNode: Text, offset: number): number | null {
