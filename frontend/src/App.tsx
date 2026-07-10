@@ -89,7 +89,6 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
             onShowUsage={handleShowUsage}
             onShowTranslate={handleShowTranslate}
             onShowHome={handleShowHome}
-            isHomeActive={mainView === "home" && !isSidebarOpen}
           />
           <AppMainSection
             mainView={mainView}

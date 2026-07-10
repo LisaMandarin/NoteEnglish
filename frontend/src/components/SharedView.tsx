@@ -71,7 +71,7 @@ export default function SharedView({ token }: { token: string }): React.ReactEle
     <div className="min-h-screen w-full px-6 pb-10 pt-8 sm:px-10">
       <div className="mx-auto w-full max-w-5xl">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <AppTitle title="句句通" className="flex items-center gap-2" />
+          <AppTitle title="句句通" className="flex items-center gap-2" onClick={goHome} />
           <Button icon={<ArrowLeftOutlined />} onClick={goHome}>
             回到我的學習紀錄
           </Button>
