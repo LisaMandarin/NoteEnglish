@@ -12,7 +12,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Auth**: frontend gets a Supabase JWT and sends it as `Authorization: Bearer` on every request via `lib/api.ts:apiFetch`. The backend validates the token by calling the Supabase auth API (`GET /auth/v1/user`) with the anon key; the service role key is used only for data reads/writes. `supabase-js` is auth-only — all data persistence goes through FastAPI, not direct Supabase table calls.
 
-**Summary view**: `SummaryWindow.tsx` is opened via `?view=summary` query param and reads from the same `TranslationContext` — it must be rendered inside `TranslationProvider`.
+**Summary view**: `SummaryWindow.tsx` opens in a new window via `?view=summary` and reads its data from `localStorage("latestSummary")`, written by `SummaryExportBar` right before `window.open` — it does NOT use `TranslationContext`. Same pattern for `VocabPrintWindow` (`latestVocabPrint`). This is what lets the print/summary windows work from the read-only shared view too.
+
+**Read-only shared view**: `SharedView.tsx` (`?shared={token}`) deliberately renders OUTSIDE `TranslationProvider`, holding the fetched article in local state — so the provider's auto-save path cannot exist there. Never wrap it in the provider or route shared data through context; read-only must stay structurally incapable of writing.
 
 ## Constraints
 
