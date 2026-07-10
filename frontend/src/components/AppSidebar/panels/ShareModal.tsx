@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { Button, Input, Modal, Popconfirm, message } from "antd";
+import { Button, Input, Modal, Popconfirm } from "antd";
 import { CopyOutlined, LinkOutlined } from "@ant-design/icons";
 import { createShareLink, revokeShareLink } from "../../../lib/api";
+import { copyToClipboard } from "../../../lib/clipboard";
+import { message } from "../../../lib/feedback";
 
 // Opening the modal generates (or fetches — the endpoint is idempotent) the
 // share link right away: clicking 分享 already expresses the intent to share,
@@ -50,10 +52,10 @@ export default function ShareModal({
 
   async function handleCopy(): Promise<void> {
     if (!shareUrl) return;
-    try {
-      await navigator.clipboard.writeText(shareUrl);
+    const copied = await copyToClipboard(shareUrl);
+    if (copied) {
       message.success("已複製分享連結");
-    } catch {
+    } else {
       message.error("複製失敗，請手動選取連結複製。");
     }
   }

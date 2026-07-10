@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Button, message } from "antd";
+import { Button } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
+import { message } from "../../lib/feedback";
 import { getReviewWords, submitQuizResults } from "../../lib/api";
 import { buildReviewQuiz, toResultPayload } from "../../lib/quiz";
 import { invalidateWordMastery } from "../../lib/mastery";

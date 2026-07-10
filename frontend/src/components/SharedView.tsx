@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Button, Tooltip, message } from "antd";
+import { Button, Tooltip } from "antd";
+import { message } from "../lib/feedback";
 import { ArrowLeftOutlined, HeartFilled, HeartOutlined } from "@ant-design/icons";
 import type { SharedSessionDetail } from "../types";
 import { addFavorite, getSharedSession, removeFavorite } from "../lib/api";
