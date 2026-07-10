@@ -27,7 +27,6 @@ export default function FavoritesPanel({ activePanel }: { activePanel: string })
 
   useEffect(() => {
     if (activePanel === "favorites") load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePanel]);
 
   function openShared(token: string): void {
