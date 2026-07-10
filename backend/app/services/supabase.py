@@ -991,32 +991,41 @@ def _creator_name(owner_id: str) -> str | None:
 
 def create_share_token(user_id: str, session_id: str) -> dict:
     """Idempotent: re-sharing returns the existing token so a link once handed
-    out keeps working. updated_at is left alone — sharing is not a content edit
-    and must not reorder the session list."""
-    query = parse.urlencode(
-        {"id": f"eq.{session_id}", "user_id": f"eq.{user_id}", "select": "id,share_token"}
-    )
-    rows = _request_json(
-        "GET",
-        f"{settings.supabase_url}/rest/v1/study_sessions?{query}",
-        headers=_service_headers(),
-    ) or []
-    if not rows:
-        raise HTTPException(status_code=404, detail="Study session not found.")
+    out keeps working. The PATCH is guarded with share_token=is.null so two
+    concurrent requests cannot both mint a token and leave one caller holding
+    a link that was immediately overwritten — the loser re-reads the winner's
+    token. updated_at is left alone — sharing is not a content edit and must
+    not reorder the session list."""
+    for _ in range(2):
+        query = parse.urlencode(
+            {"id": f"eq.{session_id}", "user_id": f"eq.{user_id}", "select": "id,share_token"}
+        )
+        rows = _request_json(
+            "GET",
+            f"{settings.supabase_url}/rest/v1/study_sessions?{query}",
+            headers=_service_headers(),
+        ) or []
+        if not rows:
+            raise HTTPException(status_code=404, detail="Study session not found.")
 
-    existing = rows[0].get("share_token")
-    if existing:
-        return {"share_token": existing}
+        existing = rows[0].get("share_token")
+        if existing:
+            return {"share_token": existing}
 
-    token = str(uuid.uuid4())
-    update_query = parse.urlencode({"id": f"eq.{session_id}", "user_id": f"eq.{user_id}"})
-    _request_json(
-        "PATCH",
-        f"{settings.supabase_url}/rest/v1/study_sessions?{update_query}",
-        headers=_service_headers(),
-        payload={"share_token": token},
-    )
-    return {"share_token": token}
+        update_query = parse.urlencode(
+            {"id": f"eq.{session_id}", "user_id": f"eq.{user_id}", "share_token": "is.null"}
+        )
+        updated_rows = _request_json(
+            "PATCH",
+            f"{settings.supabase_url}/rest/v1/study_sessions?{update_query}",
+            headers=_service_headers("return=representation"),
+            payload={"share_token": str(uuid.uuid4())},
+        ) or []
+        if updated_rows:
+            return {"share_token": updated_rows[0]["share_token"]}
+        # Guarded update matched no row: another request set a token between
+        # the read and the PATCH. Loop once to pick up the winner's token.
+    raise HTTPException(status_code=500, detail="Could not create the share link.")
 
 
 def revoke_share_token(user_id: str, session_id: str) -> None:

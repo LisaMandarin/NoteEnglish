@@ -32,19 +32,36 @@ class CreateShareTokenTests(unittest.TestCase):
     def test_generates_token_once_then_reuses_it(self):
         fake = FakeRequestJson([
             ("GET", "study_sessions", [{"id": "s-1", "share_token": None}]),
-            ("PATCH", "study_sessions", None),
+            ("PATCH", "study_sessions", [{"share_token": "minted-token"}]),
             ("GET", "study_sessions", [{"id": "s-1", "share_token": "existing-token"}]),
         ])
         with patch.object(supabase, "_request_json", fake):
             first = supabase.create_share_token(OWNER, "s-1")
             second = supabase.create_share_token(OWNER, "s-1")
 
-        self.assertTrue(first["share_token"])
+        # Token comes from the guarded PATCH's representation, not the local var.
+        self.assertEqual(first["share_token"], "minted-token")
         patch_call = fake.calls[1]
-        self.assertEqual(patch_call["payload"], {"share_token": first["share_token"]})
+        # Guarded update: only fills a NULL token, so concurrent shares cannot
+        # overwrite each other.
+        self.assertIn("share_token=is.null", patch_call["url"])
+        self.assertEqual(len(patch_call["payload"]["share_token"]), 36)
         # Sharing must not touch updated_at (it would reorder the session list).
         self.assertNotIn("updated_at", patch_call["payload"])
         self.assertEqual(second["share_token"], "existing-token")
+
+    def test_losing_the_race_returns_winner_token(self):
+        fake = FakeRequestJson([
+            ("GET", "study_sessions", [{"id": "s-1", "share_token": None}]),
+            # Another request minted a token between the read and the guarded
+            # update, so the PATCH matches no row...
+            ("PATCH", "study_sessions", []),
+            # ...and the retry read returns the winner's token.
+            ("GET", "study_sessions", [{"id": "s-1", "share_token": "winner-token"}]),
+        ])
+        with patch.object(supabase, "_request_json", fake):
+            result = supabase.create_share_token(OWNER, "s-1")
+        self.assertEqual(result["share_token"], "winner-token")
 
     def test_non_owner_gets_404(self):
         fake = FakeRequestJson([("GET", "study_sessions", [])])
