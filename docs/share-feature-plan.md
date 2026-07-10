@@ -132,7 +132,7 @@ fork 不呼叫 Gemini（資料都已算好），成本為零。
 - `SummaryExportBar` 的 `onStartQuiz` 改為可選：分享檢視保留「列印彙整資料」「列印單字卡」（經 localStorage，可直接重用），隱藏「單字測驗」。
 - `SharedView` 頁面：唯讀標記、標題、「由 {creator_name} 分享」、收藏/取消收藏（HeartOutlined/Filled + message 回饋）、「回到我的學習紀錄」（`location.href = pathname` 整頁重載，天然避開 view-state 殘留 bug）。404/撤銷 → 顯示「連結已失效」。
 - `App.tsx`：`?shared={token}` 且已登入 → `SharedView`；未登入 → 照常 `LoginPage`（登入不導頁、query string 自然保留，已檢查 LoginPage 不動 URL）。`view=summary`/`vocab-print` 的判斷在前，分享檢視開的列印視窗不受影響。
-- 已知取捨：唯讀單字卡沿用既有 `VocabCard readOnly`（為列印設計，會隱藏卡片上的單字 TTS 鈕）；句子 TTS 仍可用。之後想在分享檢視顯示單字 TTS 再另加 prop。
+- ~~已知取捨：唯讀單字卡會隱藏單字 TTS 鈕~~ 已修（2026-07-11）：`VocabCard` 新增 `showTts` prop 與 readOnly 脫鉤，分享檢視的單字/例句發音鈕保留；SummaryWindow 列印版維持無聲。
 - 「編輯副本」按鈕留給 Step 7 一起接。
 
 ### 5a. 進入點（`frontend/src/App.tsx`）
