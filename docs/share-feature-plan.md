@@ -169,10 +169,12 @@ fork 不呼叫 Gemini（資料都已算好），成本為零。
 
 ---
 
-## Step 7：前端 — fork（編輯副本）
+## Step 7：前端 — fork（編輯副本）✅（程式完成 2026-07-11）
 
-- 「編輯副本」→ 確認對話框（說明「將複製為你自己的筆記，之後與原文互不影響」）→ `POST /api/shared/{token}/fork` → 取得新 session id → 清掉 `?shared` query param → 以一般編輯模式載入新 session。
-- fork 完成後這份就是學生自己的 session，走原本的自動存檔流程。
+實作紀錄：
+- SharedView 標題列「編輯副本」按鈕（收藏旁）：Popconfirm 確認（「會在你的學習紀錄中建立一份副本，之後的編輯與原文互不影響」）→ `POST /api/shared/{token}/fork`。
+- 交接機制：fork 成功後把新 session id 寫進 `sessionStorage("ne_open_session")` → `location.href = pathname` 整頁回主 app → `App.tsx` 的 `PendingForkLoader`（掛在 TranslationProvider 內）讀到 id 就 `loadSession` ＋ 切到 translate 檢視。key 先移除再載入，StrictMode 雙掛載或重新整理都不會重播。
+- fork 後即為使用者自己的 session，照常自動存檔；載入時明確切 view，符合「切換 session 必須重置主畫面」的既有規範。
 
 ---
 

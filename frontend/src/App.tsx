@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
-import { TranslationProvider } from "./context/translationContext";
+import { TranslationProvider, useTranslation } from "./context/translationContext";
 import AppMainSection from "./components/MainSection";
 import AppSidebar from "./components/AppSidebar";
 import IssueReportBadge from "./components/IssueReport/IssueReportBadge";
@@ -32,6 +32,27 @@ async function ensureProfile(user: User): Promise<void> {
 }
 
 type MainView = "home" | "translate" | "usage" | "report" | "quiz" | "review";
+
+// Fork handover: SharedView stores the fresh copy's session id in
+// sessionStorage and reloads into the main app; this opens it straight in the
+// editor. The key is removed before loading, so a StrictMode double-mount or
+// manual refresh cannot replay it.
+function PendingForkLoader({ onOpen }: { onOpen: () => void }): null {
+  const {
+    actions: { loadSession },
+  } = useTranslation();
+
+  useEffect(() => {
+    const pendingId = sessionStorage.getItem("ne_open_session");
+    if (!pendingId) return;
+    sessionStorage.removeItem("ne_open_session");
+    onOpen();
+    loadSession(pendingId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return null;
+}
 
 function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): React.ReactElement {
   const [activePanel, setActivePanel] = useState<string | null>(null);
@@ -72,6 +93,7 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
 
   return (
     <TranslationProvider>
+      <PendingForkLoader onOpen={handleShowTranslate} />
       <div className="flex min-h-screen w-full flex-col px-6 pb-10 pt-20 sm:px-10 lg:py-10">
         <div
           className="mx-auto w-full max-w-7xl flex-1 gap-5 transition-[grid-template-columns] duration-300 lg:grid lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)]"

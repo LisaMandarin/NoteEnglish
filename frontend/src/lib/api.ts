@@ -156,6 +156,10 @@ export async function listFavorites(): Promise<{ items: FavoriteItem[] }> {
   return apiFetch("/api/favorites") as Promise<{ items: FavoriteItem[] }>;
 }
 
+export async function forkSharedSession(token: string): Promise<SaveSessionResponse> {
+  return apiFetch(`/api/shared/${token}/fork`, { method: "POST" }) as Promise<SaveSessionResponse>;
+}
+
 export async function ocrImage(imageBase64: string, mimeType: string): Promise<{ text: string }> {
   return apiFetch("/api/ocr", {
     method: "POST",

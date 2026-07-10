@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Button, Tooltip } from "antd";
+import { Button, Popconfirm, Tooltip } from "antd";
 import { message } from "../lib/feedback";
-import { ArrowLeftOutlined, HeartFilled, HeartOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, EditOutlined, HeartFilled, HeartOutlined } from "@ant-design/icons";
 import type { SharedSessionDetail } from "../types";
-import { addFavorite, getSharedSession, removeFavorite } from "../lib/api";
+import { addFavorite, forkSharedSession, getSharedSession, removeFavorite } from "../lib/api";
 import SentenceItem from "./Translations/SentenceItem";
 import SummaryExportBar from "./Translations/SummaryExportBar";
 import AppTitle from "./MainSection/AppTitle";
@@ -18,6 +18,7 @@ export default function SharedView({ token }: { token: string }): React.ReactEle
   const [error, setError] = useState(false);
   const [favorited, setFavorited] = useState(false);
   const [favBusy, setFavBusy] = useState(false);
+  const [forking, setForking] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,6 +44,24 @@ export default function SharedView({ token }: { token: string }): React.ReactEle
   function goHome(): void {
     // Strip ?shared and reload: lands on the normal app with a fresh view state.
     window.location.href = window.location.pathname;
+  }
+
+  async function handleFork(): Promise<void> {
+    if (forking) return;
+    setForking(true);
+    try {
+      const result = await forkSharedSession(token);
+      const newId = result.session?.id;
+      if (newId) {
+        // Picked up by PendingForkLoader after the reload below, which opens
+        // the fresh copy straight in the editor.
+        sessionStorage.setItem("ne_open_session", newId);
+      }
+      window.location.href = window.location.pathname;
+    } catch {
+      message.error("建立副本失敗，請稍後再試。");
+      setForking(false);
+    }
   }
 
   async function toggleFavorite(): Promise<void> {
@@ -104,16 +123,29 @@ export default function SharedView({ token }: { token: string }): React.ReactEle
                       由 {detail.creator_name?.trim() || "使用者"} 分享
                     </p>
                   </div>
-                  <Tooltip title={favorited ? "從收藏清單移除" : "收藏後可隨時開啟"}>
-                    <Button
-                      type={favorited ? "primary" : "default"}
-                      icon={favorited ? <HeartFilled /> : <HeartOutlined />}
-                      loading={favBusy}
-                      onClick={toggleFavorite}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Tooltip title={favorited ? "從收藏清單移除" : "收藏後可隨時開啟"}>
+                      <Button
+                        type={favorited ? "primary" : "default"}
+                        icon={favorited ? <HeartFilled /> : <HeartOutlined />}
+                        loading={favBusy}
+                        onClick={toggleFavorite}
+                      >
+                        {favorited ? "已收藏" : "收藏"}
+                      </Button>
+                    </Tooltip>
+                    <Popconfirm
+                      title="複製成自己的筆記？"
+                      description="會在你的學習紀錄中建立一份副本，之後的編輯與原文互不影響。"
+                      okText="建立副本"
+                      cancelText="取消"
+                      onConfirm={handleFork}
                     >
-                      {favorited ? "已收藏" : "收藏"}
-                    </Button>
-                  </Tooltip>
+                      <Button icon={<EditOutlined />} loading={forking}>
+                        編輯副本
+                      </Button>
+                    </Popconfirm>
+                  </div>
                 </div>
 
                 <div className="mt-8">
