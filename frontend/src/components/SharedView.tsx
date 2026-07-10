@@ -136,7 +136,7 @@ export default function SharedView({ token }: { token: string }): React.ReactEle
                     </Tooltip>
                     <Popconfirm
                       title="複製成自己的筆記？"
-                      description="會在你的學習紀錄中建立一份副本，之後的編輯與原文互不影響。"
+                      description="建立獨立副本，編輯不影響原文"
                       okText="建立副本"
                       cancelText="取消"
                       onConfirm={handleFork}
