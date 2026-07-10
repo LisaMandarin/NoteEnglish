@@ -210,7 +210,7 @@ export default function App(): React.ReactElement {
   if (isAdminDashboard) {
     if (!user) return <AdminLoginPage />;
     return (
-      <AdminDashboard user={user} onSignOut={() => supabase.auth.signOut()} />
+      <AdminDashboard user={user} onSignOut={() => supabase.auth.signOut({ scope: "local" })} />
     );
   }
 
@@ -227,7 +227,10 @@ export default function App(): React.ReactElement {
   return (
     <MainPage
       user={user}
-      onSignOut={() => supabase.auth.signOut()}
+      // scope local: signing out one device must not revoke the sessions of
+      // every other device (ResetPasswordPage's global sign-out stays global
+      // on purpose — after a password change all old sessions should die).
+      onSignOut={() => supabase.auth.signOut({ scope: "local" })}
     />
   );
 }
