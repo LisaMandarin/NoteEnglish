@@ -25,6 +25,9 @@
   /* Quiz answer-feedback colors (correct / wrong states) */
   --quiz-correct: #15803d;
   --quiz-wrong: #dc2626;
+  /* StudyActions next-steps panel — soft mint tint to stand apart from the white cards */
+  --panel-bg: #e8f5f1;
+  --panel-border: #cfe6dc;
   color: var(--text-main);
 
   font-synthesis: none;

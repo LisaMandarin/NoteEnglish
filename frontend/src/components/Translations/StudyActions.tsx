@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Button, Card, Checkbox } from "antd";
-import { FormOutlined, PrinterOutlined } from "@ant-design/icons";
+import { Button, Card, Checkbox, Modal } from "antd";
+import { EditOutlined, FileTextOutlined, FormOutlined, IdcardOutlined, PrinterOutlined } from "@ant-design/icons";
 import type { Sentence, VocabItem } from "../../types";
 
 function collectVocab(sentences: Sentence[]): VocabItem[] {
@@ -32,12 +32,15 @@ export default function StudyActions({
   // Absent in the read-only shared view — the quiz works on one's own sessions.
   onStartQuiz?: () => void;
 }): React.ReactElement {
+  const [printModalOpen, setPrintModalOpen] = useState(false);
   const [includeTranslation, setIncludeTranslation] = useState(true);
   const [includeVocab, setIncludeVocab] = useState(true);
   const [includeNote, setIncludeNote] = useState(true);
 
   const hasVocab = collectVocab(sentences).length > 0;
-  const nothingChecked = !includeTranslation && !includeVocab && !includeNote;
+  const hasNote = sentences.some((s) => (s.note ?? "").trim() !== "");
+  const effectiveIncludeNote = hasNote && includeNote;
+  const nothingChecked = !includeTranslation && !includeVocab && !effectiveIncludeNote;
 
   function openVocabPrintWindow(): void {
     const vocab = collectVocab(sentences);
@@ -56,7 +59,7 @@ export default function StudyActions({
       sessionTitle,
       includeTranslation,
       includeVocab,
-      includeNote,
+      includeNote: effectiveIncludeNote,
       rows: sentences.map((s, idx) => ({
         idx,
         original: s.original ?? "",
@@ -72,62 +75,56 @@ export default function StudyActions({
     window.open(url.toString(), "_blank");
   }
 
+  function handleConfirmSummaryPrint(): void {
+    openSummaryWindow();
+    setPrintModalOpen(false);
+  }
+
   return (
-    <div className="mt-8">
-      <p className="mb-3 font-semibold text-(--text-main)">
-        📌 完成翻譯和查單字了嗎？接下來你可以：
-      </p>
+    <div className="mt-8 rounded-2xl border border-(--panel-border) bg-(--panel-bg) p-4 sm:p-5">
+      <div className="mb-4 flex items-start gap-2">
+        <div>
+          <p className="m-0 font-bold text-2xl text-(--accent)">完成本次閱讀了嗎？</p>
+          <p className="m-0 text-sm text-black/60">列印學習內容，或透過測驗檢視學習成果。</p>
+        </div>
+      </div>
       <div className="flex flex-col gap-4 md:flex-row md:items-stretch">
-        <Card size="small" className="flex-1 border-(--card-border) bg-(--card-bg)">
-          <p className="m-0 mb-1 font-semibold">🖨️ 列印保存</p>
+        <Card size="small" className="flex-1">
+          <p className="m-0 mb-1 flex items-center gap-2 font-semibold">
+            <PrinterOutlined />
+            列印與保存
+          </p>
           <p className="m-0 mb-3 text-sm text-black/60">
             把筆記和單字卡印出來，或存成 PDF。
           </p>
-          <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-sm text-black/60">彙整資料包含：</span>
-            <Checkbox
-              checked={includeTranslation}
-              onChange={(e) => setIncludeTranslation(e.target.checked)}
-            >
-              中文翻譯
-            </Checkbox>
-            <Checkbox
-              checked={includeVocab}
-              onChange={(e) => setIncludeVocab(e.target.checked)}
-            >
-              單字筆記
-            </Checkbox>
-            <Checkbox
-              checked={includeNote}
-              onChange={(e) => setIncludeNote(e.target.checked)}
-            >
-              我的筆記
-            </Checkbox>
-          </div>
           <div className="flex flex-wrap gap-2">
             <Button
-              icon={<PrinterOutlined />}
-              disabled={nothingChecked}
-              onClick={openSummaryWindow}
+              type="primary"
+              icon={<FileTextOutlined />}
+              onClick={() => setPrintModalOpen(true)}
               className="transition-colors"
             >
-              列印彙整資料
+              預覽筆記
             </Button>
             <Button
-              icon={<PrinterOutlined />}
+              type="primary"
+              icon={<IdcardOutlined />}
               disabled={!hasVocab}
               onClick={openVocabPrintWindow}
               className="transition-colors"
             >
-              列印單字卡
+              預覽單字卡
             </Button>
           </div>
         </Card>
         {onStartQuiz && (
-          <Card size="small" className="flex-1 border-(--card-border) bg-(--card-bg)">
-            <p className="m-0 mb-1 font-semibold">✏️ 線上測驗</p>
+          <Card size="small" className="flex-1">
+            <p className="m-0 mb-1 flex items-center gap-2 font-semibold">
+              <EditOutlined />
+              線上測驗
+            </p>
             <p className="m-0 mb-3 text-sm text-black/60">
-              用剛查過的單字測試自己，看看記住了多少。
+              用單字練習、聽寫和閱讀理解，檢視這篇文章的學習成果。
             </p>
             <Button
               type="primary"
@@ -136,7 +133,7 @@ export default function StudyActions({
               onClick={onStartQuiz}
               className="transition-colors"
             >
-              單字測驗
+              開始測驗
             </Button>
           </Card>
         )}
@@ -146,6 +143,117 @@ export default function StudyActions({
           小提醒：先選取文章中的單字查詢，就能列印單字卡和做測驗。
         </p>
       )}
+      <Modal
+        title="預覽筆記"
+        open={printModalOpen}
+        onCancel={() => setPrintModalOpen(false)}
+        onOk={handleConfirmSummaryPrint}
+        okText="預覽輸出畫面"
+        cancelText="取消"
+        okButtonProps={{ disabled: nothingChecked }}
+      >
+        <p className="mb-2 text-black/60">選擇要包含的內容：</p>
+        <div className="flex flex-col gap-2">
+          <Checkbox
+            checked={includeTranslation}
+            onChange={(e) => setIncludeTranslation(e.target.checked)}
+          >
+            中文翻譯
+          </Checkbox>
+          <Checkbox
+            checked={includeVocab}
+            onChange={(e) => setIncludeVocab(e.target.checked)}
+          >
+            單字筆記
+          </Checkbox>
+          <Checkbox
+            checked={effectiveIncludeNote}
+            disabled={!hasNote}
+            onChange={(e) => setIncludeNote(e.target.checked)}
+          >
+            自訂筆記
+            {!hasNote && (
+              <span className="ml-1 text-black/40">（尚未寫任何自訂筆記）</span>
+            )}
+          </Checkbox>
+        </div>
+        {nothingChecked && (
+          <p className="mt-2 mb-0 text-sm text-black/45">請至少勾選一項內容。</p>
+        )}
+
+        <p className="mt-4 mb-2 text-xs font-medium text-black/40">列印範例</p>
+        <div className="rounded-lg border border-black/10 bg-white p-3 text-sm shadow-sm">
+          <div className="flex gap-2">
+            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-(--card-border) text-[11px] font-semibold text-white">
+              1
+            </div>
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <div>
+                <span className="font-semibold">原文:</span> The cat sat on the mat.
+              </div>
+              {includeTranslation && <div className="text-black/70">貓咪坐在墊子上。</div>}
+              {effectiveIncludeNote && (
+                <div>
+                  <div className="text-xs font-semibold">自訂筆記:</div>
+                  <div className="text-black/70">sit 的過去式是 sat，容易搞混。</div>
+                </div>
+              )}
+              {includeVocab && (
+                <div>
+                  <div className="mb-1.5 text-xs font-semibold">單字筆記:</div>
+                  {/* Mirrors the printed VocabCard layout: word + pos badge,
+                      translation, definition, gray example block, CEFR level. */}
+                  <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
+                    {[
+                      {
+                        text: "sat",
+                        pos: "v.",
+                        translation: "坐",
+                        definition: "past tense of sit",
+                        example: "The cat sat on the mat.",
+                        level: "A1",
+                      },
+                      {
+                        text: "mat",
+                        pos: "n.",
+                        translation: "墊子",
+                        definition: "a small piece of thick material on the floor",
+                        example: "Wipe your shoes on the mat.",
+                        level: "A2",
+                      },
+                    ].map((v) => (
+                      <div
+                        key={v.text}
+                        className="rounded-xl border border-black/15 bg-white p-2.5"
+                      >
+                        <div className="mb-0.5 flex items-center gap-1.5">
+                          <span className="text-sm font-bold">{v.text}</span>
+                          <span className="rounded bg-black/8 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-black/60">
+                            {v.pos}
+                          </span>
+                        </div>
+                        <div className="mb-1 text-base font-bold">{v.translation}</div>
+                        <p className="m-0 mb-1 text-xs leading-relaxed text-black/70">
+                          {v.definition}
+                        </p>
+                        <div className="rounded-md bg-black/6 px-2 py-1 text-xs text-black/70">
+                          {v.example}
+                        </div>
+                        <div className="mt-1.5 text-[10px] font-semibold text-black/50">
+                          {v.level}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          {nothingChecked && (
+            <p className="mt-2 mb-0 text-xs text-black/40">勾選上方項目即可預覽列印內容。</p>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

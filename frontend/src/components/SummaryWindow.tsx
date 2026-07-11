@@ -39,7 +39,7 @@ export default function SummaryWindow() {
     const parts = ["原文"];
     if (data.includeTranslation) parts.push("翻譯");
     if (data.includeVocab) parts.push("單字筆記");
-    if (data.includeNote) parts.push("我的筆記");
+    if (data.includeNote) parts.push("自訂筆記");
     return parts.join(" + ");
   }, [data]);
 
@@ -68,7 +68,7 @@ export default function SummaryWindow() {
     <div className="summary-print-root">
       <div className="summary-print-toolbar no-print">
         <Button type="primary" onClick={() => window.print()}>
-          列印 / Print
+          列印 / 存成PDF
         </Button>
         <span className="spt-title">{data.sessionTitle ?? "彙整結果"}</span>
         <span className="spt-subtitle">{subtitle}</span>
@@ -103,7 +103,7 @@ export default function SummaryWindow() {
 
                   {data.includeNote && (row.note ?? "").trim() && (
                     <div className="mt-3">
-                      <div className="font-semibold">我的筆記:</div>
+                      <div className="font-semibold">自訂筆記:</div>
                       <div className="mt-1" style={{ whiteSpace: "pre-wrap" }}>
                         {row.note}
                       </div>
