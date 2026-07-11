@@ -107,6 +107,27 @@ export default function QuizSetup({
   const limitChoices = LIMIT_STEPS.filter((s) => s < totalSelected);
   const effectiveLimit = limitChoices.includes(limit) ? limit : 0;
 
+  const wordActive = activeTypes.some(
+    (key) => TYPE_ROWS.find((row) => row.key === key)!.category === "word",
+  );
+  const articleActive = activeTypes.some(
+    (key) => TYPE_ROWS.find((row) => row.key === key)!.category === "article",
+  );
+
+  // Annotate finished steps with what was picked there.
+  const categoryDesc =
+    selectedCategories.length > 0
+      ? CATEGORY_INFO.filter((cat) => selectedCategories.includes(cat.key))
+          .map((cat) => cat.title.replace("測驗", ""))
+          .join("＋")
+      : undefined;
+  const typeDesc =
+    activeTypes.length > 0
+      ? TYPE_ROWS.filter((row) => activeTypes.includes(row.key))
+          .map((row) => row.label)
+          .join("、")
+      : undefined;
+
   function typeAvailable(key: QuizTypeKey): boolean {
     if (key === "comprehension") return comprehension.available;
     return counts[key as FrontendTypeKey] > 0;
@@ -198,11 +219,17 @@ export default function QuizSetup({
 
   return (
     <div className="space-y-8">
-      <Steps
-        size="small"
-        current={step}
-        items={[{ title: "選類別" }, { title: "選題型" }, { title: "確認開始" }]}
-      />
+      <div className="pb-1">
+        <Steps
+          size="small"
+          current={step}
+          items={[
+            { title: "選類別", description: categoryDesc },
+            { title: "選題型", description: typeDesc },
+            { title: "確認開始" },
+          ]}
+        />
+      </div>
 
       {step === 0 && (
         <div>
@@ -333,23 +360,33 @@ export default function QuizSetup({
             </div>
           )}
 
-          {/* How the two session-card proficiency scores are computed */}
+          {/* Explains only the proficiency scores this run can affect */}
           <div className="rounded-xl border border-(--card-border) bg-(--card-bg) p-4 text-sm">
             <h3 className="m-0 mb-2 flex items-center gap-1.5 text-sm font-semibold">
               <InfoCircleOutlined aria-hidden="true" />
               熟練度計算方式
             </h3>
-            <ul className="m-0 list-none space-y-1 p-0 opacity-80">
-              <li>
-                <FileTextOutlined aria-hidden="true" className="mr-1.5 text-(--accent)" />
-                文章熟練度＝最近一次測驗中「閱讀理解、聽寫」的答對率
-              </li>
-              <li>
-                <BookOutlined aria-hidden="true" className="mr-1.5 text-(--accent)" />
-                單字熟練度＝最近一次測驗中「克漏字、字義配對、拼字」的答對率
-              </li>
+            <ul className="m-0 list-none space-y-1.5 p-0 opacity-80">
+              {articleActive && (
+                <li>
+                  文章熟練度＝最近一次測驗中「閱讀理解、聽寫」的答對率，顯示在文章卡片上，例如{" "}
+                  {/* Sample badge, same look as ProficiencyBadges on session cards */}
+                  <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-(--accent)/12 px-1.5 py-0.5 align-middle text-xs font-semibold text-(--accent)">
+                    <FileTextOutlined aria-hidden="true" />
+                    80%
+                  </span>
+                </li>
+              )}
+              {wordActive && (
+                <li>
+                  單字熟練度＝最近一次測驗中「克漏字、字義配對、拼字」的答對率，顯示在文章卡片上，例如{" "}
+                  <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-(--accent)/12 px-1.5 py-0.5 align-middle text-xs font-semibold text-(--accent)">
+                    <BookOutlined aria-hidden="true" />
+                    80%
+                  </span>
+                </li>
+              )}
               <li>只採計最近一次的成績，重新測驗就會更新，分數顯示在首頁和歷史紀錄的文章卡片上。</li>
-              <li>單字在兩種不同題型都答對過會標示「已掌握」，答錯則回到「學習中」。</li>
             </ul>
           </div>
         </div>

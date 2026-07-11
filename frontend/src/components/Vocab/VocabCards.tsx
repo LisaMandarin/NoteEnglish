@@ -156,15 +156,23 @@ function MasteryBadge({ v, readOnly }: { v: VocabItem; readOnly: boolean }) {
   if (!item) return null;
   const mastered = item.level >= 2;
   return (
-    <span
-      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+    <Tooltip
+      title={
         mastered
-          ? "bg-(--quiz-correct)/12 text-(--quiz-correct)"
-          : "bg-amber-100 text-amber-700"
-      }`}
+          ? "這個單字在兩種不同題型都答對過；之後答錯會回到「學習中」"
+          : "在兩種不同題型都答對過就會標示「已掌握」，答錯會回到「學習中」"
+      }
     >
-      {mastered ? "已掌握" : "學習中"}
-    </span>
+      <span
+        className={`shrink-0 cursor-help whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
+          mastered
+            ? "bg-(--quiz-correct)/12 text-(--quiz-correct)"
+            : "bg-amber-100 text-amber-700"
+        }`}
+      >
+        {mastered ? "已掌握" : "學習中"}
+      </span>
+    </Tooltip>
   );
 }
 
@@ -246,8 +254,9 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false, sh
       {...(!readOnly && !isEditing ? dragProps : {})}
       className={`rounded-2xl border border-(--card-border) bg-(--card-bg) p-4 shadow-sm flex flex-col min-h-50 min-w-0 ${isEditing ? "select-text" : "select-none"} ${readOnly || isEditing ? "" : "cursor-grab active:cursor-grabbing"}`}
     >
-      {/* Word + POS badge */}
-      <div className="flex items-center gap-2 mb-1">
+      {/* Word + POS badge; wraps so badges drop whole to the next line
+          instead of deforming next to long words */}
+      <div className="flex flex-wrap items-center gap-2 mb-1">
         <span className="text-lg font-bold text-(--text-main)">{head || "vocab"}</span>
         <Tooltip title={v.pos ? POS_LABELS[v.pos] : undefined}>
           <span className={`pos-badge rounded px-2 py-0.5 text-xs font-bold uppercase tracking-wider ${getPosStyle(v.pos)}`}>
