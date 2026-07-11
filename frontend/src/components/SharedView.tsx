@@ -5,7 +5,7 @@ import { ArrowLeftOutlined, EditOutlined, HeartFilled, HeartOutlined } from "@an
 import type { SharedSessionDetail } from "../types";
 import { addFavorite, forkSharedSession, getSharedSession, removeFavorite } from "../lib/api";
 import SentenceItem from "./Translations/SentenceItem";
-import SummaryExportBar from "./Translations/SummaryExportBar";
+import StudyActions from "./Translations/StudyActions";
 import AppTitle from "./MainSection/AppTitle";
 
 // Read-only view of a shared article (?shared={token}). Deliberately NOT
@@ -157,7 +157,7 @@ export default function SharedView({ token }: { token: string }): React.ReactEle
                   {detail.sentences.length === 0 && (
                     <p className="m-0 text-base text-black/60">這篇學習紀錄目前沒有內容。</p>
                   )}
-                  <SummaryExportBar sentences={detail.sentences} sessionTitle={title} />
+                  <StudyActions sentences={detail.sentences} sessionTitle={title} />
                 </div>
               </>
             )}
