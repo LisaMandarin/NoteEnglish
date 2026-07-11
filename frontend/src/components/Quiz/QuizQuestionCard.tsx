@@ -10,7 +10,7 @@ import { diffDictation, type DiffToken } from "../../lib/quiz";
 import QuizAudioButton from "./QuizAudioButton";
 import QuizAudioPlayer from "./QuizAudioPlayer";
 
-const KIND_LABELS: Record<QuizQuestion["kind"], string> = {
+export const KIND_LABELS: Record<QuizQuestion["kind"], string> = {
   cloze: "克漏字",
   matching: "字義配對",
   spelling: "拼字",
@@ -51,8 +51,10 @@ function ChoiceOptions({
   selectedIndex: number | null;
   onSelect: (optionIndex: number) => void;
 }): React.ReactElement {
+  // flex gap instead of space-y: antd's unlayered reset zeroes button
+  // margins, which swallows space-y's sibling margins here.
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-2">
       {options.map((option, idx) => {
         let state: "idle" | "correct" | "wrong" | "muted" = "idle";
         if (record) {

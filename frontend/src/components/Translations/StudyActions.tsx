@@ -39,8 +39,9 @@ export default function StudyActions({
 
   const hasVocab = collectVocab(sentences).length > 0;
   const hasNote = sentences.some((s) => (s.note ?? "").trim() !== "");
+  const effectiveIncludeVocab = hasVocab && includeVocab;
   const effectiveIncludeNote = hasNote && includeNote;
-  const nothingChecked = !includeTranslation && !includeVocab && !effectiveIncludeNote;
+  const nothingChecked = !includeTranslation && !effectiveIncludeVocab && !effectiveIncludeNote;
 
   function openVocabPrintWindow(): void {
     const vocab = collectVocab(sentences);
@@ -58,7 +59,7 @@ export default function StudyActions({
       createdAt: Date.now(),
       sessionTitle,
       includeTranslation,
-      includeVocab,
+      includeVocab: effectiveIncludeVocab,
       includeNote: effectiveIncludeNote,
       rows: sentences.map((s, idx) => ({
         idx,
@@ -161,10 +162,14 @@ export default function StudyActions({
             中文翻譯
           </Checkbox>
           <Checkbox
-            checked={includeVocab}
+            checked={effectiveIncludeVocab}
+            disabled={!hasVocab}
             onChange={(e) => setIncludeVocab(e.target.checked)}
           >
             單字筆記
+            {!hasVocab && (
+              <span className="ml-1 text-black/40">（尚未查詢任何單字）</span>
+            )}
           </Checkbox>
           <Checkbox
             checked={effectiveIncludeNote}
@@ -198,7 +203,7 @@ export default function StudyActions({
                   <div className="text-black/70">sit 的過去式是 sat，容易搞混。</div>
                 </div>
               )}
-              {includeVocab && (
+              {effectiveIncludeVocab && (
                 <div>
                   <div className="mb-1.5 text-xs font-semibold">單字筆記:</div>
                   {/* Mirrors the printed VocabCard layout: word + pos badge,
