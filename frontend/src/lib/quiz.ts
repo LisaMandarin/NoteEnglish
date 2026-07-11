@@ -13,6 +13,16 @@ import type {
   VocabItem,
 } from "../types";
 
+// Display names for quiz types. Lives here (not in a component file) so
+// react-refresh's only-export-components rule stays happy.
+export const KIND_LABELS: Record<QuizQuestion["kind"], string> = {
+  cloze: "克漏字",
+  matching: "字義配對",
+  spelling: "拼字",
+  dictation: "聽寫",
+  comprehension: "閱讀理解",
+};
+
 export type QuizConfig = {
   types: QuizTypeKey[];
   spellingMode: SpellingMode;
@@ -286,28 +296,6 @@ export function buildQuiz(
     ? extras.comprehension ?? []
     : [];
   return comprehension.length > 0 ? shuffle([...capped, ...comprehension]) : capped;
-}
-
-// 今日複習: one question per due word — matching or spelling only (the types
-// that need no sentence context), picked at random among the eligible ones.
-// Distractors come from the review pool itself.
-export function buildReviewQuiz(words: VocabItem[], spellingMode: SpellingMode): QuizQuestion[] {
-  const entries: QuizVocabEntry[] = words.map((vocab) => ({
-    vocab,
-    sentence: { original: "", translation: "", vocab: [] as VocabItem[] },
-  }));
-  const questions: QuizQuestion[] = [];
-  for (const entry of entries) {
-    const candidates: QuizQuestion[] = [];
-    const matching = buildMatchingQuestion(entry, entries, []);
-    if (matching) candidates.push(matching);
-    const spelling = buildSpellingQuestion(entry, spellingMode);
-    if (spelling) candidates.push(spelling);
-    if (candidates.length > 0) {
-      questions.push(candidates[Math.floor(Math.random() * candidates.length)]);
-    }
-  }
-  return shuffle(questions);
 }
 
 // Map finished-quiz records to the POST /api/quiz/results payload.

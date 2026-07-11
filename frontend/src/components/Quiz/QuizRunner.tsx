@@ -5,8 +5,7 @@ import QuizQuestionCard from "./QuizQuestionCard";
 import QuizResult from "./QuizResult";
 
 // Runs a prepared question list: progress bar → question cards → result
-// screen. Shared by the article quiz (QuizView) and 今日複習 (ReviewQuiz);
-// remount with a fresh `key` to restart.
+// screen. Remount with a fresh `key` to restart.
 export default function QuizRunner({
   questions,
   onFinished,
@@ -18,7 +17,7 @@ export default function QuizRunner({
   // Called once with every record when the user reaches the result screen.
   onFinished?: (records: QuizAnswerRecord[]) => void;
   onRetry: () => void;
-  // Omit to hide the 重新設定 button (review mode has no setup screen).
+  // Omit to hide the 重新設定 button.
   onReconfigure?: () => void;
   onExit: () => void;
 }): React.ReactElement {

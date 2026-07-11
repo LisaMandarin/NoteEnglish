@@ -5,7 +5,7 @@ import SelectionMenu from "./SelectionMenu";
 import { useVocabLookup } from "../../hooks/useVocabLookup";
 import { useSelectionMenu } from "../../hooks/useSelectionMenu";
 import SentenceItem from "./SentenceItem";
-import SummaryExportBar from "./SummaryExportBar";
+import StudyActions from "./StudyActions";
 const { Text } = Typography;
 
 export default function TranslationsList({ onStartQuiz }: { onStartQuiz: () => void }): React.ReactElement {
@@ -81,7 +81,7 @@ export default function TranslationsList({ onStartQuiz }: { onStartQuiz: () => v
           />
         ))}
       </ol>
-      <SummaryExportBar
+      <StudyActions
         sentences={sentences}
         sessionTitle={currentSession?.title ?? ""}
         onStartQuiz={onStartQuiz}

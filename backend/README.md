@@ -70,9 +70,10 @@ All endpoints except `/api/health` and `/api/debug/*` require a Supabase Bearer 
 | `POST` | `/api/tts` | Synthesize speech via edge-tts (neural voice, cached) |
 | `GET` | `/api/quiz/vocab-pool` | Vocab pool across sessions for quiz building |
 | `POST` | `/api/quiz/generate` | Gemini reading-comprehension questions (cached per session) |
-| `POST` | `/api/quiz/results` | Submit quiz answers (updates word mastery / SRS) |
+| `POST` | `/api/quiz/results` | Submit quiz answers (updates word mastery) |
 | `GET` | `/api/quiz/mastery` | Word mastery levels |
-| `GET` | `/api/quiz/review-words` | Words due for SRS daily review |
+| `GET` | `/api/quiz/runs` | Quiz history (one item per submitted run) |
+| `DELETE` | `/api/quiz/runs` | Delete one run and rebuild affected word mastery |
 | `POST` | `/api/issue-report` | Submit a user issue report |
 | `GET` | `/api/usage` | Gemini token usage stats (hourly / daily / monthly) |
 | `GET` | `/api/admin/check` | Verify the caller has admin access |

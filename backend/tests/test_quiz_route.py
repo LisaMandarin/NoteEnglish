@@ -154,21 +154,41 @@ class VocabPoolTests(unittest.TestCase):
         self.assertEqual(res, {"items": pool})
 
 
-class MasteryAndReviewTests(unittest.TestCase):
+class MasteryTests(unittest.TestCase):
     def test_mastery_returns_rows(self):
         rows = [{"lemma": "abandon", "pos": "v.", "level": 2, "correct_count": 3,
-                 "wrong_count": 1, "next_review_at": "2026-07-12T00:00:00+00:00"}]
+                 "wrong_count": 1}]
         with patch.object(quiz_route, "get_word_mastery", return_value=rows) as get_rows:
             res = quiz_route.quiz_mastery(user=USER)
 
         get_rows.assert_called_once_with("user-1")
         self.assertEqual(res, {"items": rows})
 
-    def test_review_words_returns_due_vocab(self):
-        words = [{"lemma": "abandon", "pos": "v.", "text": "abandon",
-                  "translation": "放棄", "definition": "to give up"}]
-        with patch.object(quiz_route, "get_review_words", return_value=words) as get_words:
-            res = quiz_route.quiz_review_words(user=USER)
 
-        get_words.assert_called_once_with("user-1")
-        self.assertEqual(res, {"items": words})
+class QuizRunsTests(unittest.TestCase):
+    def test_runs_returns_items(self):
+        runs = [{"session_id": "s1", "session_title": "文章一", "quiz_types": ["cloze"],
+                 "correct": 3, "total": 4, "answered_at": "2026-07-11T10:00:00+00:00"}]
+        with patch.object(quiz_route, "get_quiz_runs", return_value=runs) as get_runs:
+            res = quiz_route.quiz_runs(user=USER)
+
+        get_runs.assert_called_once_with("user-1")
+        self.assertEqual(res, {"items": runs})
+
+    def test_delete_run_returns_deleted_count(self):
+        with patch.object(quiz_route, "delete_quiz_run", return_value=4) as delete_run:
+            res = quiz_route.quiz_run_delete(
+                answered_at="2026-07-11T10:00:00+00:00", session_id="s1", user=USER
+            )
+
+        delete_run.assert_called_once_with("user-1", "2026-07-11T10:00:00+00:00", "s1")
+        self.assertEqual(res, {"deleted": 4})
+
+    def test_delete_missing_run_raises_404(self):
+        with patch.object(quiz_route, "delete_quiz_run", return_value=0):
+            with self.assertRaises(HTTPException) as ctx:
+                quiz_route.quiz_run_delete(
+                    answered_at="2026-07-11T10:00:00+00:00", session_id=None, user=USER
+                )
+
+        self.assertEqual(ctx.exception.status_code, 404)

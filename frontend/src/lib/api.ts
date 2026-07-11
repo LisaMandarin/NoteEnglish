@@ -11,6 +11,7 @@ import type {
   StructureNode,
   TokenUsageData,
   VocabPoolItem,
+  QuizRunRecord,
   WordMasteryItem,
 } from "../types";
 
@@ -210,9 +211,18 @@ export async function getWordMastery(): Promise<WordMasteryItem[]> {
   return res.items ?? [];
 }
 
-export async function getReviewWords(): Promise<VocabPoolItem[]> {
-  const res = (await apiFetch("/api/quiz/review-words")) as { items?: VocabPoolItem[] };
+export async function getQuizRuns(): Promise<QuizRunRecord[]> {
+  const res = (await apiFetch("/api/quiz/runs")) as { items?: QuizRunRecord[] };
   return res.items ?? [];
+}
+
+export async function deleteQuizRun(
+  answeredAt: string,
+  sessionId: string | null,
+): Promise<void> {
+  const params = new URLSearchParams({ answered_at: answeredAt });
+  if (sessionId) params.set("session_id", sessionId);
+  await apiFetch(`/api/quiz/runs?${params.toString()}`, { method: "DELETE" });
 }
 
 export async function parseSentence(sentence: string): Promise<ParseResult> {

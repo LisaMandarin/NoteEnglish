@@ -41,6 +41,7 @@ export default function AppSidebar({
   email,
   onSignOut,
   onShowUsage,
+  onShowQuizHistory,
   onShowTranslate,
   onShowHome,
 }: {
@@ -51,6 +52,7 @@ export default function AppSidebar({
   email: string;
   onSignOut: () => void;
   onShowUsage: () => void;
+  onShowQuizHistory: () => void;
   onShowTranslate: () => void;
   onShowHome: () => void;
 }): React.ReactElement {
@@ -73,6 +75,12 @@ export default function AppSidebar({
 
   function handleShowUsage(): void {
     onShowUsage();
+    setIsMobileMenuOpen(false);
+    if (activePanel) onTogglePanel(activePanel);
+  }
+
+  function handleShowQuizHistory(): void {
+    onShowQuizHistory();
     setIsMobileMenuOpen(false);
     if (activePanel) onTogglePanel(activePanel);
   }
@@ -172,6 +180,7 @@ export default function AppSidebar({
             email={email}
             onSignOut={onSignOut}
             onShowUsage={handleShowUsage}
+            onShowQuizHistory={handleShowQuizHistory}
             onShowTranslate={onShowTranslate}
           />
         </div>
@@ -242,6 +251,7 @@ export default function AppSidebar({
               email={email}
               onSignOut={onSignOut}
               onShowUsage={onShowUsage}
+              onShowQuizHistory={onShowQuizHistory}
               onShowTranslate={onShowTranslate}
             />
           </div>

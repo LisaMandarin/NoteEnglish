@@ -4,10 +4,9 @@ import {
   PlusOutlined,
   ReadOutlined,
   ReloadOutlined,
-  ThunderboltOutlined,
 } from "@ant-design/icons";
 import { useTranslation } from "../../context/translationContext";
-import { getReviewWords, listSessions } from "../../lib/api";
+import { listSessions } from "../../lib/api";
 import { formatUpdatedAt } from "../../lib/formatUpdatedAt";
 import ProficiencyBadges from "../shared/ProficiencyBadges";
 import type { SessionRecord } from "../../types";
@@ -17,11 +16,9 @@ const RECENT_SESSION_LIMIT = 5;
 export default function HomeDashboard({
   username,
   onShowTranslate,
-  onStartReview,
 }: {
   username: string;
   onShowTranslate: () => void;
-  onStartReview: () => void;
 }): React.ReactElement {
   const {
     state: { sessionLoading },
@@ -31,8 +28,6 @@ export default function HomeDashboard({
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState("");
   const [openingSessionId, setOpeningSessionId] = useState<string | null>(null);
-  // Words due for spaced-repetition review; null while loading/on failure.
-  const [dueCount, setDueCount] = useState<number | null>(null);
 
   async function loadRecentSessions(): Promise<void> {
     setHistoryLoading(true);
@@ -51,17 +46,6 @@ export default function HomeDashboard({
 
   useEffect(() => {
     void loadRecentSessions();
-    let mounted = true;
-    getReviewWords()
-      .then((items) => {
-        if (mounted) setDueCount(items.length);
-      })
-      .catch(() => {
-        // The review card simply stays hidden when the count can't load.
-      });
-    return () => {
-      mounted = false;
-    };
   }, []);
 
   function handleNewSession(): void {
@@ -129,35 +113,6 @@ export default function HomeDashboard({
             />
           </button>
         </section>
-
-        {dueCount != null && dueCount > 0 && (
-          <section aria-labelledby="review-heading" className="mt-5">
-            <button
-              type="button"
-              onClick={onStartReview}
-              className="group flex w-full cursor-pointer items-center gap-5 rounded-[28px] border-2 border-(--accent) bg-[color-mix(in_srgb,var(--accent)_10%,white)] px-6 py-5 text-left shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-(--accent) sm:px-8"
-            >
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-(--accent) text-xl text-white">
-                <ThunderboltOutlined aria-hidden="true" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span
-                  id="review-heading"
-                  className="block [font-family:var(--font-heading)] text-xl font-semibold text-(--text-main)"
-                >
-                  今日複習
-                </span>
-                <span className="mt-0.5 block text-sm leading-6 text-black/65">
-                  有 {dueCount} 個單字到期了，花幾分鐘複習一下吧！
-                </span>
-              </span>
-              <ArrowRightOutlined
-                aria-hidden="true"
-                className="shrink-0 text-(--accent) transition-transform duration-200 group-hover:translate-x-1"
-              />
-            </button>
-          </section>
-        )}
 
         <section
           id="recent-sessions"
