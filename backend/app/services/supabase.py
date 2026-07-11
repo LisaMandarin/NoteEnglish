@@ -500,17 +500,6 @@ def insert_quiz_results(user_id: str, session_id: str | None, results: list[dict
 MASTERY_LEARNING = 1
 MASTERY_MASTERED = 2
 
-# Spaced-repetition ladder in days. A wrong answer resets the position to 0
-# (review again tomorrow); each correct review climbs to the next step.
-_REVIEW_LADDER = [1, 3, 7, 14]
-
-
-def _next_interval_days(current: int) -> int:
-    for step in _REVIEW_LADDER:
-        if step > current:
-            return step
-    return _REVIEW_LADDER[-1]
-
 
 def compute_mastery_update(
     existing_row: dict,
@@ -518,29 +507,20 @@ def compute_mastery_update(
     correct_type_count: int,
     now: datetime,
 ) -> dict:
-    """Level and SRS fields for one word after a batch of quiz results.
+    """Level and counters for one word after a batch of quiz results.
 
     Mastered requires correct answers in at least two different quiz types;
-    any wrong answer in the batch drops the word back to learning and resets
-    its review to tomorrow."""
+    any wrong answer in the batch drops the word back to learning."""
     had_wrong = counts["wrong"] > 0
     level = (
         MASTERY_MASTERED
         if not had_wrong and correct_type_count >= 2
         else MASTERY_LEARNING
     )
-    if had_wrong:
-        interval = 0
-        next_review = now + timedelta(days=1)
-    else:
-        interval = _next_interval_days(int(existing_row.get("review_interval_days", 0)))
-        next_review = now + timedelta(days=interval)
     return {
         "correct_count": int(existing_row.get("correct_count", 0)) + counts["correct"],
         "wrong_count": int(existing_row.get("wrong_count", 0)) + counts["wrong"],
         "level": level,
-        "review_interval_days": interval,
-        "next_review_at": next_review.isoformat(),
         "last_result_at": now.isoformat(),
     }
 
@@ -572,7 +552,7 @@ def update_word_mastery(user_id: str, results: list[dict]) -> None:
             {
                 "user_id": f"eq.{user_id}",
                 "lemma": f"in.({lemma_list})",
-                "select": "lemma,pos,correct_count,wrong_count,level,review_interval_days",
+                "select": "lemma,pos,correct_count,wrong_count,level",
             }
         )
         existing_rows = _request_json(
@@ -633,7 +613,7 @@ def get_word_mastery(user_id: str, limit: int = 2000) -> list[dict]:
     query = parse.urlencode(
         {
             "user_id": f"eq.{user_id}",
-            "select": "lemma,pos,level,correct_count,wrong_count,next_review_at",
+            "select": "lemma,pos,level,correct_count,wrong_count",
             "limit": limit,
         }
     )
@@ -642,44 +622,6 @@ def get_word_mastery(user_id: str, limit: int = 2000) -> list[dict]:
         f"{settings.supabase_url}/rest/v1/word_mastery?{query}",
         headers=_service_headers(),
     ) or []
-
-
-def get_review_words(user_id: str, limit: int = 50) -> list[dict]:
-    """Words due for review (next_review_at <= now), joined with their vocab
-    fields so the frontend can build matching/spelling questions. Words whose
-    vocab notes were deleted are skipped — there is nothing to quiz."""
-    now_iso = datetime.now(timezone.utc).isoformat()
-    query = parse.urlencode(
-        {
-            "user_id": f"eq.{user_id}",
-            "next_review_at": f"lte.{now_iso}",
-            "select": "lemma,pos",
-            "order": "next_review_at.asc",
-            "limit": limit,
-        }
-    )
-    due_rows = _request_json(
-        "GET",
-        f"{settings.supabase_url}/rest/v1/word_mastery?{query}",
-        headers=_service_headers(),
-    ) or []
-    if not due_rows:
-        return []
-
-    pool = {
-        (
-            (item.get("lemma") or "").strip().lower(),
-            (item.get("pos") or "").strip().lower(),
-        ): item
-        for item in get_vocab_pool(user_id)
-    }
-    words: list[dict] = []
-    for row in due_rows:
-        key = ((row.get("lemma") or "").lower(), (row.get("pos") or "").lower())
-        item = pool.get(key)
-        if item:
-            words.append(item)
-    return words
 
 
 # Two separate proficiency scores per session, each from the LATEST quiz run
@@ -744,6 +686,191 @@ def proficiency_by_session(
         if total > 0:
             scores.setdefault(session_id, {})[group] = round(100 * correct / total)
     return scores
+
+
+def get_quiz_runs(user_id: str, limit: int = 5000) -> list[dict]:
+    """Quiz history: one entry per submitted run (rows sharing answered_at),
+    newest first, with the session title when the session still exists."""
+    query = parse.urlencode(
+        {
+            "user_id": f"eq.{user_id}",
+            "select": "session_id,quiz_type,correct,answered_at",
+            "order": "answered_at.desc",
+            "limit": limit,
+        }
+    )
+    rows = _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/quiz_results?{query}",
+        headers=_service_headers(),
+    ) or []
+
+    runs: dict[tuple, dict] = {}
+    order: list[tuple] = []
+    for row in rows:
+        key = (row.get("session_id"), row.get("answered_at"))
+        run = runs.get(key)
+        if run is None:
+            run = {
+                "session_id": row.get("session_id"),
+                "session_title": None,
+                "answered_at": row.get("answered_at") or "",
+                "quiz_types": [],
+                "correct": 0,
+                "total": 0,
+            }
+            runs[key] = run
+            order.append(key)
+        quiz_type = row.get("quiz_type")
+        if quiz_type and quiz_type not in run["quiz_types"]:
+            run["quiz_types"].append(quiz_type)
+        run["correct"] += 1 if row.get("correct") else 0
+        run["total"] += 1
+
+    session_ids = sorted({key[0] for key in order if key[0]})
+    if session_ids:
+        id_list = ",".join(f'"{sid}"' for sid in session_ids)
+        title_query = parse.urlencode(
+            {
+                "user_id": f"eq.{user_id}",
+                "id": f"in.({id_list})",
+                "select": "id,title",
+            }
+        )
+        title_rows = _request_json(
+            "GET",
+            f"{settings.supabase_url}/rest/v1/study_sessions?{title_query}",
+            headers=_service_headers(),
+        ) or []
+        titles = {row["id"]: row.get("title") for row in title_rows}
+        for key in order:
+            if key[0]:
+                runs[key]["session_title"] = titles.get(key[0])
+
+    return [runs[key] for key in order]
+
+
+def delete_quiz_run(user_id: str, answered_at: str, session_id: str | None) -> int:
+    """Delete one submitted run (all rows sharing answered_at) and rebuild the
+    affected words' mastery from the remaining results. Returns the number of
+    deleted rows (0 = no such run)."""
+    filters = {
+        "user_id": f"eq.{user_id}",
+        "answered_at": f"eq.{answered_at}",
+        "session_id": f"eq.{session_id}" if session_id else "is.null",
+    }
+    query = parse.urlencode({**filters, "select": "lemma,pos"})
+    rows = _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/quiz_results?{query}",
+        headers=_service_headers(),
+    ) or []
+    if not rows:
+        return 0
+
+    _request_json(
+        "DELETE",
+        f"{settings.supabase_url}/rest/v1/quiz_results?{parse.urlencode(filters)}",
+        headers=_service_headers(),
+    )
+
+    words = {
+        (
+            (row.get("lemma") or "").strip().lower(),
+            (row.get("pos") or "").strip().lower(),
+        )
+        for row in rows
+        if (row.get("lemma") or "").strip()
+    }
+    if words:
+        rebuild_word_mastery(user_id, sorted(words))
+    return len(rows)
+
+
+def rebuild_word_mastery(user_id: str, words: list[tuple[str, str]]) -> None:
+    """Recompute the given words' counters and level from what remains in
+    quiz_results, by replaying the remaining runs through
+    compute_mastery_update — the result matches what incremental updates would
+    have produced had the deleted run never happened. Words with no remaining
+    results lose their word_mastery row (back to 未測驗). Failures are
+    swallowed like update_word_mastery: quiz_results holds the raw data."""
+    try:
+        lemma_list = ",".join(
+            '"{}"'.format(lemma.replace('"', "")) for lemma, _ in words
+        )
+        query = parse.urlencode(
+            {
+                "user_id": f"eq.{user_id}",
+                "lemma": f"in.({lemma_list})",
+                "select": "lemma,pos,quiz_type,correct,answered_at",
+                "order": "answered_at.asc",
+                "limit": 10000,
+            }
+        )
+        rows = _request_json(
+            "GET",
+            f"{settings.supabase_url}/rest/v1/quiz_results?{query}",
+            headers=_service_headers(),
+        ) or []
+
+        per_word: dict[tuple[str, str], list[dict]] = {word: [] for word in words}
+        for row in rows:
+            key = (
+                (row.get("lemma") or "").strip().lower(),
+                (row.get("pos") or "").strip().lower(),
+            )
+            if key in per_word:
+                per_word[key].append(row)
+
+        upserts: list[dict] = []
+        gone: list[tuple[str, str]] = []
+        for (lemma, pos), word_rows in per_word.items():
+            if not word_rows:
+                gone.append((lemma, pos))
+                continue
+            batches: dict[str, list[dict]] = {}
+            for row in word_rows:
+                batches.setdefault(row.get("answered_at") or "", []).append(row)
+            existing: dict = {}
+            correct_types: set[str] = set()
+            update: dict = {}
+            for answered_at in sorted(batches):
+                counts = {"correct": 0, "wrong": 0}
+                for row in batches[answered_at]:
+                    counts["correct" if row.get("correct") else "wrong"] += 1
+                    if row.get("correct"):
+                        correct_types.add(row.get("quiz_type"))
+                try:
+                    now = datetime.fromisoformat(answered_at.replace("Z", "+00:00"))
+                except ValueError:
+                    now = datetime.now(timezone.utc)
+                update = compute_mastery_update(existing, counts, len(correct_types), now)
+                existing = update
+            upserts.append({"user_id": user_id, "lemma": lemma, "pos": pos, **update})
+
+        if upserts:
+            _request_json(
+                "POST",
+                f"{settings.supabase_url}/rest/v1/word_mastery"
+                "?on_conflict=user_id,lemma,pos",
+                headers=_service_headers("resolution=merge-duplicates,return=minimal"),
+                payload=upserts,
+            )
+        for lemma, pos in gone:
+            delete_query = parse.urlencode(
+                {
+                    "user_id": f"eq.{user_id}",
+                    "lemma": f"eq.{lemma}",
+                    "pos": f"eq.{pos}",
+                }
+            )
+            _request_json(
+                "DELETE",
+                f"{settings.supabase_url}/rest/v1/word_mastery?{delete_query}",
+                headers=_service_headers(),
+            )
+    except Exception:
+        logger.warning("Failed to rebuild word mastery for user=%s", user_id)
 
 
 def get_vocab_pool(user_id: str, limit: int = 1000) -> list[dict]:
@@ -939,7 +1066,46 @@ def list_all_users(page: int = 1, per_page: int = 50) -> list[dict]:
     ]
 
 
+def delete_session_quiz_results(user_id: str, session_id: str) -> None:
+    """Quiz results die with their session so the history page never shows
+    orphaned '（學習紀錄已刪除）' entries; affected words' mastery is rebuilt
+    from what remains. Failures are swallowed — a leftover result row only
+    means an orphaned history line, never a broken session delete."""
+    try:
+        filters = {"user_id": f"eq.{user_id}", "session_id": f"eq.{session_id}"}
+        rows = _request_json(
+            "GET",
+            f"{settings.supabase_url}/rest/v1/quiz_results?"
+            + parse.urlencode({**filters, "select": "lemma,pos"}),
+            headers=_service_headers(),
+        ) or []
+        if not rows:
+            return
+        _request_json(
+            "DELETE",
+            f"{settings.supabase_url}/rest/v1/quiz_results?{parse.urlencode(filters)}",
+            headers=_service_headers(),
+        )
+        words = {
+            (
+                (row.get("lemma") or "").strip().lower(),
+                (row.get("pos") or "").strip().lower(),
+            )
+            for row in rows
+            if (row.get("lemma") or "").strip()
+        }
+        if words:
+            rebuild_word_mastery(user_id, sorted(words))
+    except Exception:
+        logger.warning(
+            "Failed to delete quiz results for session=%s user=%s", session_id, user_id
+        )
+
+
 def delete_session(user_id: str, session_id: str) -> None:
+    # Quiz results go first, while the session_id link still exists (the FK
+    # would SET NULL on session delete and orphan them).
+    delete_session_quiz_results(user_id, session_id)
     _delete_session_children(user_id, session_id)
     query = parse.urlencode({"id": f"eq.{session_id}", "user_id": f"eq.{user_id}"})
     _request_json(

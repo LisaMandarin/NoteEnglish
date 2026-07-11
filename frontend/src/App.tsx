@@ -31,7 +31,7 @@ async function ensureProfile(user: User): Promise<void> {
   await ensureProfileApi(displayName);
 }
 
-type MainView = "home" | "translate" | "usage" | "report" | "quiz" | "review";
+type MainView = "home" | "translate" | "usage" | "report" | "quiz" | "quizHistory";
 
 // Fork handover: SharedView stores the fresh copy's session id in
 // sessionStorage and reloads into the main app; this opens it straight in the
@@ -82,8 +82,8 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
     setMainView("quiz");
   }
 
-  function handleShowReview(): void {
-    setMainView("review");
+  function handleShowQuizHistory(): void {
+    setMainView("quizHistory");
   }
 
   function handleShowHome(): void {
@@ -109,6 +109,7 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
             email={user?.email ?? ""}
             onSignOut={onSignOut}
             onShowUsage={handleShowUsage}
+            onShowQuizHistory={handleShowQuizHistory}
             onShowTranslate={handleShowTranslate}
             onShowHome={handleShowHome}
           />
@@ -118,7 +119,6 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
             onShowTranslate={handleShowTranslate}
             onDoneReport={handleShowHome}
             onShowQuiz={handleShowQuiz}
-            onStartReview={handleShowReview}
             onShowHome={handleShowHome}
           />
         </div>

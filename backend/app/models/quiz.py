@@ -59,12 +59,26 @@ class WordMasteryItem(BaseModel):
     level: int
     correct_count: int
     wrong_count: int
-    next_review_at: str | None = None
 
 
 class WordMasteryResponse(BaseModel):
     items: list[WordMasteryItem]
 
 
-class ReviewWordsResponse(BaseModel):
-    items: list[VocabPoolItem]
+# One submitted quiz run in the history list — all quiz_results rows sharing
+# an answered_at timestamp. session fields are None when the session is gone.
+class QuizRunItem(BaseModel):
+    session_id: str | None = None
+    session_title: str | None = None
+    quiz_types: list[str]
+    correct: int
+    total: int
+    answered_at: str
+
+
+class QuizRunsResponse(BaseModel):
+    items: list[QuizRunItem]
+
+
+class QuizRunDeleteResponse(BaseModel):
+    deleted: int

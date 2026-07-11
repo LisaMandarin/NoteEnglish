@@ -1,12 +1,13 @@
 import LibraryPanel from "./panels/LibraryPanel";
 import SettingsPanel from "./panels/SettingsPanel";
 
-export default function SidebarPanelContent({ activePanel, username, email, onSignOut, onShowUsage, onShowTranslate }: {
+export default function SidebarPanelContent({ activePanel, username, email, onSignOut, onShowUsage, onShowQuizHistory, onShowTranslate }: {
   activePanel: string | null;
   username: string;
   email: string;
   onSignOut: () => void;
   onShowUsage: () => void;
+  onShowQuizHistory: () => void;
   onShowTranslate: () => void;
 }): React.ReactElement | null {
   if (activePanel === "settings") {
@@ -16,6 +17,7 @@ export default function SidebarPanelContent({ activePanel, username, email, onSi
         email={email}
         onSignOut={onSignOut}
         onShowUsage={onShowUsage}
+        onShowQuizHistory={onShowQuizHistory}
       />
     );
   }

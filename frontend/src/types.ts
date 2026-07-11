@@ -177,7 +177,17 @@ export type WordMasteryItem = {
   level: number;
   correct_count: number;
   wrong_count: number;
-  next_review_at?: string | null;
+};
+
+// One submitted quiz run from GET /api/quiz/runs — all results sharing an
+// answered_at timestamp. session fields are null when the session was deleted.
+export type QuizRunRecord = {
+  session_id: string | null;
+  session_title: string | null;
+  quiz_types: string[];
+  correct: number;
+  total: number;
+  answered_at: string;
 };
 
 export type QuizResultPayloadItem = {

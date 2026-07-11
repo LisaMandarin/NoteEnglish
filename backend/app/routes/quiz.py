@@ -8,14 +8,16 @@ from app.models.quiz import (
     QuizGenerateResponse,
     QuizResultsRequest,
     QuizResultsResponse,
-    ReviewWordsResponse,
+    QuizRunDeleteResponse,
+    QuizRunsResponse,
     VocabPoolResponse,
     WordMasteryResponse,
 )
 from app.services.gemini import ai_generate_quiz
 from app.services.supabase import (
+    delete_quiz_run,
     get_quiz_questions,
-    get_review_words,
+    get_quiz_runs,
     get_session_detail,
     get_vocab_pool,
     get_word_mastery,
@@ -80,7 +82,20 @@ def quiz_mastery(user: dict = Depends(require_user)):
     return {"items": get_word_mastery(user["id"])}
 
 
-# Words due for spaced-repetition review (今日複習), with their vocab fields.
-@router.get("/quiz/review-words", response_model=ReviewWordsResponse)
-def quiz_review_words(user: dict = Depends(require_user)):
-    return {"items": get_review_words(user["id"])}
+# Quiz history: one item per submitted run, newest first.
+@router.get("/quiz/runs", response_model=QuizRunsResponse)
+def quiz_runs(user: dict = Depends(require_user)):
+    return {"items": get_quiz_runs(user["id"])}
+
+
+# Delete one run; affected words' mastery is rebuilt from what remains.
+@router.delete("/quiz/runs", response_model=QuizRunDeleteResponse)
+def quiz_run_delete(
+    answered_at: str,
+    session_id: str | None = None,
+    user: dict = Depends(require_user),
+):
+    deleted = delete_quiz_run(user["id"], answered_at, session_id)
+    if deleted == 0:
+        raise HTTPException(status_code=404, detail="找不到這筆測驗紀錄。")
+    return {"deleted": deleted}
