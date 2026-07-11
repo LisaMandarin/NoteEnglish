@@ -13,6 +13,16 @@ import type {
   VocabItem,
 } from "../types";
 
+// Display names for quiz types. Lives here (not in a component file) so
+// react-refresh's only-export-components rule stays happy.
+export const KIND_LABELS: Record<QuizQuestion["kind"], string> = {
+  cloze: "克漏字",
+  matching: "字義配對",
+  spelling: "拼字",
+  dictation: "聽寫",
+  comprehension: "閱讀理解",
+};
+
 export type QuizConfig = {
   types: QuizTypeKey[];
   spellingMode: SpellingMode;

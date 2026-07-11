@@ -147,33 +147,70 @@ class QuizRunHistoryTests(unittest.TestCase):
         self.assertIsNone(runs[1]["session_id"])
         self.assertIsNone(runs[1]["session_title"])
 
-    def test_delete_quiz_run_deletes_batch_and_rebuilds_words(self):
+    def test_delete_quiz_run_rebuilds_mastery_before_deleting(self):
         calls = []
 
         def fake_request(method, url, headers=None, payload=None):
             calls.append((method, url))
-            if method == "GET" and "quiz_results" in url:
+            if method == "GET" and "quiz_results" in url and "neq." not in url:
                 return [
                     {"lemma": "abandon", "pos": "v."},
                     {"lemma": None, "pos": None},  # dictation row: no word
                 ]
+            if method == "GET" and "neq." in url:
+                # one remaining batch for the word
+                return [
+                    {"lemma": "abandon", "pos": "v.", "quiz_type": "cloze",
+                     "correct": True, "answered_at": "2026-07-10T09:00:00+00:00"},
+                ]
             return []
 
-        with patch.object(sb, "_request_json", side_effect=fake_request), \
-                patch.object(sb, "rebuild_word_mastery") as rebuild:
+        with patch.object(sb, "_request_json", side_effect=fake_request):
             deleted = sb.delete_quiz_run("user-1", "2026-07-11T10:00:00+00:00", "s1")
 
         self.assertEqual(deleted, 2)
-        self.assertTrue(any(m == "DELETE" and "quiz_results" in u for m, u in calls))
-        rebuild.assert_called_once_with("user-1", [("abandon", "v.")])
+        mastery_write = next(
+            i for i, (m, u) in enumerate(calls) if m == "POST" and "word_mastery" in u
+        )
+        results_delete = next(
+            i for i, (m, u) in enumerate(calls) if m == "DELETE" and "quiz_results" in u
+        )
+        self.assertLess(mastery_write, results_delete)
+
+    def test_delete_quiz_run_aborts_when_mastery_write_fails(self):
+        calls = []
+
+        def fake_request(method, url, headers=None, payload=None):
+            calls.append((method, url))
+            if method == "GET" and "quiz_results" in url and "neq." not in url:
+                return [{"lemma": "abandon", "pos": "v."}]
+            if method == "GET" and "neq." in url:
+                return []
+            if "word_mastery" in url:
+                raise RuntimeError("boom")
+            return []
+
+        with self.assertRaises(RuntimeError):
+            with patch.object(sb, "_request_json", side_effect=fake_request):
+                sb.delete_quiz_run("user-1", "2026-07-11T10:00:00+00:00", "s1")
+
+        # the run itself was never deleted — the user can retry safely
+        self.assertFalse(
+            any(m == "DELETE" and "quiz_results" in u for m, u in calls)
+        )
 
     def test_delete_quiz_run_missing_returns_zero(self):
-        with patch.object(sb, "_request_json", return_value=[]), \
-                patch.object(sb, "rebuild_word_mastery") as rebuild:
+        calls = []
+
+        def fake_request(method, url, headers=None, payload=None):
+            calls.append((method, url))
+            return []
+
+        with patch.object(sb, "_request_json", side_effect=fake_request):
             deleted = sb.delete_quiz_run("user-1", "2026-07-11T10:00:00+00:00", None)
 
         self.assertEqual(deleted, 0)
-        rebuild.assert_not_called()
+        self.assertFalse(any(m == "DELETE" for m, _ in calls))
 
     def test_rebuild_replays_remaining_batches(self):
         calls = []

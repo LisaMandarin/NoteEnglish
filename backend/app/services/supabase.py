@@ -751,9 +751,14 @@ def get_quiz_runs(user_id: str, limit: int = 5000) -> list[dict]:
 
 
 def delete_quiz_run(user_id: str, answered_at: str, session_id: str | None) -> int:
-    """Delete one submitted run (all rows sharing answered_at) and rebuild the
-    affected words' mastery from the remaining results. Returns the number of
-    deleted rows (0 = no such run)."""
+    """Delete one submitted run (all rows sharing answered_at). Returns the
+    number of deleted rows (0 = no such run).
+
+    Consistency: mastery is recomputed and written FIRST, from "everything
+    except this run" — a failure there raises before anything is deleted, so
+    the history stays intact and the user can simply retry. If the final
+    quiz_results DELETE fails instead, retrying the delete recomputes mastery
+    again, so the state self-heals."""
     filters = {
         "user_id": f"eq.{user_id}",
         "answered_at": f"eq.{answered_at}",
@@ -768,107 +773,137 @@ def delete_quiz_run(user_id: str, answered_at: str, session_id: str | None) -> i
     if not rows:
         return 0
 
+    words = sorted(
+        {
+            (
+                (row.get("lemma") or "").strip().lower(),
+                (row.get("pos") or "").strip().lower(),
+            )
+            for row in rows
+            if (row.get("lemma") or "").strip()
+        }
+    )
+    if words:
+        # answered_at is a per-submission microsecond timestamp, so neq only
+        # excludes this run — a collision with another session's run is not a
+        # realistic concern.
+        remaining = _fetch_word_results(
+            user_id, words, extra={"answered_at": f"neq.{answered_at}"}
+        )
+        upserts, gone = _replay_mastery(words, remaining)
+        _apply_mastery_rebuild(user_id, upserts, gone)  # raises on failure
+
     _request_json(
         "DELETE",
         f"{settings.supabase_url}/rest/v1/quiz_results?{parse.urlencode(filters)}",
         headers=_service_headers(),
     )
-
-    words = {
-        (
-            (row.get("lemma") or "").strip().lower(),
-            (row.get("pos") or "").strip().lower(),
-        )
-        for row in rows
-        if (row.get("lemma") or "").strip()
-    }
-    if words:
-        rebuild_word_mastery(user_id, sorted(words))
     return len(rows)
 
 
-def rebuild_word_mastery(user_id: str, words: list[tuple[str, str]]) -> None:
-    """Recompute the given words' counters and level from what remains in
-    quiz_results, by replaying the remaining runs through
-    compute_mastery_update — the result matches what incremental updates would
-    have produced had the deleted run never happened. Words with no remaining
-    results lose their word_mastery row (back to 未測驗). Failures are
-    swallowed like update_word_mastery: quiz_results holds the raw data."""
-    try:
-        lemma_list = ",".join(
-            '"{}"'.format(lemma.replace('"', "")) for lemma, _ in words
+def _fetch_word_results(
+    user_id: str, words: list[tuple[str, str]], extra: dict | None = None
+) -> list[dict]:
+    """All quiz_results rows for the given lemmas, oldest first."""
+    lemma_list = ",".join('"{}"'.format(lemma.replace('"', "")) for lemma, _ in words)
+    query = parse.urlencode(
+        {
+            "user_id": f"eq.{user_id}",
+            "lemma": f"in.({lemma_list})",
+            "select": "lemma,pos,quiz_type,correct,answered_at",
+            "order": "answered_at.asc",
+            "limit": 10000,
+            **(extra or {}),
+        }
+    )
+    return _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/quiz_results?{query}",
+        headers=_service_headers(),
+    ) or []
+
+
+def _replay_mastery(
+    words: list[tuple[str, str]], rows: list[dict]
+) -> tuple[list[dict], list[tuple[str, str]]]:
+    """Replay result rows through compute_mastery_update per word, batch by
+    batch in submission order — the outcome matches what incremental updates
+    would have produced from exactly these rows. Returns (upsert rows without
+    user_id, words with no rows left that should lose their mastery row)."""
+    per_word: dict[tuple[str, str], list[dict]] = {word: [] for word in words}
+    for row in rows:
+        key = (
+            (row.get("lemma") or "").strip().lower(),
+            (row.get("pos") or "").strip().lower(),
         )
-        query = parse.urlencode(
+        if key in per_word:
+            per_word[key].append(row)
+
+    upserts: list[dict] = []
+    gone: list[tuple[str, str]] = []
+    for (lemma, pos), word_rows in per_word.items():
+        if not word_rows:
+            gone.append((lemma, pos))
+            continue
+        batches: dict[str, list[dict]] = {}
+        for row in word_rows:
+            batches.setdefault(row.get("answered_at") or "", []).append(row)
+        existing: dict = {}
+        correct_types: set[str] = set()
+        update: dict = {}
+        for answered_at in sorted(batches):
+            counts = {"correct": 0, "wrong": 0}
+            for row in batches[answered_at]:
+                counts["correct" if row.get("correct") else "wrong"] += 1
+                if row.get("correct"):
+                    correct_types.add(row.get("quiz_type"))
+            try:
+                now = datetime.fromisoformat(answered_at.replace("Z", "+00:00"))
+            except ValueError:
+                now = datetime.now(timezone.utc)
+            update = compute_mastery_update(existing, counts, len(correct_types), now)
+            existing = update
+        upserts.append({"lemma": lemma, "pos": pos, **update})
+    return upserts, gone
+
+
+def _apply_mastery_rebuild(
+    user_id: str, upserts: list[dict], gone: list[tuple[str, str]]
+) -> None:
+    """Write replayed mastery rows. Raises on failure — callers decide whether
+    that must abort (run delete) or is best-effort (session delete)."""
+    if upserts:
+        _request_json(
+            "POST",
+            f"{settings.supabase_url}/rest/v1/word_mastery"
+            "?on_conflict=user_id,lemma,pos",
+            headers=_service_headers("resolution=merge-duplicates,return=minimal"),
+            payload=[{"user_id": user_id, **row} for row in upserts],
+        )
+    for lemma, pos in gone:
+        delete_query = parse.urlencode(
             {
                 "user_id": f"eq.{user_id}",
-                "lemma": f"in.({lemma_list})",
-                "select": "lemma,pos,quiz_type,correct,answered_at",
-                "order": "answered_at.asc",
-                "limit": 10000,
+                "lemma": f"eq.{lemma}",
+                "pos": f"eq.{pos}",
             }
         )
-        rows = _request_json(
-            "GET",
-            f"{settings.supabase_url}/rest/v1/quiz_results?{query}",
+        _request_json(
+            "DELETE",
+            f"{settings.supabase_url}/rest/v1/word_mastery?{delete_query}",
             headers=_service_headers(),
-        ) or []
+        )
 
-        per_word: dict[tuple[str, str], list[dict]] = {word: [] for word in words}
-        for row in rows:
-            key = (
-                (row.get("lemma") or "").strip().lower(),
-                (row.get("pos") or "").strip().lower(),
-            )
-            if key in per_word:
-                per_word[key].append(row)
 
-        upserts: list[dict] = []
-        gone: list[tuple[str, str]] = []
-        for (lemma, pos), word_rows in per_word.items():
-            if not word_rows:
-                gone.append((lemma, pos))
-                continue
-            batches: dict[str, list[dict]] = {}
-            for row in word_rows:
-                batches.setdefault(row.get("answered_at") or "", []).append(row)
-            existing: dict = {}
-            correct_types: set[str] = set()
-            update: dict = {}
-            for answered_at in sorted(batches):
-                counts = {"correct": 0, "wrong": 0}
-                for row in batches[answered_at]:
-                    counts["correct" if row.get("correct") else "wrong"] += 1
-                    if row.get("correct"):
-                        correct_types.add(row.get("quiz_type"))
-                try:
-                    now = datetime.fromisoformat(answered_at.replace("Z", "+00:00"))
-                except ValueError:
-                    now = datetime.now(timezone.utc)
-                update = compute_mastery_update(existing, counts, len(correct_types), now)
-                existing = update
-            upserts.append({"user_id": user_id, "lemma": lemma, "pos": pos, **update})
-
-        if upserts:
-            _request_json(
-                "POST",
-                f"{settings.supabase_url}/rest/v1/word_mastery"
-                "?on_conflict=user_id,lemma,pos",
-                headers=_service_headers("resolution=merge-duplicates,return=minimal"),
-                payload=upserts,
-            )
-        for lemma, pos in gone:
-            delete_query = parse.urlencode(
-                {
-                    "user_id": f"eq.{user_id}",
-                    "lemma": f"eq.{lemma}",
-                    "pos": f"eq.{pos}",
-                }
-            )
-            _request_json(
-                "DELETE",
-                f"{settings.supabase_url}/rest/v1/word_mastery?{delete_query}",
-                headers=_service_headers(),
-            )
+def rebuild_word_mastery(user_id: str, words: list[tuple[str, str]]) -> None:
+    """Best-effort recompute of the given words' mastery from what remains in
+    quiz_results. Words with no remaining results lose their word_mastery row
+    (back to 未測驗). Failures are swallowed like update_word_mastery:
+    quiz_results holds the raw data."""
+    try:
+        rows = _fetch_word_results(user_id, words)
+        upserts, gone = _replay_mastery(words, rows)
+        _apply_mastery_rebuild(user_id, upserts, gone)
     except Exception:
         logger.warning("Failed to rebuild word mastery for user=%s", user_id)
 

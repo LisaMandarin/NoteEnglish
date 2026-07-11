@@ -7,7 +7,7 @@ import { deleteQuizRun, getQuizRuns } from "../../lib/api";
 import { invalidateWordMastery } from "../../lib/mastery";
 import { useTranslation } from "../../context/translationContext";
 import type { QuizRunRecord } from "../../types";
-import { KIND_LABELS } from "./QuizQuestionCard";
+import { KIND_LABELS } from "../../lib/quiz";
 
 const WORD_TYPES = new Set(["cloze", "matching", "spelling"]);
 const ARTICLE_TYPES = new Set(["comprehension", "dictation"]);

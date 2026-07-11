@@ -127,10 +127,11 @@ export default function StudyActions({
             <p className="m-0 mb-3 text-sm text-black/60">
               用單字練習、聽寫和閱讀理解，檢視這篇文章的學習成果。
             </p>
+            {/* Not gated on vocab: 聽寫/閱讀理解 need no lookups — the quiz
+                wizard itself disables the word category when there is none. */}
             <Button
               type="primary"
               icon={<FormOutlined />}
-              disabled={!hasVocab}
               onClick={onStartQuiz}
               className="transition-colors"
             >
@@ -141,7 +142,7 @@ export default function StudyActions({
       </div>
       {!hasVocab && (
         <p className="mt-2 mb-0 text-sm text-black/45">
-          小提醒：先選取文章中的單字查詢，就能列印單字卡和做測驗。
+          小提醒：先選取文章中的單字查詢，就能列印單字卡和練習單字題型。
         </p>
       )}
       <Modal

@@ -6,17 +6,9 @@ import type {
   QuizQuestion,
   SpellingQuestion,
 } from "../../types";
-import { diffDictation, type DiffToken } from "../../lib/quiz";
+import { diffDictation, KIND_LABELS, type DiffToken } from "../../lib/quiz";
 import QuizAudioButton from "./QuizAudioButton";
 import QuizAudioPlayer from "./QuizAudioPlayer";
-
-export const KIND_LABELS: Record<QuizQuestion["kind"], string> = {
-  cloze: "克漏字",
-  matching: "字義配對",
-  spelling: "拼字",
-  dictation: "聽寫",
-  comprehension: "閱讀理解",
-};
 
 function PosBadge({ pos }: { pos?: string }): React.ReactElement | null {
   if (!pos) return null;
