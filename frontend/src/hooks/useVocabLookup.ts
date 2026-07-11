@@ -3,6 +3,25 @@ import type { Dispatch, SetStateAction } from "react";
 import { apiFetch } from "../lib/api";
 import type { Sentence, VocabItem } from "../types";
 
+// Remembered lookup checkboxes; 中文意思 ("zh") is mandatory and always forced in.
+const LOOKUP_OPTIONS_KEY = "ne_lookup_options";
+
+function withRequired(options: string[]): string[] {
+  return options.includes("zh") ? options : ["zh", ...options];
+}
+
+function loadStoredOptions(): string[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(LOOKUP_OPTIONS_KEY) ?? "");
+    if (Array.isArray(parsed)) {
+      return withRequired(parsed.filter((v): v is string => typeof v === "string"));
+    }
+  } catch {
+    // fall through to the default below
+  }
+  return ["zh"];
+}
+
 export function useVocabLookup(
   sentences: Sentence[],
   updateSentenceVocab: (sentenceIdx: number, vocabItem: VocabItem) => void,
@@ -20,13 +39,26 @@ export function useVocabLookup(
 } {
   const [selectedText, setSelectedText] = useState<string>("");
   const [selectedSentenceIdx, setSelectedSentenceIdx] = useState<number | null>(null);
-  const [options, setOptions] = useState<string[]>([]);
+  const [options, setOptionsState] = useState<string[]>(loadStoredOptions);
   const [loading, setLoading] = useState(false);
 
+  // Force the mandatory "zh" option and remember the combination for next time.
+  const setOptions: Dispatch<SetStateAction<string[]>> = (action) => {
+    setOptionsState((prev) => {
+      const next = withRequired(typeof action === "function" ? action(prev) : action);
+      try {
+        localStorage.setItem(LOOKUP_OPTIONS_KEY, JSON.stringify(next));
+      } catch {
+        // Persisting is best-effort; the in-memory selection still applies.
+      }
+      return next;
+    });
+  };
+
+  // Keeps the remembered options — only the selection itself is cleared.
   function reset(): void {
     setSelectedText("");
     setSelectedSentenceIdx(null);
-    setOptions([]);
   }
 
   async function lookup(): Promise<boolean> {

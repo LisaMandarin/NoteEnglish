@@ -135,7 +135,7 @@ export default function QuizView({ onExit }: { onExit: () => void }): React.Reac
       <div className="w-full m-0 box-border px-8 py-10 sm:px-12">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="m-0 text-xl font-semibold">單字測驗</h2>
+            <h2 className="m-0 text-xl font-semibold">線上測驗</h2>
             {currentSession?.title && (
               <p className="m-0 mt-1 text-sm opacity-60">{currentSession.title}</p>
             )}

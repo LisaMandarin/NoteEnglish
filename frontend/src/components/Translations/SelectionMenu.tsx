@@ -19,11 +19,12 @@ export default function SelectionMenu({ open, x, y, options, setOptions, onLookU
     );
   }
 
+  // 中文意思 is required: quiz questions are built from the Chinese translation.
   const items = [
-    { value: "zh", label: "中文意思" },
-    { value: "en", label: "英英解釋" },
-    { value: "ex", label: "造句範例" },
-    { value: "level", label: "字彙等級" },
+    { value: "zh", label: "中文意思", required: true },
+    { value: "en", label: "英英解釋", required: false },
+    { value: "ex", label: "造句範例", required: false },
+    { value: "level", label: "字彙等級", required: false },
   ];
 
   return (
@@ -37,20 +38,26 @@ export default function SelectionMenu({ open, x, y, options, setOptions, onLookU
         </div>
         <div className="grid grid-cols-2 gap-2">
           {items.map((item) => {
-            const checked = options.includes(item.value);
+            const checked = item.required || options.includes(item.value);
 
             return (
               <label
                 key={item.value}
-                className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-black/5 cursor-pointer"
+                className={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${
+                  item.required ? "cursor-default" : "hover:bg-black/5 cursor-pointer"
+                }`}
               >
                 <input
                   type="checkbox"
                   checked={checked}
+                  disabled={item.required}
                   onChange={() => toggle(item.value)}
                   className="h-4 w-4 accent-(--card-border)"
                 />
-                <span className="text-sm">{item.label}</span>
+                <span className="text-sm">
+                  {item.label}
+                  {item.required && <span className="ml-1 text-xs opacity-50">必選</span>}
+                </span>
               </label>
             );
           })}
