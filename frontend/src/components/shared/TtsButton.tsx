@@ -3,6 +3,7 @@ import { Button, Popover, Select, Slider } from "antd";
 import { message } from "../../lib/feedback";
 import {
   CaretRightOutlined,
+  HolderOutlined,
   LoadingOutlined,
   PauseOutlined,
   SoundOutlined,
@@ -22,6 +23,64 @@ export default function TtsButton({
   const [open, setOpen] = useState(false);
   // Mirrors `open` for async flows: audio may finish loading after the popover closed.
   const openRef = useRef(false);
+  // Popover 可拖曳：偏移量套在 popup root 上，蓋到文字時使用者可以把播放器拖開。
+  // bounds 把偏移量夾在視窗內（保留邊距），拖不出螢幕也就不會誤觸瀏覽器邊緣手勢。
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const dragStart = useRef<{
+    pointerX: number;
+    pointerY: number;
+    baseX: number;
+    baseY: number;
+    bounds: { minX: number; maxX: number; minY: number; maxY: number } | null;
+  } | null>(null);
+
+  // Controls keep their own pointer behavior; everywhere else on the bar drags.
+  function isInteractiveTarget(target: EventTarget | null): boolean {
+    return target instanceof Element && !!target.closest("button, .ant-slider, .ant-select, input");
+  }
+
+  function onPlayerPointerDown(e: React.PointerEvent<HTMLDivElement>): void {
+    e.stopPropagation();
+    if (isInteractiveTarget(e.target)) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    // 以拖曳起點當下的 popover 位置換算偏移量的上下限：整個播放器保持在
+    // 視窗內、離邊緣至少 EDGE_MARGIN。
+    const EDGE_MARGIN = 8;
+    const root = e.currentTarget.closest(".ant-popover");
+    const rect = root?.getBoundingClientRect();
+    dragStart.current = {
+      pointerX: e.clientX,
+      pointerY: e.clientY,
+      baseX: dragOffset.x,
+      baseY: dragOffset.y,
+      bounds: rect
+        ? {
+            minX: dragOffset.x + EDGE_MARGIN - rect.left,
+            maxX: dragOffset.x + window.innerWidth - EDGE_MARGIN - rect.right,
+            minY: dragOffset.y + EDGE_MARGIN - rect.top,
+            maxY: dragOffset.y + window.innerHeight - EDGE_MARGIN - rect.bottom,
+          }
+        : null,
+    };
+  }
+
+  function onPlayerPointerMove(e: React.PointerEvent<HTMLDivElement>): void {
+    const start = dragStart.current;
+    if (!start) return;
+    let x = start.baseX + e.clientX - start.pointerX;
+    let y = start.baseY + e.clientY - start.pointerY;
+    if (start.bounds) {
+      x = Math.min(Math.max(x, start.bounds.minX), Math.max(start.bounds.minX, start.bounds.maxX));
+      y = Math.min(Math.max(y, start.bounds.minY), Math.max(start.bounds.minY, start.bounds.maxY));
+    }
+    setDragOffset({ x, y });
+  }
+
+  function onPlayerPointerEnd(e: React.PointerEvent<HTMLDivElement>): void {
+    if (!dragStart.current) return;
+    dragStart.current = null;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+  }
 
   function closeQuietly(): void {
     openRef.current = false;
@@ -33,6 +92,7 @@ export default function TtsButton({
   async function openPlayer(): Promise<void> {
     openRef.current = true;
     setOpen(true);
+    setDragOffset({ x: 0, y: 0 });
     try {
       await player.play({ shouldStart: () => openRef.current });
     } catch {
@@ -49,10 +109,16 @@ export default function TtsButton({
 
   const playerContent = (
     <div
-      className="flex w-72 max-w-[80vw] items-center gap-2"
-      onPointerDown={(e: React.PointerEvent<HTMLDivElement>) => e.stopPropagation()}
+      className="flex w-72 max-w-[80vw] cursor-move touch-none items-center gap-2"
+      onPointerDown={onPlayerPointerDown}
+      onPointerMove={onPlayerPointerMove}
+      onPointerUp={onPlayerPointerEnd}
+      onPointerCancel={onPlayerPointerEnd}
       onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
     >
+      <span className="shrink-0 text-(--text-main)" aria-label="拖曳移動播放器">
+        <HolderOutlined />
+      </span>
       <Button
         type="text"
         size="small"
@@ -96,6 +162,7 @@ export default function TtsButton({
       trigger="click"
       content={playerContent}
       placement="bottom"
+      styles={{ root: { transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)` } }}
     >
       <button
         type="button"
