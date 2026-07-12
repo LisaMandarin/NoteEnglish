@@ -18,6 +18,10 @@ import SessionGroupSection from "./SessionGroupSection";
 import ShareModal from "./ShareModal";
 
 const UNGROUPED = "__ungrouped__";
+const FLAT = "__flat__";
+// Sessions load in full, but each section renders this many at a time; "更多"
+// reveals another page from the already-loaded data (no extra request).
+const PAGE = 5;
 
 type GroupModalState =
   | { open: false }
@@ -42,6 +46,13 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
   const [groupModal, setGroupModal] = useState<GroupModalState>({ open: false });
   const [groupName, setGroupName] = useState("");
   const [groupSaving, setGroupSaving] = useState(false);
+  // Per-section count of currently-rendered sessions (keyed by group id,
+  // UNGROUPED, or FLAT); absent means the default first page.
+  const [visibleCounts, setVisibleCounts] = useState<Record<string, number>>({});
+
+  const visibleFor = (key: string): number => visibleCounts[key] ?? PAGE;
+  const showMore = (key: string): void =>
+    setVisibleCounts((prev) => ({ ...prev, [key]: (prev[key] ?? PAGE) + PAGE }));
 
   useEffect(() => {
     if (!sessionLoading) setPendingId(null);
@@ -228,6 +239,26 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
     );
   }
 
+  // Renders a section's first `visibleFor(key)` sessions plus a 更多 button
+  // that reveals another page when more remain in the (already-loaded) list.
+  function renderSection(key: string, items: SessionRecord[]): React.ReactElement {
+    const shown = items.slice(0, visibleFor(key));
+    const remaining = items.length - shown.length;
+    return (
+      <>
+        {shown.map(renderSessionItem)}
+        {remaining > 0 && (
+          <button
+            onClick={() => showMore(key)}
+            className="w-full rounded-2xl border-0 bg-transparent py-1.5 text-sm text-black/45 transition-colors hover:bg-black/5 hover:text-black/70 hover:cursor-pointer"
+          >
+            更多（還有 {remaining} 篇）
+          </button>
+        )}
+      </>
+    );
+  }
+
   const hasGroups = groups.length > 0;
 
   return (
@@ -294,9 +325,9 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
         )}
 
         {!historyLoading && !historyError && historyItems.length > 0 && !hasGroups && (
-          // No folders yet — plain flat list, unchanged from before.
+          // No folders yet — plain flat list (paged with 更多).
           <div className="mt-3 space-y-3">
-            {historyItems.map(renderSessionItem)}
+            {renderSection(FLAT, historyItems)}
           </div>
         )}
 
@@ -315,7 +346,7 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
                   onDelete={() => handleDeleteGroup(group)}
                 >
                   {items.length ? (
-                    items.map(renderSessionItem)
+                    renderSection(group.id, items)
                   ) : (
                     <p className="m-0 text-xs text-black/40">此主題還沒有學習紀錄。</p>
                   )}
@@ -329,7 +360,7 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
                 collapsed={collapsed.has(UNGROUPED)}
                 onToggle={() => toggleCollapse(UNGROUPED)}
               >
-                {ungrouped.map(renderSessionItem)}
+                {renderSection(UNGROUPED, ungrouped)}
               </SessionGroupSection>
             )}
           </div>
