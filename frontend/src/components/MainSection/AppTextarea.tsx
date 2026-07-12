@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Typography, Input, Button, Alert, Modal } from "antd"
 import { useTranslation } from "../../context/translationContext"
 import { ocrImage, SESSION_EXPIRED_MESSAGE } from "../../lib/api"
@@ -46,12 +46,21 @@ const WARN_THRESHOLD = 1300
 
 export default function AppTextarea() {
     const {
-        state: {text, translating, sessionLoading, saving, error, saveError, ocrError, sentences},
+        state: {text, translating, sessionLoading, saving, error, saveError, ocrError, sentences, currentSession},
         actions: {translate, setText, setOcrText, clear, setOcrError, dismissError}
     } = useTranslation()
 
     const [ocrLoading, setOcrLoading] = useState<boolean>(false)
+    const [editing, setEditing] = useState<boolean>(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
+    // Text as it was when 編輯原文 was pressed, so 取消編輯 can revert unsaved
+    // edits instead of leaving text that no longer matches the translations.
+    const editStartTextRef = useRef<string>("")
+
+    const sessionId = currentSession?.id ?? null
+    useEffect(() => {
+        setEditing(false)
+    }, [sessionId])
 
     const charCount = text.length
     const isOverLimit = charCount > MAX_CHARS
@@ -62,6 +71,9 @@ export default function AppTextarea() {
     // Derived from state (not a one-shot flag) so it clears automatically once the
     // session is translated and when the user switches to another session.
     const isTranslated = Array.isArray(sentences) && sentences.length > 0
+    // After a successful translation the input collapses into a compact bar so
+    // the results below are what the user sees; 編輯原文 re-expands it.
+    const isCollapsed = isTranslated && !editing
     const showUntranslatedNotice =
         !isTranslated && text.trim().length > 0 && !translating && !sessionLoading && !ocrLoading
 
@@ -71,6 +83,11 @@ export default function AppTextarea() {
         )
     }
 
+    function runTranslate(): void {
+        setEditing(false)
+        void translate()
+    }
+
     function handleTranslate() {
         if (hasVocabCards()) {
             Modal.confirm({
@@ -78,11 +95,21 @@ export default function AppTextarea() {
                 content: "按下「確定」將會刪除目前所有的單字卡，此動作無法復原。",
                 okText: "確定",
                 cancelText: "取消",
-                onOk: translate,
+                onOk: runTranslate,
             })
         } else {
-            translate()
+            runTranslate()
         }
+    }
+
+    function handleStartEditing(): void {
+        editStartTextRef.current = text
+        setEditing(true)
+    }
+
+    function handleCancelEditing(): void {
+        setText(editStartTextRef.current)
+        setEditing(false)
     }
 
     function handleClear() {
@@ -155,21 +182,31 @@ export default function AppTextarea() {
 
     return (
         <>
-            <div className="mb-3">
-              <Text strong>貼英文文章:</Text>
-              <div className="mt-2">
-                <TextArea
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  rows={8}
-                />
-                <div className="text-right mt-1">
-                  <span className={`text-xs ${countColor}`}>
-                    {isOverLimit ? `-${charCount - MAX_CHARS}/${MAX_CHARS}` : `${charCount}/${MAX_CHARS}`}
-                  </span>
+            {isCollapsed ? (
+              <div className="mb-4 flex items-center gap-3 rounded-lg border border-(--card-border) bg-(--bg-main) px-4 py-2">
+                <Text strong className="shrink-0">原文:</Text>
+                <Text className="min-w-0 flex-1 truncate">{text}</Text>
+                <Button size="small" onClick={handleStartEditing} disabled={sessionLoading || saving}>
+                  編輯原文
+                </Button>
+              </div>
+            ) : (
+              <div className="mb-3">
+                <Text strong>貼英文文章:</Text>
+                <div className="mt-2">
+                  <TextArea
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    rows={8}
+                  />
+                  <div className="text-right mt-1">
+                    <span className={`text-xs ${countColor}`}>
+                      {isOverLimit ? `-${charCount - MAX_CHARS}/${MAX_CHARS}` : `${charCount}/${MAX_CHARS}`}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {showUntranslatedNotice && (
               <Alert
@@ -180,7 +217,8 @@ export default function AppTextarea() {
               />
             )}
 
-            {/* Buttons */}
+            {/* Buttons — hidden while collapsed; 編輯原文 brings them back */}
+            {!isCollapsed && (
             <div className="flex flex-wrap gap-3 mb-4">
               <Button
                 type="primary"
@@ -212,6 +250,11 @@ export default function AppTextarea() {
               >
                 圖片轉文字
               </Button>
+              {isTranslated && editing && (
+                <Button onClick={handleCancelEditing} disabled={translating || saving || sessionLoading || ocrLoading}>
+                  取消編輯
+                </Button>
+              )}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -220,6 +263,7 @@ export default function AppTextarea() {
                 onChange={handleImagePicked}
               />
             </div>
+            )}
 
             {/* Error */}
             {error && (() => {
