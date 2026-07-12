@@ -12,9 +12,13 @@
   /* Accent color for highlights and emphasis */
   --accent: #0f5f5c;
   /* Base font stack for body text */
-  --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  /* Serif font for headings */
-  --font-heading: "Playfair Display", serif;
+  /* CJK fonts are listed explicitly (same stack as the print roots) so Chinese
+     rendering never depends on the page lang or the viewer's system language */
+  --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Heiti TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+  /* Serif font for headings; Playfair only covers Latin, so Chinese heading
+     text (e.g. the 句句通 logo) falls through to the same sans CJK stack as
+     body text instead of the lang-dependent serif fallback (宋體) */
+  --font-heading: "Playfair Display", "PingFang TC", "Heiti TC", "Microsoft JhengHei", "Noto Sans TC", serif;
   /* Sentence-structure syntax-function colors (skeleton-fold view) */
   --c-subj: #2f6db4;
   --c-pred: #b5731a;
