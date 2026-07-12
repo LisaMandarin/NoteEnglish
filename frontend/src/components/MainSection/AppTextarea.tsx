@@ -74,6 +74,9 @@ export default function AppTextarea() {
     // After a successful translation the input collapses into a compact bar so
     // the results below are what the user sees; 編輯原文 re-expands it.
     const isCollapsed = isTranslated && !editing
+    // While re-editing a translated article, 翻譯 stays disabled until the
+    // text actually differs from what was already translated.
+    const isUnchangedEdit = isTranslated && editing && text === editStartTextRef.current
     const showUntranslatedNotice =
         !isTranslated && text.trim().length > 0 && !translating && !sessionLoading && !ocrLoading
 
@@ -224,7 +227,7 @@ export default function AppTextarea() {
                 type="primary"
                 onClick={handleTranslate}
                 loading={translating}
-                disabled={sessionLoading || saving || isEmpty || isOverLimit || ocrLoading}
+                disabled={sessionLoading || saving || isEmpty || isOverLimit || ocrLoading || isUnchangedEdit}
               >
                 {saving ? "儲存中..." : "翻譯"}
               </Button>
