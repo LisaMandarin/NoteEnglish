@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { VocabItem } from "../../types";
-import { CheckOutlined, DeleteTwoTone, DownOutlined, EditTwoTone, MinusCircleOutlined, PlusCircleOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { ArrowUpOutlined, CheckOutlined, DeleteTwoTone, DownOutlined, EditTwoTone, MinusCircleOutlined, PlusCircleOutlined, QuestionCircleOutlined, UpOutlined } from '@ant-design/icons';
 import TtsButton from "../shared/TtsButton";
 import { useWordMastery } from "../../hooks/useWordMastery";
 import { masteryKey } from "../../lib/mastery";
@@ -493,6 +493,44 @@ export default function VocabCards({ vocab, sentenceIdx, hideHint, onDelete, onR
     </button>
   );
 
+  function scrollToSentence(): void {
+    document
+      .querySelector(`li[data-idx="${sentenceIdx}"] .lookup-original-text`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  // Collapsing from below the cards would otherwise strand the viewport in a
+  // later sentence, so jump back to this sentence once the grid is gone.
+  function collapseAndReturn(): void {
+    onToggleCollapsed?.();
+    requestAnimationFrame(() => {
+      document
+        .querySelector(`li[data-idx="${sentenceIdx}"] .lookup-original-text`)
+        ?.scrollIntoView({ block: "center" });
+    });
+  }
+
+  const footer = onToggleCollapsed && (
+    <div className="mt-3 flex justify-end gap-5">
+      <button
+        type="button"
+        onClick={collapseAndReturn}
+        className="flex items-center gap-1 text-sm text-gray-400 hover:text-(--accent) transition-colors cursor-pointer select-none"
+      >
+        <UpOutlined className="text-[10px]" />
+        <span>折疊單字卡</span>
+      </button>
+      <button
+        type="button"
+        onClick={scrollToSentence}
+        className="flex items-center gap-1 text-sm text-gray-400 hover:text-(--accent) transition-colors cursor-pointer select-none"
+      >
+        <ArrowUpOutlined className="text-[10px]" />
+        <span>回到原句</span>
+      </button>
+    </div>
+  );
+
   if (collapsed && onToggleCollapsed) {
     return (
       <div>
@@ -523,6 +561,7 @@ export default function VocabCards({ vocab, sentenceIdx, hideHint, onDelete, onR
             <VocabCard key={itemId(v)} v={v} readOnly showTts />
           ))}
         </div>
+        {footer}
       </div>
     );
   }
@@ -548,6 +587,7 @@ export default function VocabCards({ vocab, sentenceIdx, hideHint, onDelete, onR
               />
             ))}
           </div>
+          {footer}
         </div>
       </SortableContext>
     </DndContext>

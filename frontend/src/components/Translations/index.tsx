@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Typography } from "antd";
+import { Button, Typography } from "antd";
+import { ArrowUpOutlined } from "@ant-design/icons";
 import { useTranslation } from "../../context/translationContext";
 import SelectionMenu from "./SelectionMenu";
 import { useVocabLookup } from "../../hooks/useVocabLookup";
@@ -10,6 +11,8 @@ import { vocabCardDomId } from "../../lib/vocabCard";
 const { Text } = Typography;
 
 const VOCAB_FLASH_MS = 1600;
+// How long the 回到原句 button stays up after a lookup jumps to the new card.
+const RETURN_TO_SENTENCE_MS = 6000;
 
 export default function TranslationsList({ onStartQuiz }: { onStartQuiz: () => void }): React.ReactElement {
   const {
@@ -23,12 +26,22 @@ export default function TranslationsList({ onStartQuiz }: { onStartQuiz: () => v
   // Per-sentence vocab collapse; UI-only, resets when the session changes.
   const [collapsedVocab, setCollapsedVocab] = useState<Set<number>>(new Set());
   const pendingScrollRef = useRef<string | null>(null);
+  // Sentence the 回到原句 button jumps back to; null hides the button.
+  const [returnIdx, setReturnIdx] = useState<number | null>(null);
+  const returnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionId = currentSession?.id ?? null;
   const [prevSessionId, setPrevSessionId] = useState<string | null>(sessionId);
   if (prevSessionId !== sessionId) {
     setPrevSessionId(sessionId);
     setCollapsedVocab(new Set());
+    setReturnIdx(null);
   }
+
+  useEffect(() => {
+    return () => {
+      if (returnTimerRef.current) clearTimeout(returnTimerRef.current);
+    };
+  }, []);
 
   // Runs after every commit; only acts when a lookup queued a card to reveal,
   // at which point the new card is guaranteed to be in the DOM.
@@ -77,7 +90,27 @@ export default function TranslationsList({ onStartQuiz }: { onStartQuiz: () => v
         return next;
       });
       pendingScrollRef.current = vocabCardDomId(result.sentenceIdx, result.vocabItem);
+      setReturnIdx(result.sentenceIdx);
+      if (returnTimerRef.current) clearTimeout(returnTimerRef.current);
+      returnTimerRef.current = setTimeout(() => {
+        returnTimerRef.current = null;
+        setReturnIdx(null);
+      }, RETURN_TO_SENTENCE_MS);
     }
+  }
+
+  function returnToSentence(): void {
+    if (returnIdx === null) return;
+    if (returnTimerRef.current) {
+      clearTimeout(returnTimerRef.current);
+      returnTimerRef.current = null;
+    }
+    // Target the sentence text, not the whole <li> — centering the li would
+    // land in the middle of its vocab cards.
+    containerRef.current
+      ?.querySelector(`li[data-idx="${returnIdx}"] .lookup-original-text`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setReturnIdx(null);
   }
 
   if (!sentences.length) {
@@ -152,6 +185,23 @@ export default function TranslationsList({ onStartQuiz }: { onStartQuiz: () => v
         sessionTitle={currentSession?.title ?? ""}
         onStartQuiz={onStartQuiz}
       />
+      {returnIdx !== null && (
+        <div
+          className="vocab-return-btn fixed bottom-6 left-1/2 z-50"
+          onMouseUp={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <Button
+            type="primary"
+            shape="round"
+            icon={<ArrowUpOutlined />}
+            onClick={returnToSentence}
+            className="bg-(--accent)! border-(--accent)! text-white! shadow-lg"
+          >
+            回到原句
+          </Button>
+        </div>
+      )}
       <div
         onMouseUp={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}

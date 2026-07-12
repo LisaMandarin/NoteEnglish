@@ -82,6 +82,18 @@ body {
   animation: vocab-flash 1.6s ease-out;
 }
 
+/* Floating 回到原句 button shown briefly after a lookup jumps to the new
+   card. translateX centers it; the keyframes must keep that offset. */
+@keyframes vocab-return-appear {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.vocab-return-btn {
+  transform: translateX(-50%);
+  animation: vocab-return-appear 0.25s ease-out;
+}
+
 @media (hover: none) and (pointer: coarse) {
   .lookup-original-text {
     -webkit-touch-callout: none;
