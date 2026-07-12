@@ -37,6 +37,7 @@ export type VocabItem = {
   translation?: string;
   definition?: string;
   example?: string;
+  example_translation?: string;
   level?: string;
   other_1?: string;
   other_2?: string;

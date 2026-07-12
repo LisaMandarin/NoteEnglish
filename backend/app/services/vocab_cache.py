@@ -18,7 +18,9 @@ def get_vocab_lookup(req: VocabLookupRequest, user_id: str) -> VocabLookupRespon
     missing = VocabOptions(
         translation=req.options.translation and (cached is None or not cached.translation),
         definition=req.options.definition and (cached is None or not cached.definition),
-        example=req.options.example and (cached is None or not cached.example),
+        # Pre-existing cache entries may have an example without its Chinese
+        # translation; re-request the example so both arrive together.
+        example=req.options.example and (cached is None or not cached.example or not cached.example_translation),
         level=req.options.level and (cached is None or not cached.level),
     )
     need_ai = cached is None or any([missing.translation, missing.definition, missing.example, missing.level])
@@ -41,7 +43,7 @@ def get_vocab_lookup(req: VocabLookupRequest, user_id: str) -> VocabLookupRespon
                 pos=normalize_pos(ai_data.get("pos") or ""),
             )
 
-        for field in ["translation", "definition", "example", "level"]:
+        for field in ["translation", "definition", "example", "example_translation", "level"]:
             value = ai_data.get(field)
             if value:
                 setattr(cached, field, value)
@@ -58,5 +60,6 @@ def get_vocab_lookup(req: VocabLookupRequest, user_id: str) -> VocabLookupRespon
         translation=cached.translation if req.options.translation else None,
         definition=cached.definition if req.options.definition else None,
         example=cached.example if req.options.example else None,
+        example_translation=cached.example_translation if req.options.example else None,
         level=cached.level if req.options.level else None,
     )

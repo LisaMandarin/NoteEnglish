@@ -141,7 +141,8 @@ class VocabLookupTests(unittest.TestCase):
             text=(
                 '{"text":"changed","lemma":"run","pos":"verb",'
                 '"translation":"跑","definition":"move quickly",'
-                '"example":"I run daily.","level":"B1"}'
+                '"example":"I run daily.","example_translation":"我每天跑步。",'
+                '"level":"B1"}'
             ),
             usage_metadata=None,
         )
@@ -161,8 +162,34 @@ class VocabLookupTests(unittest.TestCase):
         self.assertEqual(result["translation"], "跑")
         self.assertEqual(result["definition"], "")
         self.assertEqual(result["example"], "")
+        self.assertEqual(result["example_translation"], "")
         self.assertEqual(result["level"], "")
         self.assertEqual(usage["total_tokens"], 0)
+
+    def test_lookup_example_brings_its_translation_along(self):
+        response = SimpleNamespace(
+            text=(
+                '{"text":"run","lemma":"run","pos":"verb",'
+                '"translation":"","definition":"",'
+                '"example":"I run daily.","example_translation":"我每天跑步。",'
+                '"level":""}'
+            ),
+            usage_metadata=None,
+        )
+
+        with patch.object(
+            gemini.client.models,
+            "generate_content",
+            return_value=response,
+        ):
+            result, _ = gemini.ai_lookup_word(
+                "run",
+                "They run fast.",
+                VocabOptions(example=True),
+            )
+
+        self.assertEqual(result["example"], "I run daily.")
+        self.assertEqual(result["example_translation"], "我每天跑步。")
 
     def test_lookup_invalid_level_becomes_502(self):
         response = SimpleNamespace(

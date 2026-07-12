@@ -1556,6 +1556,9 @@ class _GeminiVocabResult(BaseModel):
     translation: str
     definition: str
     example: str
+    # Defaulted so a model response that omits the key degrades to "no
+    # translation" instead of failing the whole lookup.
+    example_translation: str = ""
     level: Literal["", "A1", "A2", "B1", "B2", "C1", "C2"]
 
 
@@ -1571,6 +1574,7 @@ def ai_lookup_word(selected_text: str, sentence: str, options: VocabOptions) -> 
         tasks.append("definition: Context-appropriate English synonym or simple definition (8 words or fewer).")
     if options.example:
         tasks.append("example: One natural example sentence.")
+        tasks.append("example_translation: Traditional Chinese (zh-TW) translation of that example sentence.")
     if options.level:
         tasks.append("level: CEFR level (A1-C2).")
     task_list = "\n".join(f"- {t}" for t in tasks) if tasks else "- None"
@@ -1606,6 +1610,7 @@ Return a JSON object with EXACTLY these keys:
 - translation
 - definition
 - example
+- example_translation
 - level
 
 Rules:
@@ -1616,6 +1621,7 @@ Rules:
 - For Definition, use a context-appropriate equivalent synonym when one exists.
 - Only use a simple English description when no equivalent synonym exists.
 - Example must be ONE sentence.
+- Example translation must be the Traditional Chinese (zh-TW) translation of that example sentence.
 - Level must be one of: A1, A2, B1, B2, C1, C2.
 - Return ONLY valid JSON.
 """
@@ -1649,9 +1655,12 @@ Rules:
     result["text"] = selected_text
 
     # Never retain fields that the caller did not request, even if the model
-    # ignored the prompt and populated them anyway.
+    # ignored the prompt and populated them anyway. example_translation rides
+    # on the example flag — they are always requested together.
     for field in ("translation", "definition", "example", "level"):
         if not getattr(options, field):
             result[field] = ""
+    if not options.example:
+        result["example_translation"] = ""
 
     return result, _extract_usage(response)

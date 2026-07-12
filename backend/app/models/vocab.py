@@ -30,6 +30,7 @@ class VocabLookupResponse(BaseModel):
     translation: str | None = Field(default=None)
     definition: str | None = Field(default=None)
     example: str | None = Field(default=None)
+    example_translation: str | None = Field(default=None, description="Traditional Chinese translation of the example sentence")
     level: str | None = Field(default=None)
 
 # Cached lookup entry keyed by sentence_id|word_index.
@@ -41,4 +42,5 @@ class CachedLookup(BaseModel):
     translation: str | None = None
     definition: str | None = None
     example: str | None = None
+    example_translation: str | None = None
     level: str | None = None
