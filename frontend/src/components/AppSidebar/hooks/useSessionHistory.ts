@@ -1,30 +1,32 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { useTranslation } from "../../../context/translationContext";
-import { listSessions } from "../../../lib/api";
-import type { SessionRecord } from "../../../types";
+import { listSessionGroups, listSessions } from "../../../lib/api";
+import type { SessionGroup, SessionRecord } from "../../../types";
 
-const PAGE_SIZE = 5;
+// The grouped library view loads the whole list at once and folds it into
+// topic folders client-side, so there is no offset pagination here. The cap
+// mirrors the backend's /sessions limit; realistic per-user counts are far
+// below it.
+const LOAD_ALL_LIMIT = 500;
 
 export function useSessionHistory(activePanel: string): {
   historyItems: SessionRecord[];
   setHistoryItems: Dispatch<SetStateAction<SessionRecord[]>>;
+  groups: SessionGroup[];
+  setGroups: Dispatch<SetStateAction<SessionGroup[]>>;
   historyLoading: boolean;
   historyError: string;
-  hasMore: boolean;
-  loadingMore: boolean;
   refresh: () => void;
-  loadMore: () => void;
 } {
   const {
     state: { currentSession },
   } = useTranslation();
 
   const [historyItems, setHistoryItems] = useState<SessionRecord[]>([]);
+  const [groups, setGroups] = useState<SessionGroup[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshCount, setRefreshCount] = useState(0);
 
   const prevDepsRef = useRef<{ activePanel: string | undefined; sessionId: string | null | undefined; refreshCount: number }>({
@@ -35,7 +37,6 @@ export function useSessionHistory(activePanel: string): {
 
   const refresh = useCallback(() => setRefreshCount((n) => n + 1), []);
 
-  // Initial / refresh load — always fetches the first page
   useEffect(() => {
     const prev = prevDepsRef.current;
     const panelJustOpened = prev.activePanel !== activePanel;
@@ -49,41 +50,30 @@ export function useSessionHistory(activePanel: string): {
 
     let cancelled = false;
 
-    async function loadHistory(): Promise<void> {
+    async function load(): Promise<void> {
       setHistoryLoading(true);
       setHistoryError("");
       try {
-        const page = await listSessions(PAGE_SIZE, 0);
+        const [page, groupPage] = await Promise.all([
+          listSessions(LOAD_ALL_LIMIT, 0),
+          listSessionGroups(),
+        ]);
         if (cancelled) return;
         setHistoryItems(page.items);
-        setHasMore(page.has_more);
+        setGroups(groupPage.items ?? []);
       } catch (error: unknown) {
         if (cancelled) return;
         setHistoryError(error instanceof Error ? error.message : "Could not load session history.");
         setHistoryItems([]);
-        setHasMore(false);
+        setGroups([]);
       } finally {
         if (!cancelled) setHistoryLoading(false);
       }
     }
 
-    loadHistory();
+    load();
     return () => { cancelled = true; };
   }, [activePanel, currentSession?.id, currentSession?.updatedAt, refreshCount]);
 
-  const loadMore = useCallback(async (): Promise<void> => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    try {
-      const page = await listSessions(PAGE_SIZE, historyItems.length);
-      setHistoryItems((prev) => [...prev, ...page.items]);
-      setHasMore(page.has_more);
-    } catch {
-      // silently ignore — user can try again
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [loadingMore, hasMore, historyItems.length]);
-
-  return { historyItems, setHistoryItems, historyLoading, historyError, hasMore, loadingMore, refresh, loadMore };
+  return { historyItems, setHistoryItems, groups, setGroups, historyLoading, historyError, refresh };
 }

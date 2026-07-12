@@ -1,9 +1,14 @@
 import type { Dispatch, MouseEvent, RefObject, SetStateAction } from "react";
-import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined, ShareAltOutlined } from "@ant-design/icons";
-import { Tooltip } from "antd";
-import type { SessionRecord } from "../../../types";
+import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined, FolderOpenOutlined, ShareAltOutlined } from "@ant-design/icons";
+import { Dropdown, Tooltip } from "antd";
+import type { MenuProps } from "antd";
+import type { SessionGroup, SessionRecord } from "../../../types";
 import { formatUpdatedAt } from "../../../lib/formatUpdatedAt";
 import ProficiencyBadges from "../../shared/ProficiencyBadges";
+
+// Sentinel menu keys that aren't group ids.
+const REMOVE_FROM_GROUP = "__remove__";
+const NEW_GROUP = "__new__";
 
 export default function SessionItem({
   session,
@@ -22,6 +27,9 @@ export default function SessionItem({
   onConfirmEdit,
   onDelete,
   onShare,
+  groups,
+  onAssignGroup,
+  onCreateGroupForSession,
 }: {
   session: SessionRecord;
   isCurrent: boolean;
@@ -39,10 +47,38 @@ export default function SessionItem({
   onConfirmEdit: (sessionId: string, title: string, e: MouseEvent) => void;
   onDelete: (sessionId: string, isCurrent: boolean, e: MouseEvent) => void;
   onShare: (sessionId: string, e: MouseEvent) => void;
+  groups: SessionGroup[];
+  onAssignGroup: (sessionId: string, groupId: string | null) => void;
+  onCreateGroupForSession: (sessionId: string) => void;
 }): React.ReactElement {
   const isEditing = editingId === session.id;
   const isDeleting = deletingId === session.id;
   const isShared = Boolean(session.share_token);
+  const currentGroupId = session.group_id ?? null;
+
+  // Folder dropdown: pick a topic, remove from the current one, or make a new one.
+  const groupMenu: MenuProps = {
+    items: [
+      ...groups.map((g) => ({
+        key: g.id,
+        label: g.name,
+        icon: g.id === currentGroupId
+          ? <CheckOutlined style={{ fontSize: 11 }} />
+          : <span style={{ display: "inline-block", width: 11 }} />,
+      })),
+      ...(groups.length ? [{ type: "divider" as const }] : []),
+      ...(currentGroupId
+        ? [{ key: REMOVE_FROM_GROUP, label: "移出主題" }]
+        : []),
+      { key: NEW_GROUP, label: "＋ 新增主題…" },
+    ],
+    onClick: ({ key, domEvent }) => {
+      domEvent.stopPropagation();
+      if (key === NEW_GROUP) onCreateGroupForSession(session.id);
+      else if (key === REMOVE_FROM_GROUP) onAssignGroup(session.id, null);
+      else if (key !== currentGroupId) onAssignGroup(session.id, key);
+    },
+  };
   const title =
     session.title?.trim() ||
     session.source_text?.trim()?.slice(0, 80) ||
@@ -124,6 +160,24 @@ export default function SessionItem({
           >
             <EditOutlined style={{ fontSize: 13 }} />
           </button>
+          {/* Folder dropdown — assign this session to a topic; accent-colored
+              and always visible when grouped, gray + hover-only otherwise */}
+          <Dropdown menu={groupMenu} trigger={["click"]} placement="bottomRight">
+            <Tooltip title={currentGroupId ? "已在主題中 — 變更主題" : "加入主題"}>
+              <button
+                type="button"
+                onClick={(e) => e.stopPropagation()}
+                className={`absolute bottom-2 right-14 cursor-pointer transition-opacity hover:scale-110 ${
+                  currentGroupId
+                    ? "text-(--accent) opacity-100"
+                    : "text-black/25 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 hover:text-(--accent)"
+                }`}
+                aria-label="Assign session to a topic"
+              >
+                <FolderOpenOutlined style={{ fontSize: 13 }} />
+              </button>
+            </Tooltip>
+          </Dropdown>
           {/* Share icon — accent-colored and always visible when shared (doubles
               as the 已分享 badge); gray + hover-only like the others when not */}
           <Tooltip title={isShared ? "已分享 — 管理連結" : "分享"}>

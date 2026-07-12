@@ -55,3 +55,12 @@ class EnsureProfileRequest(BaseModel):
 
 class UpdateSessionTitleRequest(BaseModel):
     title: str
+
+
+class SessionGroupRequest(BaseModel):
+    name: str
+
+
+class SetSessionGroupRequest(BaseModel):
+    # null moves the session back to ungrouped.
+    group_id: str | None = None

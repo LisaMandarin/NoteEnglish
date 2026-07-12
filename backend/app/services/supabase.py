@@ -139,7 +139,7 @@ def list_sessions(user_id: str, limit: int = 5, offset: int = 0) -> dict:
     query = parse.urlencode(
         {
             "user_id": f"eq.{user_id}",
-            "select": "id,title,source_text,created_at,updated_at,share_token",
+            "select": "id,title,source_text,created_at,updated_at,share_token,group_id",
             "order": "updated_at.desc",
             "limit": limit + 1,
             "offset": offset,
@@ -265,6 +265,102 @@ def update_session_title(user_id: str, session_id: str, title: str) -> dict:
         f"{settings.supabase_url}/rest/v1/study_sessions?{query}",
         headers=_service_headers("return=representation"),
         payload={"title": title.strip(), "updated_at": datetime.now(timezone.utc).isoformat()},
+    ) or []
+    if not updated_rows:
+        raise HTTPException(status_code=404, detail="Study session not found.")
+    return updated_rows[0]
+
+
+# ── Session groups (topic folders) ──────────────────────────────────────────
+
+def list_session_groups(user_id: str) -> dict:
+    query = parse.urlencode(
+        {
+            "user_id": f"eq.{user_id}",
+            "select": "id,name,sort_order,created_at",
+            "order": "sort_order.asc,created_at.asc",
+        }
+    )
+    rows = _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/session_groups?{query}",
+        headers=_service_headers(),
+    ) or []
+    return {"items": rows}
+
+
+def create_session_group(user_id: str, name: str) -> dict:
+    cleaned = name.strip()
+    if not cleaned:
+        raise HTTPException(status_code=422, detail="Group name is required.")
+    # New groups sort after existing ones; ties break on created_at.
+    existing = _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/session_groups?"
+        + parse.urlencode(
+            {"user_id": f"eq.{user_id}", "select": "sort_order", "order": "sort_order.desc", "limit": 1}
+        ),
+        headers=_service_headers(),
+    ) or []
+    next_order = (existing[0]["sort_order"] + 1) if existing else 0
+
+    created_rows = _request_json(
+        "POST",
+        f"{settings.supabase_url}/rest/v1/session_groups",
+        headers=_service_headers("return=representation"),
+        payload={"user_id": user_id, "name": cleaned, "sort_order": next_order},
+    ) or []
+    if not created_rows:
+        raise HTTPException(status_code=502, detail="Could not create the group.")
+    return created_rows[0]
+
+
+def rename_session_group(user_id: str, group_id: str, name: str) -> dict:
+    cleaned = name.strip()
+    if not cleaned:
+        raise HTTPException(status_code=422, detail="Group name is required.")
+    query = parse.urlencode({"id": f"eq.{group_id}", "user_id": f"eq.{user_id}"})
+    updated_rows = _request_json(
+        "PATCH",
+        f"{settings.supabase_url}/rest/v1/session_groups?{query}",
+        headers=_service_headers("return=representation"),
+        payload={"name": cleaned},
+    ) or []
+    if not updated_rows:
+        raise HTTPException(status_code=404, detail="Group not found.")
+    return updated_rows[0]
+
+
+def delete_session_group(user_id: str, group_id: str) -> None:
+    # Sessions in this group are released to ungrouped by the FK's
+    # ON DELETE SET NULL — no need to touch study_sessions here.
+    query = parse.urlencode({"id": f"eq.{group_id}", "user_id": f"eq.{user_id}"})
+    _request_json(
+        "DELETE",
+        f"{settings.supabase_url}/rest/v1/session_groups?{query}",
+        headers=_service_headers(),
+    )
+
+
+def set_session_group(user_id: str, session_id: str, group_id: str | None) -> dict:
+    # Verify the target group belongs to the caller so a session can't be moved
+    # into someone else's folder by guessing an id.
+    if group_id is not None:
+        owned = _request_json(
+            "GET",
+            f"{settings.supabase_url}/rest/v1/session_groups?"
+            + parse.urlencode({"id": f"eq.{group_id}", "user_id": f"eq.{user_id}", "select": "id"}),
+            headers=_service_headers(),
+        ) or []
+        if not owned:
+            raise HTTPException(status_code=404, detail="Group not found.")
+
+    query = parse.urlencode({"id": f"eq.{session_id}", "user_id": f"eq.{user_id}"})
+    updated_rows = _request_json(
+        "PATCH",
+        f"{settings.supabase_url}/rest/v1/study_sessions?{query}",
+        headers=_service_headers("return=representation"),
+        payload={"group_id": group_id},
     ) or []
     if not updated_rows:
         raise HTTPException(status_code=404, detail="Study session not found.")

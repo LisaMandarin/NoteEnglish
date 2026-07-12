@@ -65,5 +65,40 @@ class GetAuthenticatedUserTests(unittest.TestCase):
         self.assertEqual(exc.status_code, 502)
 
 
+class SessionGroupTests(unittest.TestCase):
+    def test_create_group_rejects_blank_name(self):
+        with self.assertRaises(HTTPException) as ctx:
+            supabase.create_session_group("u1", "   ")
+        self.assertEqual(ctx.exception.status_code, 422)
+
+    def test_set_group_rejects_group_not_owned(self):
+        # Ownership check returns empty → the group isn't the caller's → 404,
+        # and the session PATCH must never run.
+        with patch.object(supabase, "_request_json", return_value=[]) as rj:
+            with self.assertRaises(HTTPException) as ctx:
+                supabase.set_session_group("u1", "s1", "g-other")
+        self.assertEqual(ctx.exception.status_code, 404)
+        self.assertEqual(rj.call_count, 1)
+
+    def test_set_group_to_none_skips_ownership_check(self):
+        # group_id=None means "ungroup" — no group to verify, straight to PATCH.
+        with patch.object(
+            supabase, "_request_json", return_value=[{"id": "s1", "group_id": None}]
+        ) as rj:
+            result = supabase.set_session_group("u1", "s1", None)
+        self.assertIsNone(result["group_id"])
+        self.assertEqual(rj.call_count, 1)
+        self.assertEqual(rj.call_args.args[0], "PATCH")
+
+    def test_set_group_owned_assigns(self):
+        with patch.object(
+            supabase,
+            "_request_json",
+            side_effect=[[{"id": "g1"}], [{"id": "s1", "group_id": "g1"}]],
+        ):
+            result = supabase.set_session_group("u1", "s1", "g1")
+        self.assertEqual(result["group_id"], "g1")
+
+
 if __name__ == "__main__":
     unittest.main()
