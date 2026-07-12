@@ -153,7 +153,7 @@ export default function TranslationsList({ onStartQuiz }: { onStartQuiz: () => v
           <button
             type="button"
             onClick={toggleAllVocab}
-            className="text-sm text-gray-400 hover:text-(--accent) transition-colors cursor-pointer"
+            className="text-sm text-(--text-muted) hover:text-(--accent) transition-colors cursor-pointer"
           >
             {allCollapsed ? "展開所有單字卡" : "折疊所有單字卡"}
           </button>
@@ -196,7 +196,7 @@ export default function TranslationsList({ onStartQuiz }: { onStartQuiz: () => v
             shape="round"
             icon={<ArrowUpOutlined />}
             onClick={returnToSentence}
-            className="bg-(--accent)! border-(--accent)! text-white! shadow-lg"
+            className="bg-(--accent)! border-(--accent)! text-(--text-on-accent)! shadow-lg"
           >
             回到原句
           </Button>

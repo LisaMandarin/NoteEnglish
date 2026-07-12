@@ -486,7 +486,7 @@ export default function VocabCards({ vocab, sentenceIdx, hideHint, onDelete, onR
       type="button"
       onClick={onToggleCollapsed}
       aria-expanded={!collapsed}
-      className="mt-4 flex items-center gap-1.5 text-sm text-gray-400 hover:text-(--accent) transition-colors cursor-pointer select-none"
+      className="mt-4 flex items-center gap-1.5 text-sm text-(--text-muted) hover:text-(--accent) transition-colors cursor-pointer select-none"
     >
       <DownOutlined className={`text-[10px] transition-transform ${collapsed ? "-rotate-90" : ""}`} />
       <span>單字卡（{items.length}）</span>
@@ -515,7 +515,7 @@ export default function VocabCards({ vocab, sentenceIdx, hideHint, onDelete, onR
       <button
         type="button"
         onClick={collapseAndReturn}
-        className="flex items-center gap-1 text-sm text-gray-400 hover:text-(--accent) transition-colors cursor-pointer select-none"
+        className="flex items-center gap-1 text-sm text-(--text-muted) hover:text-(--accent) transition-colors cursor-pointer select-none"
       >
         <UpOutlined className="text-[10px]" />
         <span>折疊單字卡</span>
@@ -523,7 +523,7 @@ export default function VocabCards({ vocab, sentenceIdx, hideHint, onDelete, onR
       <button
         type="button"
         onClick={scrollToSentence}
-        className="flex items-center gap-1 text-sm text-gray-400 hover:text-(--accent) transition-colors cursor-pointer select-none"
+        className="flex items-center gap-1 text-sm text-(--text-muted) hover:text-(--accent) transition-colors cursor-pointer select-none"
       >
         <ArrowUpOutlined className="text-[10px]" />
         <span>回到原句</span>
@@ -544,7 +544,7 @@ export default function VocabCards({ vocab, sentenceIdx, hideHint, onDelete, onR
               className="rounded-full border border-(--card-border) bg-(--card-bg) px-3 py-1 text-sm cursor-pointer hover:border-(--accent) transition-colors"
             >
               <span className="font-semibold text-(--text-main)">{(v.lemma ?? v.text ?? "").trim() || "vocab"}</span>
-              {v.translation && <span className="ml-1.5 text-gray-400">{v.translation}</span>}
+              {v.translation && <span className="ml-1.5 text-(--text-muted)">{v.translation}</span>}
             </button>
           ))}
         </div>

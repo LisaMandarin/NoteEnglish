@@ -28,6 +28,10 @@
   /* StudyActions next-steps panel — soft mint tint to stand apart from the white cards */
   --panel-bg: #e8f5f1;
   --panel-border: #cfe6dc;
+  /* Muted text for low-emphasis controls (matches Tailwind gray-400) */
+  --text-muted: #9ca3af;
+  /* Text on accent-colored surfaces (e.g. the floating 回到原句 pill) */
+  --text-on-accent: #ffffff;
   color: var(--text-main);
 
   font-synthesis: none;
