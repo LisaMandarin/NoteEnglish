@@ -49,6 +49,8 @@ export default function SentenceItem({
   onEdit,
   onNoteChange,
   readOnly = false,
+  vocabCollapsed,
+  onToggleVocabCollapsed,
 }: {
   sentence: Sentence;
   idx: number;
@@ -59,11 +61,18 @@ export default function SentenceItem({
   onEdit?: (sentenceIdx: number, vocabItem: VocabItem) => void;
   onNoteChange?: (sentenceIdx: number, note: string) => void;
   readOnly?: boolean;
+  vocabCollapsed?: boolean;
+  onToggleVocabCollapsed?: () => void;
 }): React.ReactElement {
   const note = sentence.note ?? "";
   const hasNote = note.trim().length > 0;
   const [editingNote, setEditingNote] = useState(false);
   const [draftNote, setDraftNote] = useState(note);
+  // Uncontrolled fallback so the read-only shared view (which renders outside
+  // TranslationsList) still gets per-sentence collapse without a parent state.
+  const [localVocabCollapsed, setLocalVocabCollapsed] = useState(false);
+  const effectiveVocabCollapsed = vocabCollapsed ?? localVocabCollapsed;
+  const toggleVocabCollapsed = onToggleVocabCollapsed ?? ((): void => setLocalVocabCollapsed((c) => !c));
   const structure = useSentenceStructure(sentence.original);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -242,6 +251,8 @@ export default function SentenceItem({
           onReorder={onReorder}
           onEdit={onEdit}
           readOnly={readOnly}
+          collapsed={effectiveVocabCollapsed}
+          onToggleCollapsed={toggleVocabCollapsed}
         />
       </div>
     </li>

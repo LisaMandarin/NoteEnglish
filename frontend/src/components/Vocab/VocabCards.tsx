@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { VocabItem } from "../../types";
-import { CheckOutlined, DeleteTwoTone, EditTwoTone, MinusCircleOutlined, PlusCircleOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { CheckOutlined, DeleteTwoTone, DownOutlined, EditTwoTone, MinusCircleOutlined, PlusCircleOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import TtsButton from "../shared/TtsButton";
 import { useWordMastery } from "../../hooks/useWordMastery";
 import { masteryKey } from "../../lib/mastery";
+import { vocabItemId as itemId, vocabCardDomId } from "../../lib/vocabCard";
 import { Modal, Tooltip } from 'antd';
 import {
   DndContext,
@@ -52,10 +53,6 @@ const POS_LABELS: Record<string, string> = {
 };
 
 // ── Pure helpers ─────────────────────────────────────────────────────────────
-
-function itemId(v: VocabItem): string {
-  return `${v.lemma ?? v.text}-${v.pos ?? "unknown"}`;
-}
 
 function getLevelInfo(level?: string): { filled: number; total: number; color: string } {
   const idx = LEVEL_ORDER.indexOf((level ?? "").toUpperCase());
@@ -109,7 +106,7 @@ function LevelDots({ level }: { level?: string }) {
   );
 }
 
-function SortableVocabCard({ id, v, onDelete, onEdit }: { id: string; v: VocabItem; onDelete?: () => void; onEdit?: (updates: Partial<VocabItem>) => void }) {
+function SortableVocabCard({ id, domId, v, onDelete, onEdit }: { id: string; domId: string; v: VocabItem; onDelete?: () => void; onEdit?: (updates: Partial<VocabItem>) => void }) {
   const {
     attributes,
     listeners,
@@ -126,7 +123,7 @@ function SortableVocabCard({ id, v, onDelete, onEdit }: { id: string; v: VocabIt
   };
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef} style={style} id={domId}>
       <VocabCard v={v} onDelete={onDelete} onEdit={onEdit} dragProps={{ ...attributes, ...listeners }} />
     </div>
   );
@@ -440,7 +437,7 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false, sh
   );
 }
 
-export default function VocabCards({ vocab, sentenceIdx, hideHint, onDelete, onReorder, onEdit, readOnly = false }: { vocab: VocabItem[]; sentenceIdx: number; hideHint?: boolean; onDelete?: (sentenceIdx: number, lemma: string, pos: string) => void; onReorder?: (sentenceIdx: number, newVocab: VocabItem[]) => void; onEdit?: (sentenceIdx: number, vocabItem: VocabItem) => void; readOnly?: boolean }): React.ReactElement | null {
+export default function VocabCards({ vocab, sentenceIdx, hideHint, onDelete, onReorder, onEdit, readOnly = false, collapsed = false, onToggleCollapsed }: { vocab: VocabItem[]; sentenceIdx: number; hideHint?: boolean; onDelete?: (sentenceIdx: number, lemma: string, pos: string) => void; onReorder?: (sentenceIdx: number, newVocab: VocabItem[]) => void; onEdit?: (sentenceIdx: number, vocabItem: VocabItem) => void; readOnly?: boolean; collapsed?: boolean; onToggleCollapsed?: () => void }): React.ReactElement | null {
   const items = useMemo(() => {
     const list = Array.isArray(vocab) ? vocab : [];
     return list.filter((v) =>
@@ -484,12 +481,48 @@ export default function VocabCards({ vocab, sentenceIdx, hideHint, onDelete, onR
     );
   }
 
+  const header = onToggleCollapsed && (
+    <button
+      type="button"
+      onClick={onToggleCollapsed}
+      aria-expanded={!collapsed}
+      className="mt-4 flex items-center gap-1.5 text-sm text-gray-400 hover:text-(--accent) transition-colors cursor-pointer select-none"
+    >
+      <DownOutlined className={`text-[10px] transition-transform ${collapsed ? "-rotate-90" : ""}`} />
+      <span>單字卡（{items.length}）</span>
+    </button>
+  );
+
+  if (collapsed && onToggleCollapsed) {
+    return (
+      <div>
+        {header}
+        <div className="mt-2 flex flex-wrap gap-2">
+          {sortedItems.map((v) => (
+            <button
+              key={itemId(v)}
+              type="button"
+              onClick={onToggleCollapsed}
+              className="rounded-full border border-(--card-border) bg-(--card-bg) px-3 py-1 text-sm cursor-pointer hover:border-(--accent) transition-colors"
+            >
+              <span className="font-semibold text-(--text-main)">{(v.lemma ?? v.text ?? "").trim() || "vocab"}</span>
+              {v.translation && <span className="ml-1.5 text-gray-400">{v.translation}</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (readOnly) {
     return (
-      <div className="mt-4 grid grid-cols-1 min-[480px]:grid-cols-2 gap-3">
-        {sortedItems.map((v) => (
-          <VocabCard key={itemId(v)} v={v} readOnly showTts />
-        ))}
+      <div>
+        {header}
+        <div className={`${header ? "mt-2" : "mt-4"} grid grid-cols-1 min-[480px]:grid-cols-2 gap-3`}>
+          {sortedItems.map((v) => (
+            <VocabCard key={itemId(v)} v={v} readOnly showTts />
+          ))}
+        </div>
       </div>
     );
   }
@@ -501,16 +534,20 @@ export default function VocabCards({ vocab, sentenceIdx, hideHint, onDelete, onR
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={sortedItems.map(itemId)} strategy={rectSortingStrategy}>
-        <div className="mt-4 grid grid-cols-1 min-[480px]:grid-cols-2 gap-3">
-          {sortedItems.map((v) => (
-            <SortableVocabCard
-              key={itemId(v)}
-              id={itemId(v)}
-              v={v}
-              onDelete={() => onDelete?.(sentenceIdx, v.lemma, v.pos)}
-              onEdit={(updates) => onEdit?.(sentenceIdx, { ...v, ...updates })}
-            />
-          ))}
+        <div>
+          {header}
+          <div className={`${header ? "mt-2" : "mt-4"} grid grid-cols-1 min-[480px]:grid-cols-2 gap-3`}>
+            {sortedItems.map((v) => (
+              <SortableVocabCard
+                key={itemId(v)}
+                id={itemId(v)}
+                domId={vocabCardDomId(sentenceIdx, v)}
+                v={v}
+                onDelete={() => onDelete?.(sentenceIdx, v.lemma, v.pos)}
+                onEdit={(updates) => onEdit?.(sentenceIdx, { ...v, ...updates })}
+              />
+            ))}
+          </div>
         </div>
       </SortableContext>
     </DndContext>

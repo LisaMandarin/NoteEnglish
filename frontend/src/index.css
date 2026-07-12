@@ -70,6 +70,18 @@ body {
   padding: 0 0.12em;
 }
 
+/* Flash on the vocab card just added by a lookup, so the eye lands on it
+   after the auto-scroll. Radius matches the card's rounded-2xl. */
+@keyframes vocab-flash {
+  0%, 55% { box-shadow: 0 0 0 3px var(--accent); }
+  100% { box-shadow: 0 0 0 3px transparent; }
+}
+
+.vocab-flash {
+  border-radius: 1rem;
+  animation: vocab-flash 1.6s ease-out;
+}
+
 @media (hover: none) and (pointer: coarse) {
   .lookup-original-text {
     -webkit-touch-callout: none;
