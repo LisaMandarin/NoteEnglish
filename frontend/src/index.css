@@ -28,6 +28,10 @@
   /* StudyActions next-steps panel — soft mint tint to stand apart from the white cards */
   --panel-bg: #e8f5f1;
   --panel-border: #cfe6dc;
+  /* Muted text for low-emphasis controls (matches Tailwind gray-400) */
+  --text-muted: #9ca3af;
+  /* Text on accent-colored surfaces (e.g. the floating 回到原句 pill) */
+  --text-on-accent: #ffffff;
   color: var(--text-main);
 
   font-synthesis: none;
@@ -68,6 +72,30 @@ body {
   background: var(--card-border);
   color: var(--card-bg);
   padding: 0 0.12em;
+}
+
+/* Flash on the vocab card just added by a lookup, so the eye lands on it
+   after the auto-scroll. Radius matches the card's rounded-2xl. */
+@keyframes vocab-flash {
+  0%, 55% { box-shadow: 0 0 0 3px var(--accent); }
+  100% { box-shadow: 0 0 0 3px transparent; }
+}
+
+.vocab-flash {
+  border-radius: 1rem;
+  animation: vocab-flash 1.6s ease-out;
+}
+
+/* Floating 回到原句 button shown briefly after a lookup jumps to the new
+   card. translateX centers it; the keyframes must keep that offset. */
+@keyframes vocab-return-appear {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.vocab-return-btn {
+  transform: translateX(-50%);
+  animation: vocab-return-appear 0.25s ease-out;
 }
 
 @media (hover: none) and (pointer: coarse) {

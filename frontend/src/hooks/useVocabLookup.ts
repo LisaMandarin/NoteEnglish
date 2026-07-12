@@ -3,6 +3,9 @@ import type { Dispatch, SetStateAction } from "react";
 import { apiFetch } from "../lib/api";
 import type { Sentence, VocabItem } from "../types";
 
+// What a successful lookup produced — enough for the caller to locate the card.
+export type LookupResult = { sentenceIdx: number; vocabItem: VocabItem };
+
 // Remembered lookup checkboxes; 中文意思 ("zh") is mandatory and always forced in.
 const LOOKUP_OPTIONS_KEY = "ne_lookup_options";
 
@@ -34,7 +37,7 @@ export function useVocabLookup(
   setSelectedText: Dispatch<SetStateAction<string>>;
   setSelectedSentenceIdx: Dispatch<SetStateAction<number | null>>;
   setOptions: Dispatch<SetStateAction<string[]>>;
-  lookup: () => Promise<boolean>;
+  lookup: () => Promise<LookupResult | null>;
   reset: () => void;
 } {
   const [selectedText, setSelectedText] = useState<string>("");
@@ -61,17 +64,17 @@ export function useVocabLookup(
     setSelectedSentenceIdx(null);
   }
 
-  async function lookup(): Promise<boolean> {
+  async function lookup(): Promise<LookupResult | null> {
     const text = selectedText.trim();
-    if (!text) return false;
+    if (!text) return null;
 
     if (options.length === 0) {
       alert("請至少選一個查詢選項");
-      return false;
+      return null;
     }
 
     const sentenceIdx = selectedSentenceIdx;
-    if (sentenceIdx === null) return false;
+    if (sentenceIdx === null) return null;
 
     setLoading(true);
 
@@ -121,7 +124,7 @@ export function useVocabLookup(
       updateSentenceVocab(sentenceIdx, vocabItem);
 
       reset();
-      return true;
+      return { sentenceIdx, vocabItem };
     } catch (e: unknown) {
       console.error(e);
       const msg = e instanceof Error ? e.message : "";
@@ -138,7 +141,7 @@ export function useVocabLookup(
       } else {
         alert("查詢失敗，請稍後再試。");
       }
-      return false;
+      return null;
     } finally {
       setLoading(false);
     }
