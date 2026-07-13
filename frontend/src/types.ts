@@ -222,9 +222,23 @@ export type SessionRecord = {
   article_proficiency?: number | null;
   // null/absent = not shared. Present on GET /api/sessions items only.
   share_token?: string | null;
+  // null/absent = ungrouped. Id of the session_groups row this belongs to.
+  group_id?: string | null;
 };
 
 export type SessionPage = {
   items: SessionRecord[];
   has_more: boolean;
+};
+
+// A topic folder from GET /api/session-groups.
+export type SessionGroup = {
+  id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+};
+
+export type SessionGroupPage = {
+  items: SessionGroup[];
 };

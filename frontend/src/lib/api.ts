@@ -5,6 +5,8 @@ import type {
   QuizResultPayloadItem,
   Sentence,
   SentenceType,
+  SessionGroup,
+  SessionGroupPage,
   SessionPage,
   SharedSessionDetail,
   ShareTokenResponse,
@@ -116,6 +118,37 @@ export async function ensureProfile(displayName: string): Promise<unknown> {
 
 export async function listSessions(limit = 5, offset = 0): Promise<SessionPage> {
   return apiFetch(`/api/sessions?limit=${limit}&offset=${offset}`) as Promise<SessionPage>;
+}
+
+// ── Session groups (topic folders) ─────────────────────────────────────────
+
+export async function listSessionGroups(): Promise<SessionGroupPage> {
+  return apiFetch("/api/session-groups") as Promise<SessionGroupPage>;
+}
+
+export async function createSessionGroup(name: string): Promise<SessionGroup> {
+  return apiFetch("/api/session-groups", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  }) as Promise<SessionGroup>;
+}
+
+export async function renameSessionGroup(groupId: string, name: string): Promise<SessionGroup> {
+  return apiFetch(`/api/session-groups/${groupId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name }),
+  }) as Promise<SessionGroup>;
+}
+
+export async function deleteSessionGroup(groupId: string): Promise<unknown> {
+  return apiFetch(`/api/session-groups/${groupId}`, { method: "DELETE" });
+}
+
+export async function setSessionGroup(sessionId: string, groupId: string | null): Promise<unknown> {
+  return apiFetch(`/api/sessions/${sessionId}/group`, {
+    method: "PATCH",
+    body: JSON.stringify({ group_id: groupId }),
+  });
 }
 
 export async function getSessionDetail(sessionId: string): Promise<SessionDetailResponse> {
