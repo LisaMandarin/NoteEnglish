@@ -1,14 +1,26 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import { useTranslation } from "../../../context/translationContext";
 import { listSessionGroups, listSessions } from "../../../lib/api";
 import type { SessionGroup, SessionRecord } from "../../../types";
 
-// The grouped library view loads the whole list at once and folds it into
-// topic folders client-side, so there is no offset pagination here. The cap
-// mirrors the backend's /sessions limit; realistic per-user counts are far
-// below it.
-const LOAD_ALL_LIMIT = 500;
+// Sessions load in full (paged client-side into topic folders). We fetch in
+// chunks and follow has_more so accounts with more than one page still load
+// completely; the chunk cap keeps within the backend's /sessions limit and the
+// page cap guards against an unbounded loop.
+const FETCH_CHUNK = 200;
+const MAX_CHUNKS = 100;
+
+async function fetchAllSessions(isCancelled: () => boolean): Promise<SessionRecord[]> {
+  const all: SessionRecord[] = [];
+  let offset = 0;
+  for (let i = 0; i < MAX_CHUNKS; i++) {
+    const page = await listSessions(FETCH_CHUNK, offset);
+    all.push(...page.items);
+    if (!page.has_more || isCancelled()) break;
+    offset += page.items.length;
+  }
+  return all;
+}
 
 export function useSessionHistory(activePanel: string): {
   historyItems: SessionRecord[];
@@ -19,34 +31,21 @@ export function useSessionHistory(activePanel: string): {
   historyError: string;
   refresh: () => void;
 } {
-  const {
-    state: { currentSession },
-  } = useTranslation();
-
   const [historyItems, setHistoryItems] = useState<SessionRecord[]>([]);
   const [groups, setGroups] = useState<SessionGroup[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
   const [refreshCount, setRefreshCount] = useState(0);
 
-  const prevDepsRef = useRef<{ activePanel: string | undefined; sessionId: string | null | undefined; refreshCount: number }>({
-    activePanel: undefined,
-    sessionId: undefined,
-    refreshCount: 0,
-  });
-
   const refresh = useCallback(() => setRefreshCount((n) => n + 1), []);
 
+  // Load when the panel opens (mount) and on manual refresh only. Deliberately
+  // NOT on the current session's updated_at: an autosave must not trigger a
+  // full reload of the whole list — and its per-session proficiency
+  // computation — every time a note or vocab item changes while the panel is
+  // open. Local edits update their own row; the refresh button re-syncs.
   useEffect(() => {
-    const prev = prevDepsRef.current;
-    const panelJustOpened = prev.activePanel !== activePanel;
-    const idChanged = prev.sessionId !== (currentSession?.id ?? null);
-    const manualRefresh = prev.refreshCount !== refreshCount;
-
-    prevDepsRef.current = { activePanel, sessionId: currentSession?.id ?? null, refreshCount };
-
     if (activePanel !== "history") return;
-    if (!manualRefresh && !panelJustOpened && idChanged) return;
 
     let cancelled = false;
 
@@ -54,12 +53,12 @@ export function useSessionHistory(activePanel: string): {
       setHistoryLoading(true);
       setHistoryError("");
       try {
-        const [page, groupPage] = await Promise.all([
-          listSessions(LOAD_ALL_LIMIT, 0),
+        const [sessions, groupPage] = await Promise.all([
+          fetchAllSessions(() => cancelled),
           listSessionGroups(),
         ]);
         if (cancelled) return;
-        setHistoryItems(page.items);
+        setHistoryItems(sessions);
         setGroups(groupPage.items ?? []);
       } catch (error: unknown) {
         if (cancelled) return;
@@ -73,7 +72,7 @@ export function useSessionHistory(activePanel: string): {
 
     load();
     return () => { cancelled = true; };
-  }, [activePanel, currentSession?.id, currentSession?.updatedAt, refreshCount]);
+  }, [activePanel, refreshCount]);
 
   return { historyItems, setHistoryItems, groups, setGroups, historyLoading, historyError, refresh };
 }

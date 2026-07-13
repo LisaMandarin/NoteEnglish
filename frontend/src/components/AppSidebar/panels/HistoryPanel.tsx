@@ -318,7 +318,7 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
         {historyError && (
           <p className="mt-3 m-0 text-sm text-red-600">{historyError}</p>
         )}
-        {!historyLoading && !historyError && historyItems.length === 0 && (
+        {!historyLoading && !historyError && historyItems.length === 0 && !hasGroups && (
           <p className="mt-3 m-0 text-sm text-black/70">
             目前還沒有任何學習紀錄。
           </p>
@@ -331,7 +331,10 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
           </div>
         )}
 
-        {!historyLoading && !historyError && historyItems.length > 0 && hasGroups && (
+        {/* Folders render whenever any exist — even with zero sessions — so an
+            empty account (or one whose last session was deleted) can still see
+            and manage the topics it created. */}
+        {!historyLoading && !historyError && hasGroups && (
           <div className="mt-3 space-y-4">
             {groups.map((group) => {
               const items = byGroup.get(group.id) ?? [];
