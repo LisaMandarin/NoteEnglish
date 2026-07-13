@@ -21,8 +21,9 @@ export default function AppTitle({
               },
           }
         : {};
+    // w-fit keeps the clickable area on the logo + title only, not the blank space beside them
     return (
-        <div className={`${className}${onClick ? " cursor-pointer" : ""}`} {...interactiveProps}>
+        <div className={`${className}${onClick ? " w-fit cursor-pointer" : ""}`} {...interactiveProps}>
             <img src="/logo.webp" alt="句句通logo" className="h-8 w-8 shrink-0" />
             <h1 className="app-title-heading text-2xl font-semibold text-(--accent) animate__animated animate__lightSpeedInRight">
                 {title}

@@ -134,7 +134,7 @@ function SortableVocabCard({ id, domId, v, onDelete, onEdit }: { id: string; dom
 
 const MAX_OTHERS = 5;
 
-type EditDraft = { translation: string; definition: string; example: string; others: string[] };
+type EditDraft = { translation: string; definition: string; example: string; example_translation: string; others: string[] };
 
 function buildUpdates(d: EditDraft): Partial<VocabItem> {
   const { others, ...rest } = d;
@@ -181,7 +181,7 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false, sh
   const hasContent = v.definition || v.example || [1,2,3,4,5].some(i => (v as Record<string, unknown>)[`other_${i}`]);
 
   const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState<EditDraft>({ translation: "", definition: "", example: "", others: [] });
+  const [draft, setDraft] = useState<EditDraft>({ translation: "", definition: "", example: "", example_translation: "", others: [] });
   const cardRef = useRef<HTMLDivElement>(null);
   const isConfirmingRef = useRef(false);
   const draftRef = useRef(draft);
@@ -227,7 +227,7 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false, sh
       const val = (v as Record<string, unknown>)[`other_${i}`] as string | undefined;
       if (val != null) others.push(val);
     }
-    setDraft({ translation: v.translation ?? "", definition: v.definition ?? "", example: v.example ?? "", others });
+    setDraft({ translation: v.translation ?? "", definition: v.definition ?? "", example: v.example ?? "", example_translation: v.example_translation ?? "", others });
     setIsEditing(true);
   }
 
@@ -304,6 +304,14 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false, sh
             rows={2}
             className="text-sm text-(--text-main) w-full border border-(--card-border) rounded-lg px-2 py-1 bg-transparent outline-none resize-none focus:border-(--accent)"
           />
+          <textarea
+            value={draft.example_translation}
+            onChange={(e) => setDraft((d) => ({ ...d, example_translation: e.target.value }))}
+            onKeyDown={handleTextareaKeyDown}
+            placeholder="例句中文翻譯"
+            rows={2}
+            className="text-sm text-(--text-main) w-full border border-(--card-border) rounded-lg px-2 py-1 bg-transparent outline-none resize-none focus:border-(--accent)"
+          />
           {draft.others.map((val, idx) => (
             <div key={idx} className="flex items-start gap-1">
               <textarea
@@ -365,7 +373,12 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false, sh
                         className="mt-0.5 shrink-0 text-gray-400 hover:text-(--accent) transition-colors cursor-pointer"
                       />
                     )}
-                    <HighlightedExample example={v.example} lemma={v.lemma} text={v.text} />
+                    <div className="min-w-0">
+                      <HighlightedExample example={v.example} lemma={v.lemma} text={v.text} />
+                      {v.example_translation && (
+                        <div className="mt-1 text-xs text-gray-500">{v.example_translation}</div>
+                      )}
+                    </div>
                   </div>
                 )}
                 {([1,2,3,4,5] as const).map(i => {

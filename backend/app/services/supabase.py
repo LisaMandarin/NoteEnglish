@@ -194,7 +194,7 @@ def get_session_detail(user_id: str, session_id: str) -> dict:
             "user_id": f"eq.{user_id}",
             "select": (
                 "sentence_index,vocab_index,selected_text,lemma,pos,translation,"
-                "definition,example,level,other_1,other_2,other_3,other_4,other_5"
+                "definition,example,example_translation,level,other_1,other_2,other_3,other_4,other_5"
             ),
             "order": "sentence_index.asc,vocab_index.asc",
         }
@@ -221,6 +221,7 @@ def get_session_detail(user_id: str, session_id: str) -> dict:
             "translation": vocab.get("translation"),
             "definition": vocab.get("definition"),
             "example": vocab.get("example"),
+            "example_translation": vocab.get("example_translation"),
             "level": vocab.get("level"),
         }
         for i in range(1, 6):
@@ -419,6 +420,7 @@ def _insert_session_children(user_id: str, session_id: str, sentences: list[dict
                 "translation": vocab.get("translation"),
                 "definition": vocab.get("definition"),
                 "example": vocab.get("example"),
+                "example_translation": vocab.get("example_translation"),
                 "level": vocab.get("level"),
             }
             for i in range(1, 6):

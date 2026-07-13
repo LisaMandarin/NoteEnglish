@@ -90,6 +90,14 @@ export default function AppSidebar({
     setIsMobileMenuOpen(false);
   }
 
+  // Opening a session (or starting a new one) from a panel should reveal the
+  // main content, so the panel and mobile menu close along with the switch.
+  function handlePanelShowTranslate(): void {
+    onShowTranslate();
+    setIsMobileMenuOpen(false);
+    if (activePanel) onTogglePanel(activePanel);
+  }
+
   return (
     <>
       {/* ===== MOBILE (< lg) ===== */}
@@ -181,7 +189,7 @@ export default function AppSidebar({
             onSignOut={onSignOut}
             onShowUsage={handleShowUsage}
             onShowQuizHistory={handleShowQuizHistory}
-            onShowTranslate={onShowTranslate}
+            onShowTranslate={handlePanelShowTranslate}
           />
         </div>
       </div>
@@ -252,7 +260,7 @@ export default function AppSidebar({
               onSignOut={onSignOut}
               onShowUsage={onShowUsage}
               onShowQuizHistory={onShowQuizHistory}
-              onShowTranslate={onShowTranslate}
+              onShowTranslate={handlePanelShowTranslate}
             />
           </div>
         </section>

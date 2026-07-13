@@ -62,6 +62,9 @@ function PrintVocabCard({ v }: { v: VocabItem }): React.ReactElement {
           {highlightWord(v.example, v.text || v.lemma || "")}
         </div>
       )}
+      {v.example && v.example_translation && (
+        <div className="vpc-example-translation">{v.example_translation}</div>
+      )}
       {[1,2,3,4,5].map((i) => {
         const val = (v as Record<string, unknown>)[`other_${i}`] as string | undefined;
         return val ? <div key={i} className="vpc-other">{val}</div> : null;

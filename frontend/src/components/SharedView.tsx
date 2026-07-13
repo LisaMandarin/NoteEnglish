@@ -92,7 +92,7 @@ export default function SharedView({ token }: { token: string }): React.ReactEle
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <AppTitle title="句句通" className="flex items-center gap-2" onClick={goHome} />
           <Button icon={<ArrowLeftOutlined />} onClick={goHome}>
-            回到我的學習紀錄
+            回首頁
           </Button>
         </div>
 
@@ -106,7 +106,7 @@ export default function SharedView({ token }: { token: string }): React.ReactEle
                   這個分享連結已失效，可能是作者取消分享或刪除了這篇學習紀錄。
                 </p>
                 <Button type="primary" onClick={goHome}>
-                  回到我的學習紀錄
+                  回首頁
                 </Button>
               </div>
             )}
