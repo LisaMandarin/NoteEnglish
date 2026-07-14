@@ -44,7 +44,7 @@ function OverviewSection({
         className="inline-block rounded-2xl border-4 border-(--card-border) px-8 py-6 shadow-sm"
         style={{ backgroundColor: "color-mix(in srgb, var(--accent) 8%, white)" }}
       >
-        <p className="text-xs font-semibold uppercase tracking-widest text-black/50">
+        <p className="text-xs font-semibold uppercase tracking-widest text-black/60">
           Total Users
         </p>
         <p
@@ -53,7 +53,7 @@ function OverviewSection({
         >
           {loading ? "—" : userCount}
         </p>
-        <p className="mt-1 text-sm text-black/50">registered accounts (excluding admins)</p>
+        <p className="mt-1 text-sm text-black/60">registered accounts (excluding admins)</p>
       </div>
     </div>
   );
@@ -80,11 +80,11 @@ function ProfileSection({
 
       <div className="space-y-5">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-black/40">Email</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-black/60">Email</p>
           <p className="mt-1 text-base">{email}</p>
         </div>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-black/40">Role</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-black/60">Role</p>
           <p className="mt-1 text-base">Admin</p>
         </div>
       </div>

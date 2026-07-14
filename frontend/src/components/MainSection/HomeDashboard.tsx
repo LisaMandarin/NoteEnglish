@@ -172,7 +172,7 @@ export default function HomeDashboard({
                 <button
                   type="button"
                   onClick={handleNewSession}
-                  className="mt-4 cursor-pointer rounded-full border-0 bg-(--accent) px-5 py-2.5 text-sm font-semibold text-white"
+                  className="btn-accent mt-4 cursor-pointer rounded-full border-0 px-5 py-2.5 text-sm font-semibold"
                 >
                   開始第一筆學習紀錄
                 </button>
@@ -204,7 +204,7 @@ export default function HomeDashboard({
                         <span className="block truncate text-base font-semibold text-(--text-main)">
                           {title}
                         </span>
-                        <span className="mt-0.5 block truncate text-sm text-black/50">
+                        <span className="mt-0.5 block truncate text-sm text-black/60">
                           {isOpening
                             ? "正在開啟學習紀錄⋯⋯"
                             : preview || formatUpdatedAt(session.updated_at)}
@@ -218,7 +218,7 @@ export default function HomeDashboard({
                       <span className="hidden shrink-0 items-center gap-1.5 sm:flex">
                         <ProficiencyBadges session={session} />
                       </span>
-                      <span className="hidden shrink-0 text-xs font-medium text-black/45 sm:block">
+                      <span className="hidden shrink-0 text-xs font-medium text-black/60 sm:block">
                         {formatUpdatedAt(session.updated_at)}
                       </span>
                       <ArrowRightOutlined

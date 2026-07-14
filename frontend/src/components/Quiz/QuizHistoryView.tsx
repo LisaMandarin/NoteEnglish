@@ -105,7 +105,7 @@ export default function QuizHistoryView({
       key: "session",
       render: (_, run) => {
         if (!run.session_id) {
-          return <span className="text-black/40">（學習紀錄已刪除）</span>;
+          return <span className="text-black/60">（學習紀錄已刪除）</span>;
         }
         const title = run.session_title?.trim() || "尚未命名的學習紀錄";
         return (

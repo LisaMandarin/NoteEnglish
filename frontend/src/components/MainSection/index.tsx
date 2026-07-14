@@ -56,7 +56,7 @@ export default function AppMainSection({
       <div className="relative rounded-[30px] border-4 border-(--card-border) bg-(--card-bg) shadow-md">
         {sessionLoading && (
           <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[26px] bg-white/60 backdrop-blur-sm">
-            <p className="text-sm font-medium text-black/50">
+            <p className="text-sm font-medium text-black/60">
               Opening session...
             </p>
           </div>

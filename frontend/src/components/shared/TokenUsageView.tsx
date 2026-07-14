@@ -126,7 +126,7 @@ function SectionHeader({ label, total }: { label: string; total: number }): Reac
     <div className="flex items-baseline gap-2 mb-1">
       <span className="text-xs font-semibold uppercase tracking-widest text-(--accent)">{label}</span>
       <span className="text-2xl font-bold">{formatTokens(total)}</span>
-      <span className="text-sm text-black/40">tokens</span>
+      <span className="text-sm text-black/60">tokens</span>
     </div>
   );
 }
@@ -155,7 +155,7 @@ function UsageProgressSection({
           {label}
         </span>
         <span className="text-2xl font-bold">{formatTokens(total)}</span>
-        <span className="text-sm text-black/40">
+        <span className="text-sm text-black/60">
           / {formatTokens(limit)} tokens
         </span>
       </div>

@@ -157,7 +157,7 @@ export default function SentenceItem({
             <TtsButton
               text={sentence.original}
               ariaLabel="Pronounce sentence"
-              className="flex size-8 items-center justify-center text-gray-400 hover:text-(--accent) transition-colors cursor-pointer"
+              className="flex size-8 items-center justify-center text-gray-500 hover:text-(--accent) transition-colors cursor-pointer"
             />
             <Dropdown
               menu={{ items: moreMenuItems }}
@@ -167,7 +167,7 @@ export default function SentenceItem({
               <button
                 type="button"
                 className={`flex size-8 items-center justify-center transition-colors cursor-pointer hover:text-(--accent) ${
-                  hasNote || structure.visible ? "text-(--accent)" : "text-gray-400"
+                  hasNote || structure.visible ? "text-(--accent)" : "text-gray-500"
                 }`}
                 aria-label="更多句子操作"
                 aria-haspopup="menu"

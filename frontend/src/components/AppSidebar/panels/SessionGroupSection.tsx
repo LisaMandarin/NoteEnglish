@@ -35,7 +35,7 @@ export default function SessionGroupSection({
           {collapsed ? <RightOutlined style={{ fontSize: 10 }} /> : <DownOutlined style={{ fontSize: 10 }} />}
           {isFolder && <FolderOpenOutlined className="text-(--accent)" style={{ fontSize: 13 }} />}
           <span className="min-w-0 truncate text-sm font-semibold">{name}</span>
-          <span className="shrink-0 text-xs text-black/40">{count}</span>
+          <span className="shrink-0 text-xs text-black/60">{count}</span>
         </button>
         {onRename && (
           <Tooltip title="重新命名主題">
