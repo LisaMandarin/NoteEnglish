@@ -1337,7 +1337,7 @@ def ai_analyze_structure(sentence: str) -> tuple[dict, dict]:
 
         try:
             response = client.models.generate_content(
-                model=settings.gemini_model,
+                model=settings.gemini_parse_model,
                 contents=contents,
                 config={
                     "response_mime_type": "application/json",

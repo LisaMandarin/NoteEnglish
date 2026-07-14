@@ -14,6 +14,8 @@ services:
       - key: POETRY_VERSION
         value: 2.2.1
       - key: GEMINI_MODEL
+        value: gemini-3.1-flash-lite
+      - key: GEMINI_PARSE_MODEL
         value: gemini-2.5-flash
       - key: FRONTEND_ORIGINS
         value: https://note-english.vercel.app

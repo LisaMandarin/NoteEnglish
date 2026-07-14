@@ -56,7 +56,7 @@ def get_structure(sentence: str) -> tuple[dict | None, dict | None]:
     save_parse(
         sentence_hash=key[0],
         prompt_version=key[1],
-        model=settings.gemini_model,
+        model=settings.gemini_parse_model,
         sentence=normalized,
         structure=structure,
     )
