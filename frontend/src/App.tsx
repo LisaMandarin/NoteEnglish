@@ -123,7 +123,7 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
           />
         </div>
         <footer className="mx-auto mt-10 max-w-7xl text-center text-sm text-(--text-main) opacity-60">
-          <p className="m-0">© {new Date().getFullYear()} NoteEnglish. All rights reserved.</p>
+          <p className="m-0">© {new Date().getFullYear()} 句句通. All rights reserved.</p>
           <p className="m-0">Created by Min-ting (Lisa) Chuang.</p>
         </footer>
       </div>

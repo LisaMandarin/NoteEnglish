@@ -21,7 +21,7 @@ def submit_issue_report(req: IssueReportRequest, user: dict = Depends(require_us
     lines.append(req.description)
 
     try:
-        send_email("NoteEnglish Issue", "\n".join(lines))
+        send_email("句句通 問題回報", "\n".join(lines))
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Failed to send issue report: {exc}") from exc
 

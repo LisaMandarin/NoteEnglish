@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Persistent context for coding agents other than Claude Code (Codex, and any tool that reads the AGENTS.md standard) working on NoteEnglish. This mirrors the facts in `CLAUDE.md` — if the two ever diverge, `CLAUDE.md` is the source of truth for Claude Code specifically; update both together when architecture changes.
+Persistent context for coding agents other than Claude Code (Codex, and any tool that reads the AGENTS.md standard) working on 句句通. This mirrors the facts in `CLAUDE.md` — if the two ever diverge, `CLAUDE.md` is the source of truth for Claude Code specifically; update both together when architecture changes.
 
 See `WORKFLOW.md` for the review handoff process between Claude Code and Codex.
 

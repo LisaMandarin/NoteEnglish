@@ -103,7 +103,7 @@ export default function ResetPasswordPage(): React.ReactElement {
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-3xl items-center justify-center">
         <div className="w-full rounded-[30px] border-4 border-(--card-border) bg-(--card-bg) shadow-md">
           <div className="w-full m-0 px-8 py-10 box-border sm:px-12">
-            <h1 className="mb-2 text-4xl">NoteEnglish</h1>
+            <h1 className="mb-2 text-4xl">句句通</h1>
 
             {successMessage ? (
               <>

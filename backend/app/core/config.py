@@ -12,7 +12,7 @@ def _parse_origins(value: str) -> list[str]:
 
 class Settings:
     # Basic app metadata.
-    app_title: str = "NoteEnglish API"
+    app_title: str = "句句通 API"
     app_version: str = "0.1.0"
 
     # CORS: allowed frontend origins. Accepts a comma-separated list for deployment.

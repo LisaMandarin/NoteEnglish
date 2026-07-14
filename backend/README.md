@@ -1,4 +1,4 @@
-# NoteEnglish Backend
+# 句句通 Backend
 
 FastAPI service for translations, vocabulary enrichment, image-to-text (OCR), session storage, token usage tracking, and admin stats. For features and usage, see the [root README](../README.md).
 

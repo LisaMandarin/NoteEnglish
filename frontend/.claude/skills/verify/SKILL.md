@@ -1,6 +1,6 @@
 ---
 name: verify
-description: How to drive the NoteEnglish frontend in a headless browser to verify UI changes without the real backend.
+description: How to drive the 句句通 frontend in a headless browser to verify UI changes without the real backend.
 ---
 
 # Verifying frontend UI changes
