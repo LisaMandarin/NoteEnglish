@@ -73,7 +73,8 @@ def _span_is_complete_sentence(span) -> bool:
     if not words:
         return False
     first = words[0]
-    is_question = span.text.rstrip().endswith(("?", "？"))
+    # A question mark may sit inside closing quotes/brackets ("Who came?").
+    is_question = span.text.rstrip().rstrip("\"'”’»」』)）】]").endswith(("?", "？"))
     subjects = [
         token for token in span if token.head == root and token.dep_ in _SUBJECT_DEPS
     ]
@@ -99,10 +100,14 @@ def _span_is_complete_sentence(span) -> bool:
     if first.dep_ == "cc" and first.head == root and first.text.islower():
         return False
 
-    # A relative pronoun as the root's own subject ("which supports health and
-    # social programs") marks a relative-clause fragment; with a question mark
-    # it is a genuine question ("Who came to the party?").
-    if not is_question and any(token.tag_ in {"WDT", "WP"} for token in subjects):
+    # A lowercase relative pronoun as the root's own subject ("which supports
+    # health and social programs") marks a relative-clause fragment torn from a
+    # larger sentence. Capitalized or question-marked WH-subjects are genuine
+    # questions ("Who came to the party", "Which is better?") — punctuation is
+    # not required, matching the rest of this function.
+    if not is_question and any(
+        token.tag_ in {"WDT", "WP"} and token.text.islower() for token in subjects
+    ):
         return False
 
     has_subject = bool(subjects)

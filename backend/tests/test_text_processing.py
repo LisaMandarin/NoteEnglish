@@ -89,8 +89,17 @@ class CompleteSentenceTests(unittest.TestCase):
         self.assertFalse(
             is_complete_sentence("which supports health and social programs")
         )
+        self.assertFalse(is_complete_sentence("who came to the party"))
         self.assertTrue(is_complete_sentence("Who came to the party?"))
         self.assertTrue(is_complete_sentence("Which team won the game?"))
+
+    def test_wh_subject_questions_without_terminal_question_mark(self):
+        # Punctuation is not required for completeness, and a question mark may
+        # sit inside closing quotes.
+        self.assertTrue(is_complete_sentence("Who came to the party"))
+        self.assertTrue(is_complete_sentence("Which is better"))
+        self.assertTrue(is_complete_sentence('"Who came to the party?"'))
+        self.assertTrue(is_complete_sentence("“Who came to the party?”"))
 
 
 class TranslationCleanupTests(unittest.TestCase):
