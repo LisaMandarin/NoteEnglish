@@ -40,6 +40,7 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
 Notes:
 - `PYTHON_VERSION` is pinned in `render.yaml` (3.10–3.12).
+- Gemini models are pinned in `render.yaml`: `GEMINI_BASIC_MODEL` (translation/vocab/OCR/quiz) and `GEMINI_ADV_MODEL` (sentence-structure analysis). If the service's env vars are managed in the Render dashboard instead of the blueprint, set both there.
 - `FRONTEND_ORIGINS` accepts a comma-separated list for multiple origins.
 - Render health check path: `/api/health`.
 
