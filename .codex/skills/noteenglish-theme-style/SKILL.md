@@ -1,9 +1,9 @@
 ---
 name: noteenglish-theme-style
-description: Use when editing or adding frontend UI in this NoteEnglish project and the work should preserve the existing visual theme, CSS variable usage, typography, spacing, card styling, and summary-page font behavior.
+description: Use when editing or adding frontend UI in this 句句通 project and the work should preserve the existing visual theme, CSS variable usage, typography, spacing, card styling, and summary-page font behavior.
 ---
 
-# NoteEnglish Theme Style
+# 句句通 Theme Style
 
 Use this skill when changing UI in `frontend/src` so new work matches the current theme instead of introducing a new visual language.
 

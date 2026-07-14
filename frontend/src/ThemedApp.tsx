@@ -13,8 +13,14 @@ export default function ThemedApp(): React.ReactElement {
   const accentColor = getComputedStyle(document.documentElement)
     .getPropertyValue("--accent")
     .trim();
+  // antd's default description/secondary text (rgba(0,0,0,0.45)) reads ~3.3:1
+  // on the app's card backgrounds and fails WCAG AA; 0.65 alpha reads ~6.8:1.
+  const themeTokens: Record<string, string> = {
+    colorTextDescription: "rgba(0, 0, 0, 0.65)",
+    ...(accentColor ? { colorPrimary: accentColor } : {}),
+  };
   return (
-    <ConfigProvider theme={accentColor ? { token: { colorPrimary: accentColor } } : undefined}>
+    <ConfigProvider theme={{ token: themeTokens }}>
       <AntdApp>
         <AntdMessageBridge />
         <App />

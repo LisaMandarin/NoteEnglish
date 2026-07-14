@@ -145,7 +145,7 @@ export default function TranslationsList({ onStartQuiz }: { onStartQuiz: () => v
           role="status"
           aria-live="polite"
         >
-          <span className="text-xs text-gray-400 animate-pulse">儲存中...</span>
+          <span className="text-xs text-gray-600 animate-pulse">儲存中...</span>
         </div>
       )}
       {hasAnyVocab && (

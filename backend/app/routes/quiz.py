@@ -56,7 +56,7 @@ def quiz_generate(req: QuizGenerateRequest, user: dict = Depends(require_user)):
             raise HTTPException(status_code=503, detail="AI 服務暫時忙碌，請稍後再試。")
         raise HTTPException(status_code=502, detail="AI 服務發生錯誤，請稍後再試。")
 
-    log_api_usage(user["id"], "quiz", settings.gemini_model, usage)
+    log_api_usage(user["id"], "quiz", settings.gemini_basic_model, usage)
     replace_quiz_questions(user["id"], req.session_id, questions)
     return {"questions": questions}
 

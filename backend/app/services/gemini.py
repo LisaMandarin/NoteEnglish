@@ -91,7 +91,7 @@ def ai_translate_list(sentences: list[str], target_lang: str = "zh-TW", mode: st
     for attempt in range(2):
         try:
             response = client.models.generate_content(
-                model=settings.gemini_model,
+                model=settings.gemini_basic_model,
                 contents=prompt + (strict_reminder if attempt else ""),
                 config={
                     "response_mime_type": "application/json",
@@ -181,7 +181,7 @@ def ai_ocr_image(image_bytes: bytes, mime_type: str) -> tuple[str, dict]:
 
     try:
         response = client.models.generate_content(
-            model=settings.gemini_model,
+            model=settings.gemini_basic_model,
             contents=[
                 types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
                 prompt,
@@ -1337,7 +1337,7 @@ def ai_analyze_structure(sentence: str) -> tuple[dict, dict]:
 
         try:
             response = client.models.generate_content(
-                model=settings.gemini_model,
+                model=settings.gemini_adv_model,
                 contents=contents,
                 config={
                     "response_mime_type": "application/json",
@@ -1480,7 +1480,7 @@ def ai_generate_quiz(article: str) -> tuple[list[dict], dict]:
     for attempt in range(2):
         try:
             response = client.models.generate_content(
-                model=settings.gemini_model,
+                model=settings.gemini_basic_model,
                 contents=prompt + (strict_reminder if attempt else ""),
                 config={
                     "response_mime_type": "application/json",
@@ -1628,7 +1628,7 @@ Rules:
 
     try:
         response = client.models.generate_content(
-            model=settings.gemini_model,
+            model=settings.gemini_basic_model,
             contents=prompt,
             config={
                 "response_mime_type": "application/json",

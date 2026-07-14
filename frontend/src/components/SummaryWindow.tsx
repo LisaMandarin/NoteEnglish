@@ -45,10 +45,10 @@ export default function SummaryWindow() {
 
   useEffect(() => {
     if (!data) {
-      document.title = "NoteEnglish | 彙整結果 | 資料不存在";
+      document.title = "句句通 | 彙整結果 | 資料不存在";
       return;
     }
-    document.title = data.sessionTitle?.trim().slice(0, 25) || "NoteEnglish 彙整結果";
+    document.title = data.sessionTitle?.trim().slice(0, 25) || "句句通 彙整結果";
   }, [data]);
 
   if (!data) {

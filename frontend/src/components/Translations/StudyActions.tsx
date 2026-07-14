@@ -141,7 +141,7 @@ export default function StudyActions({
         )}
       </div>
       {!hasVocab && (
-        <p className="mt-2 mb-0 text-sm text-black/45">
+        <p className="mt-2 mb-0 text-sm text-black/60">
           小提醒：先選取文章中的單字查詢，就能列印單字卡和練習單字題型。
         </p>
       )}
@@ -169,7 +169,7 @@ export default function StudyActions({
           >
             單字筆記
             {!hasVocab && (
-              <span className="ml-1 text-black/40">（尚未查詢任何單字）</span>
+              <span className="ml-1 text-black/60">（尚未查詢任何單字）</span>
             )}
           </Checkbox>
           <Checkbox
@@ -179,15 +179,15 @@ export default function StudyActions({
           >
             自訂筆記
             {!hasNote && (
-              <span className="ml-1 text-black/40">（尚未寫任何自訂筆記）</span>
+              <span className="ml-1 text-black/60">（尚未寫任何自訂筆記）</span>
             )}
           </Checkbox>
         </div>
         {nothingChecked && (
-          <p className="mt-2 mb-0 text-sm text-black/45">請至少勾選一項內容。</p>
+          <p className="mt-2 mb-0 text-sm text-black/60">請至少勾選一項內容。</p>
         )}
 
-        <p className="mt-4 mb-2 text-xs font-medium text-black/40">列印範例</p>
+        <p className="mt-4 mb-2 text-xs font-medium text-black/60">列印範例</p>
         <div className="rounded-lg border border-black/10 bg-white p-3 text-sm shadow-sm">
           <div className="flex gap-2">
             <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-(--card-border) text-[11px] font-semibold text-white">
@@ -245,7 +245,7 @@ export default function StudyActions({
                         <div className="rounded-md bg-black/6 px-2 py-1 text-xs text-black/70">
                           {v.example}
                         </div>
-                        <div className="mt-1.5 text-[10px] font-semibold text-black/50">
+                        <div className="mt-1.5 text-[10px] font-semibold text-black/60">
                           {v.level}
                         </div>
                       </div>
@@ -256,7 +256,7 @@ export default function StudyActions({
             </div>
           </div>
           {nothingChecked && (
-            <p className="mt-2 mb-0 text-xs text-black/40">勾選上方項目即可預覽列印內容。</p>
+            <p className="mt-2 mb-0 text-xs text-black/60">勾選上方項目即可預覽列印內容。</p>
           )}
         </div>
       </Modal>

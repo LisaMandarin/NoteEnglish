@@ -45,14 +45,14 @@ export default function FavoritesPanel({ activePanel }: { activePanel: string })
       </p>
       <div className="mt-6 rounded-3xl border border-black/10 bg-white/70 p-4">
         <div className="flex items-center justify-between">
-          <p className="m-0 text-xs font-semibold uppercase tracking-[0.18em] text-black/45">
+          <p className="m-0 text-xs font-semibold uppercase tracking-[0.18em] text-black/60">
             你的收藏
           </p>
           <Tooltip title="重新整理">
             <button
               onClick={load}
               disabled={loading}
-              className="flex h-6 w-6 items-center justify-center rounded-full border-0 bg-transparent text-black/40 transition-colors hover:bg-black/8 hover:text-black/70 hover:cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex h-6 w-6 items-center justify-center rounded-full border-0 bg-transparent text-black/60 transition-colors hover:bg-black/8 hover:text-black/70 hover:cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <ReloadOutlined spin={loading} />
             </button>

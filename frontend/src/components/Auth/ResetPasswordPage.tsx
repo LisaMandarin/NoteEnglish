@@ -66,6 +66,17 @@ export default function ResetPasswordPage(): React.ReactElement {
     };
   }, []);
 
+  // An error message describes the previous submission; editing either field
+  // starts a new attempt, so the stale message clears immediately.
+  function updateField(
+    setter: (value: string) => void
+  ): (event: React.ChangeEvent<HTMLInputElement>) => void {
+    return (event) => {
+      setError("");
+      setter(event.target.value);
+    };
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setError("");
@@ -103,7 +114,7 @@ export default function ResetPasswordPage(): React.ReactElement {
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-3xl items-center justify-center">
         <div className="w-full rounded-[30px] border-4 border-(--card-border) bg-(--card-bg) shadow-md">
           <div className="w-full m-0 px-8 py-10 box-border sm:px-12">
-            <h1 className="mb-2 text-4xl">NoteEnglish</h1>
+            <h1 className="mb-2 text-4xl">句句通</h1>
 
             {successMessage ? (
               <>
@@ -143,7 +154,7 @@ export default function ResetPasswordPage(): React.ReactElement {
                       allowClear
                       className="rounded-2xl border border-black/15 bg-white text-inherit transition"
                       value={password}
-                      onChange={(event) => setPassword(event.target.value)}
+                      onChange={updateField(setPassword)}
                       placeholder="請輸入新密碼"
                       autoComplete="new-password"
                       size="large"
@@ -156,7 +167,7 @@ export default function ResetPasswordPage(): React.ReactElement {
                       allowClear
                       className="rounded-2xl border border-black/15 bg-white text-inherit transition"
                       value={confirmPassword}
-                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      onChange={updateField(setConfirmPassword)}
                       placeholder="請再次輸入新密碼"
                       autoComplete="new-password"
                       size="large"

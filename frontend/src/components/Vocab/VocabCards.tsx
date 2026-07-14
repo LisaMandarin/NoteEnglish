@@ -56,7 +56,7 @@ const POS_LABELS: Record<string, string> = {
 
 function getLevelInfo(level?: string): { filled: number; total: number; color: string } {
   const idx = LEVEL_ORDER.indexOf((level ?? "").toUpperCase());
-  if (idx === -1) return { filled: 0, total: 6, color: "bg-gray-400" };
+  if (idx === -1) return { filled: 0, total: 6, color: "bg-gray-500" };
   const color = idx < 2 ? "bg-green-500" : idx < 4 ? "bg-amber-500" : "bg-red-500";
   return { filled: idx + 1, total: 6, color };
 }
@@ -265,7 +265,7 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false, sh
           <TtsButton
             text={head}
             ariaLabel={`Pronounce ${head}`}
-            className="ml-auto text-gray-400 hover:text-(--accent) transition-colors cursor-pointer"
+            className="ml-auto text-gray-500 hover:text-(--accent) transition-colors cursor-pointer"
           />
         )}
       </div>
@@ -330,7 +330,7 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false, sh
                 type="button"
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => { e.stopPropagation(); setDraft((d) => ({ ...d, others: d.others.filter((_, i) => i !== idx) })); }}
-                className="mt-1 shrink-0 text-gray-400 hover:text-red-400 transition-colors cursor-pointer"
+                className="mt-1 shrink-0 text-gray-500 hover:text-red-400 transition-colors cursor-pointer"
                 aria-label="Remove note"
               >
                 <MinusCircleOutlined />
@@ -370,7 +370,7 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false, sh
                       <TtsButton
                         text={v.example!}
                         ariaLabel="Pronounce example"
-                        className="mt-0.5 shrink-0 text-gray-400 hover:text-(--accent) transition-colors cursor-pointer"
+                        className="mt-0.5 shrink-0 text-gray-500 hover:text-(--accent) transition-colors cursor-pointer"
                       />
                     )}
                     <div className="min-w-0">
@@ -407,7 +407,7 @@ export function VocabCard({ v, onDelete, onEdit, dragProps, readOnly = false, sh
             <Tooltip title={CEFR_TOOLTIP} placement="top">
               <QuestionCircleOutlined
                 onPointerDown={(e) => e.stopPropagation()}
-                className="text-gray-400 cursor-default text-xs"
+                className="text-gray-500 cursor-default text-xs"
               />
             </Tooltip>
           )}

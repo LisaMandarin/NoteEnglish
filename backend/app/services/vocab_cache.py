@@ -33,7 +33,7 @@ def get_vocab_lookup(req: VocabLookupRequest, user_id: str) -> VocabLookupRespon
             logger.info("cache PARTIAL key=%s word=%r missing=%s", key, req.selected_text, missing_fields)
 
         ai_data, usage = ai_lookup_word(req.selected_text, req.sentence, missing)
-        log_api_usage(user_id, "vocab_lookup", settings.gemini_model, usage)
+        log_api_usage(user_id, "vocab_lookup", settings.gemini_basic_model, usage)
 
         if cached is None:
             cached = CachedLookup(

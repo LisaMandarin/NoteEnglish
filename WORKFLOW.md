@@ -1,6 +1,6 @@
 # WORKFLOW.md
 
-Standardized frontend/backend collaboration process for NoteEnglish, and how Claude Code and Codex work together on this repo. Complements `CLAUDE.md` (root + frontend) — this file defines *process*, `CLAUDE.md` defines *architecture facts*. If a rule seems to duplicate `CLAUDE.md`, `CLAUDE.md` wins.
+Standardized frontend/backend collaboration process for 句句通, and how Claude Code and Codex work together on this repo. Complements `CLAUDE.md` (root + frontend) — this file defines *process*, `CLAUDE.md` defines *architecture facts*. If a rule seems to duplicate `CLAUDE.md`, `CLAUDE.md` wins.
 
 ## 1. Contract-first for anything crossing the frontend/backend boundary
 
@@ -38,7 +38,7 @@ Keep `CLAUDE.md` for what's needed *every* session; move anything task-specific 
 
 ## 5. Pre-launch conservatism gate
 
-NoteEnglish is pre/near-launch. Default to the smallest safe diff for anything that isn't an explicit bug fix or requested feature. Treat "nice to have" refactors suggested by either Claude Code or Codex as backlog items, not action items, until after launch.
+句句通 is pre/near-launch. Default to the smallest safe diff for anything that isn't an explicit bug fix or requested feature. Treat "nice to have" refactors suggested by either Claude Code or Codex as backlog items, not action items, until after launch.
 
 ## 6. Verification checklist (run after any frontend or backend change)
 

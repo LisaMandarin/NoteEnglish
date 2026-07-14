@@ -1,4 +1,4 @@
 interface:
-  display_name: "NoteEnglish Theme Style"
-  short_description: "Preserve NoteEnglish frontend theme conventions"
-  default_prompt: "Use $noteenglish-theme-style to keep this UI change aligned with the existing NoteEnglish theme."
+  display_name: "句句通 Theme Style"
+  short_description: "Preserve 句句通 frontend theme conventions"
+  default_prompt: "Use $noteenglish-theme-style to keep this UI change aligned with the existing 句句通 theme."

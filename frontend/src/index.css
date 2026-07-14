@@ -32,8 +32,9 @@
   /* StudyActions next-steps panel — soft mint tint to stand apart from the white cards */
   --panel-bg: #e8f5f1;
   --panel-border: #cfe6dc;
-  /* Muted text for low-emphasis controls (matches Tailwind gray-400) */
-  --text-muted: #9ca3af;
+  /* Muted text for low-emphasis controls. Must stay ≥4.5:1 against white and
+     --card-bg (WCAG AA); this slate reads 5.2:1 on --card-bg */
+  --text-muted: #5f6b77;
   /* Text on accent-colored surfaces (e.g. the floating 回到原句 pill) */
   --text-on-accent: #ffffff;
   color: var(--text-main);
@@ -119,6 +120,15 @@ h1, h2, h3 {
    Tailwind's layered mb-* utilities regardless of specificity. */
 .app-title-heading {
   margin-bottom: 0;
+}
+
+/* Solid-accent call-to-action button (e.g. 開始第一筆學習紀錄). Plain CSS for
+   the same reason as .quiz-choice below: antd's unlayered `button` color rule
+   beats Tailwind's layered text-white, which left dark text on the dark
+   accent (2.7:1). White on --accent reads 7.5:1. */
+.btn-accent {
+  background: var(--accent);
+  color: var(--text-on-accent);
 }
 
 /* ── Quiz ─────────────────────────────────────────────────────────────────── */

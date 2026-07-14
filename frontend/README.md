@@ -1,4 +1,4 @@
-# NoteEnglish Frontend
+# 句句通 Frontend
 
 React 19 + Vite single-page app. For features and usage, see the [root README](../README.md).
 

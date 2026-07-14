@@ -155,7 +155,7 @@ export default function SessionItem({
           <button
             type="button"
             onClick={(e) => onStartEdit(session.id, title, e)}
-            className="absolute right-2 top-2 cursor-pointer rounded-md p-0.5 text-black/25 transition-all duration-150 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 hover:scale-110 hover:bg-blue-50 hover:text-blue-500"
+            className="absolute right-2 top-2 cursor-pointer rounded-md p-0.5 text-black/60 transition-all duration-150 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 hover:scale-110 hover:bg-blue-50 hover:text-blue-500"
             aria-label="Edit session title"
           >
             <EditOutlined style={{ fontSize: 13 }} />
@@ -170,7 +170,7 @@ export default function SessionItem({
                 className={`absolute bottom-2 right-14 cursor-pointer transition-opacity hover:scale-110 ${
                   currentGroupId
                     ? "text-(--accent) opacity-100"
-                    : "text-black/25 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 hover:text-(--accent)"
+                    : "text-black/60 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 hover:text-(--accent)"
                 }`}
                 aria-label="Assign session to a topic"
               >
@@ -187,7 +187,7 @@ export default function SessionItem({
               className={`absolute bottom-2 right-8 cursor-pointer transition-opacity hover:scale-110 ${
                 isShared
                   ? "text-(--accent) opacity-100"
-                  : "text-black/25 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 hover:text-(--accent)"
+                  : "text-black/60 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 hover:text-(--accent)"
               }`}
               aria-label="Share session"
             >
@@ -199,7 +199,7 @@ export default function SessionItem({
             type="button"
             onClick={(e) => onDelete(session.id, isCurrent, e)}
             disabled={isDeleting}
-            className="absolute bottom-2 right-2 cursor-pointer text-black/25 transition-opacity opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 hover:text-red-500"
+            className="absolute bottom-2 right-2 cursor-pointer text-black/60 transition-opacity opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 hover:text-red-500"
             aria-label="Delete session"
           >
             <DeleteOutlined style={{ fontSize: 13 }} />

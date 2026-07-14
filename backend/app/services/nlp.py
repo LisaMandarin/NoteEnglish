@@ -55,6 +55,9 @@ def analyze_tokens(text: str) -> list[dict[str, str | bool | int]]:
     ]
 
 
+_SUBJECT_DEPS = {"nsubj", "nsubjpass", "csubj", "expl"}
+
+
 def _span_is_complete_sentence(span) -> bool:
     """Return whether a spaCy sentence span contains an independent clause."""
     root = span.root
@@ -66,10 +69,48 @@ def _span_is_complete_sentence(span) -> bool:
     if any(token.dep_ == "mark" and token.head == root for token in span):
         return False
 
-    has_subject = any(
-        token.head == root and token.dep_ in {"nsubj", "nsubjpass", "csubj", "expl"}
-        for token in span
-    )
+    words = [token for token in span if not token.is_punct and not token.is_space]
+    if not words:
+        return False
+    first = words[0]
+    # A question mark may sit inside closing quotes/brackets ("Who came?").
+    is_question = span.text.rstrip().rstrip("\"'”’»」』)）】]").endswith(("?", "？"))
+    subjects = [
+        token for token in span if token.head == root and token.dep_ in _SUBJECT_DEPS
+    ]
+
+    # A clause fronted by a WH-adverb attached to the root ("When they grew up")
+    # is a dependent clause, not a sentence. Real WH-questions invert — a finite
+    # verb precedes the subject ("When did they grow up?", "How are you?").
+    if first.tag_ == "WRB" and first.head == root and not is_question:
+        verb_positions = [
+            token.i
+            for token in span
+            if token.head == root and token.dep_ in {"aux", "auxpass"}
+        ] + [root.i]
+        inverted = bool(subjects) and min(verb_positions) < min(
+            token.i for token in subjects
+        )
+        if not inverted:
+            return False
+
+    # A span opening with a lowercase coordinator ("and he never gave up") is
+    # the tail of a larger sentence. Capitalized openers stay analyzable —
+    # articles legitimately start sentences with "And"/"But".
+    if first.dep_ == "cc" and first.head == root and first.text.islower():
+        return False
+
+    # A lowercase relative pronoun as the root's own subject ("which supports
+    # health and social programs") marks a relative-clause fragment torn from a
+    # larger sentence. Capitalized or question-marked WH-subjects are genuine
+    # questions ("Who came to the party", "Which is better?") — punctuation is
+    # not required, matching the rest of this function.
+    if not is_question and any(
+        token.tag_ in {"WDT", "WP"} and token.text.islower() for token in subjects
+    ):
+        return False
+
+    has_subject = bool(subjects)
     has_finite_verb = root.morph.get("VerbForm") == ["Fin"] or any(
         token.head == root
         and token.dep_ in {"aux", "auxpass"}
@@ -100,13 +141,18 @@ def _span_is_complete_sentence(span) -> bool:
             return True
 
     # Imperatives use a bare root verb and normally omit their subject. Exclude
-    # infinitives ("To learn English") and modal fragments ("Can swim").
+    # infinitives ("To learn English") and modal fragments ("Can swim"), and
+    # require at least one dependent — a lone verb ("Live") is a title or label
+    # with no structure to analyze.
     if root.pos_ == "VERB" and root.tag_ == "VB" and not has_subject:
         has_infinitive_marker = any(
             token.head == root and token.lower_ == "to" for token in span
         )
         has_modal = any(token.head == root and token.tag_ == "MD" for token in span)
-        return not has_infinitive_marker and not has_modal
+        has_dependent = any(
+            not child.is_punct and not child.is_space for child in root.children
+        )
+        return has_dependent and not has_infinitive_marker and not has_modal
 
     return False
 

@@ -89,7 +89,7 @@ export default function VocabPrintWindow(): React.ReactElement {
   const data = useMemo(() => readVocabPrintData(), []);
 
   useEffect(() => {
-    document.title = data?.sessionTitle?.trim().slice(0, 25) || "NoteEnglish 單字卡";
+    document.title = data?.sessionTitle?.trim().slice(0, 25) || "句句通 單字卡";
   }, [data]);
 
   const pages = useMemo(() => {

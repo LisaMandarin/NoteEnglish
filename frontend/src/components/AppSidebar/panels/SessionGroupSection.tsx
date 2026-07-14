@@ -35,7 +35,7 @@ export default function SessionGroupSection({
           {collapsed ? <RightOutlined style={{ fontSize: 10 }} /> : <DownOutlined style={{ fontSize: 10 }} />}
           {isFolder && <FolderOpenOutlined className="text-(--accent)" style={{ fontSize: 13 }} />}
           <span className="min-w-0 truncate text-sm font-semibold">{name}</span>
-          <span className="shrink-0 text-xs text-black/40">{count}</span>
+          <span className="shrink-0 text-xs text-black/60">{count}</span>
         </button>
         {onRename && (
           <Tooltip title="重新命名主題">
@@ -43,7 +43,7 @@ export default function SessionGroupSection({
               type="button"
               onClick={onRename}
               aria-label="Rename topic"
-              className="shrink-0 cursor-pointer rounded-md p-0.5 text-black/25 transition-all duration-150 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/section:opacity-100 hover:scale-110 hover:bg-blue-50 hover:text-blue-500"
+              className="shrink-0 cursor-pointer rounded-md p-0.5 text-black/60 transition-all duration-150 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/section:opacity-100 hover:scale-110 hover:bg-blue-50 hover:text-blue-500"
             >
               <EditOutlined style={{ fontSize: 12 }} />
             </button>
@@ -55,7 +55,7 @@ export default function SessionGroupSection({
               type="button"
               onClick={onDelete}
               aria-label="Delete topic"
-              className="shrink-0 cursor-pointer rounded-md p-0.5 text-black/25 transition-all duration-150 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/section:opacity-100 hover:scale-110 hover:text-red-500"
+              className="shrink-0 cursor-pointer rounded-md p-0.5 text-black/60 transition-all duration-150 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/section:opacity-100 hover:scale-110 hover:text-red-500"
             >
               <DeleteOutlined style={{ fontSize: 12 }} />
             </button>

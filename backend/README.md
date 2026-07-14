@@ -1,4 +1,4 @@
-# NoteEnglish Backend
+# 句句通 Backend
 
 FastAPI service for translations, vocabulary enrichment, image-to-text (OCR), session storage, token usage tracking, and admin stats. For features and usage, see the [root README](../README.md).
 
@@ -16,7 +16,8 @@ Create `backend/.env`:
 ```
 GEMINI_API_KEY=your_key_here
 FRONTEND_ORIGINS=http://localhost:5173
-GEMINI_MODEL=gemini-2.5-flash           # optional override
+GEMINI_BASIC_MODEL=gemini-3.1-flash-lite  # optional override (translation/vocab/OCR/quiz)
+GEMINI_ADV_MODEL=gemini-2.5-flash         # optional override (sentence-structure analysis)
 SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key

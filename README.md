@@ -1,7 +1,7 @@
-# NoteEnglish 句句通
+# 句句通
 Contributor: Min-ting (Lisa) Chuang
 
-NoteEnglish is a bilingual learning tool for English learners. Paste a passage, get sentence-by-sentence translation, look up selected words, quiz yourself on saved vocabulary, generate printable summary sheets, share finished articles as read-only links, and track Gemini token usage.
+句句通 is a bilingual learning tool for English learners. Paste a passage, get sentence-by-sentence translation, look up selected words, quiz yourself on saved vocabulary, generate printable summary sheets, share finished articles as read-only links, and track Gemini token usage.
 
 ## Features
 
@@ -91,7 +91,7 @@ NoteEnglish/
 ## 中文版
 
 ### 專案介紹
-NoteEnglish 句句通是給英語學習者的雙語學習工具。可貼上一段英文，取得逐句翻譯、針對選取單字查詢細節、以儲存的單字進行測驗、輸出可列印彙整頁、將整理好的文章以唯讀連結分享給其他人，以及查看 Gemini token 使用量。
+句句通是給英語學習者的雙語學習工具。可貼上一段英文，取得逐句翻譯、針對選取單字查詢細節、以儲存的單字進行測驗、輸出可列印彙整頁、將整理好的文章以唯讀連結分享給其他人，以及查看 Gemini token 使用量。
 
 ### 功能
 

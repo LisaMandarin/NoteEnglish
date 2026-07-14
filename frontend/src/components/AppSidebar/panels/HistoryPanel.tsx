@@ -250,7 +250,7 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
         {remaining > 0 && (
           <button
             onClick={() => showMore(key)}
-            className="w-full rounded-2xl border-0 bg-transparent py-1.5 text-sm text-black/45 transition-colors hover:bg-black/5 hover:text-black/70 hover:cursor-pointer"
+            className="w-full rounded-2xl border-0 bg-transparent py-1.5 text-sm text-black/60 transition-colors hover:bg-black/5 hover:text-black/70 hover:cursor-pointer"
           >
             更多（還有 {remaining} 篇）
           </button>
@@ -272,7 +272,7 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
       </p>
       <div className="mt-6 rounded-3xl border border-black/10 bg-white/70 p-4">
         <div className="flex items-center justify-between">
-          <p className="m-0 text-xs font-semibold uppercase tracking-[0.18em] text-black/45">
+          <p className="m-0 text-xs font-semibold uppercase tracking-[0.18em] text-black/60">
             你的學習紀錄
           </p>
           <div className="flex items-center gap-1">
@@ -280,7 +280,7 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
               <button
                 onClick={() => openCreateGroup(null)}
                 aria-label="新增主題"
-                className="flex h-6 w-6 items-center justify-center rounded-full border-0 bg-transparent text-black/40 transition-colors hover:bg-black/8 hover:text-black/70 hover:cursor-pointer"
+                className="flex h-6 w-6 items-center justify-center rounded-full border-0 bg-transparent text-black/60 transition-colors hover:bg-black/8 hover:text-black/70 hover:cursor-pointer"
               >
                 <FolderAddOutlined />
               </button>
@@ -290,7 +290,7 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
                 onClick={refresh}
                 disabled={historyLoading}
                 aria-label="重新整理"
-                className="flex h-6 w-6 items-center justify-center rounded-full border-0 bg-transparent text-black/40 transition-colors hover:bg-black/8 hover:text-black/70 hover:cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex h-6 w-6 items-center justify-center rounded-full border-0 bg-transparent text-black/60 transition-colors hover:bg-black/8 hover:text-black/70 hover:cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <ReloadOutlined spin={historyLoading} />
               </button>
@@ -299,7 +299,7 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
               <button
                 onClick={() => { clear(); onShowTranslate(); }}
                 aria-label="新增學習記錄"
-                className="flex h-6 w-6 items-center justify-center rounded-full border-0 bg-transparent text-black/40 transition-colors hover:bg-black/8 hover:text-black/70 hover:cursor-pointer"
+                className="flex h-6 w-6 items-center justify-center rounded-full border-0 bg-transparent text-black/60 transition-colors hover:bg-black/8 hover:text-black/70 hover:cursor-pointer"
               >
                 <PlusOutlined />
               </button>
@@ -351,7 +351,7 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
                   {items.length ? (
                     renderSection(group.id, items)
                   ) : (
-                    <p className="m-0 text-xs text-black/40">此主題還沒有學習紀錄。</p>
+                    <p className="m-0 text-xs text-black/60">此主題還沒有學習紀錄。</p>
                   )}
                 </SessionGroupSection>
               );

@@ -12,7 +12,7 @@ def _parse_origins(value: str) -> list[str]:
 
 class Settings:
     # Basic app metadata.
-    app_title: str = "NoteEnglish API"
+    app_title: str = "句句通 API"
     app_version: str = "0.1.0"
 
     # CORS: allowed frontend origins. Accepts a comma-separated list for deployment.
@@ -20,9 +20,11 @@ class Settings:
         os.getenv("FRONTEND_ORIGINS", os.getenv("FRONTEND_ORIGIN", "http://localhost:5173"))
     )
 
-    # Gemini API configuration.
+    # Gemini API configuration. Structure analysis (/api/parse) keeps the
+    # stronger model; translation/vocab/OCR/quiz run on the cheaper flash-lite.
     gemini_api_key = os.getenv("GEMINI_API_KEY", "")
-    gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    gemini_basic_model = os.getenv("GEMINI_BASIC_MODEL", "gemini-3.1-flash-lite")
+    gemini_adv_model = os.getenv("GEMINI_ADV_MODEL", "gemini-2.5-flash")
 
     # Text-to-speech voice used by edge-tts for the /api/tts route.
     tts_voice = os.getenv("TTS_VOICE", "en-US-JennyNeural")

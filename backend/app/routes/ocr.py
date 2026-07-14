@@ -32,6 +32,6 @@ def ocr(req: OcrRequest, user: dict = Depends(require_user)):
         raise HTTPException(status_code=413, detail="Image too large")
 
     text, usage = ai_ocr_image(image_bytes, req.mime_type)
-    log_api_usage(user["id"], "ocr", settings.gemini_model, usage)
+    log_api_usage(user["id"], "ocr", settings.gemini_basic_model, usage)
 
     return OcrResponse(text=text)
