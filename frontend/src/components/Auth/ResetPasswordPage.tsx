@@ -66,6 +66,17 @@ export default function ResetPasswordPage(): React.ReactElement {
     };
   }, []);
 
+  // An error message describes the previous submission; editing either field
+  // starts a new attempt, so the stale message clears immediately.
+  function updateField(
+    setter: (value: string) => void
+  ): (event: React.ChangeEvent<HTMLInputElement>) => void {
+    return (event) => {
+      setError("");
+      setter(event.target.value);
+    };
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setError("");
@@ -143,7 +154,7 @@ export default function ResetPasswordPage(): React.ReactElement {
                       allowClear
                       className="rounded-2xl border border-black/15 bg-white text-inherit transition"
                       value={password}
-                      onChange={(event) => setPassword(event.target.value)}
+                      onChange={updateField(setPassword)}
                       placeholder="請輸入新密碼"
                       autoComplete="new-password"
                       size="large"
@@ -156,7 +167,7 @@ export default function ResetPasswordPage(): React.ReactElement {
                       allowClear
                       className="rounded-2xl border border-black/15 bg-white text-inherit transition"
                       value={confirmPassword}
-                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      onChange={updateField(setConfirmPassword)}
                       placeholder="請再次輸入新密碼"
                       autoComplete="new-password"
                       size="large"

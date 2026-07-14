@@ -93,6 +93,17 @@ export default function LoginPage() {
     setError("");
   }
 
+  // An error message describes the previous submission; editing any field
+  // starts a new attempt, so the stale message clears immediately.
+  function updateField(
+    setter: (value: string) => void
+  ): (event: React.ChangeEvent<HTMLInputElement>) => void {
+    return (event) => {
+      setError("");
+      setter(event.target.value);
+    };
+  }
+
   function showForgotPassword(): void {
     setError("");
     setSuccessMessage("");
@@ -235,7 +246,7 @@ export default function LoginPage() {
                     allowClear
                     className="rounded-2xl border border-black/15 bg-white text-inherit transition"
                     value={displayName}
-                    onChange={(event) => setDisplayName(event.target.value)}
+                    onChange={updateField(setDisplayName)}
                     placeholder="您希望顯示什麼名稱？"
                     autoComplete="name"
                     size="large"
@@ -249,7 +260,7 @@ export default function LoginPage() {
                   allowClear
                   className="rounded-2xl border border-black/15 bg-white text-inherit transition"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={updateField(setEmail)}
                   placeholder="請輸入電子郵件"
                   autoComplete="email"
                   type="email"
@@ -264,7 +275,7 @@ export default function LoginPage() {
                     allowClear
                     className="rounded-2xl border border-black/15 bg-white text-inherit transition"
                     value={password}
-                    onChange={(event) => setPassword(event.target.value)}
+                    onChange={updateField(setPassword)}
                     placeholder="請輸入密碼"
                     autoComplete={
                       mode === "sign_in" ? "current-password" : "new-password"
@@ -295,9 +306,7 @@ export default function LoginPage() {
                       allowClear
                       className="rounded-2xl border border-black/15 bg-white text-inherit transition"
                       value={confirmPassword}
-                      onChange={(event) =>
-                        setConfirmPassword(event.target.value)
-                      }
+                      onChange={updateField(setConfirmPassword)}
                       placeholder="請再次輸入密碼"
                       autoComplete="new-password"
                       size="large"
