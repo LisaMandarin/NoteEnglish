@@ -62,6 +62,36 @@ class CompleteSentenceTests(unittest.TestCase):
     def test_dependent_clause_is_incomplete(self):
         self.assertFalse(is_complete_sentence("Because I was tired."))
 
+    def test_bare_verb_is_incomplete(self):
+        # "Live" leaked to Gemini in production — a lone verb is a title/label.
+        self.assertFalse(is_complete_sentence("Live"))
+        self.assertFalse(is_complete_sentence("Stop!"))
+        self.assertTrue(is_complete_sentence("Close the door."))
+
+    def test_wh_fronted_dependent_clause_is_incomplete(self):
+        self.assertFalse(is_complete_sentence("When they grew up"))
+        self.assertFalse(is_complete_sentence("While she was sleeping"))
+        # Real WH-questions invert (finite verb before subject) and stay valid.
+        self.assertTrue(is_complete_sentence("When did they grow up?"))
+        self.assertTrue(is_complete_sentence("How are you?"))
+        # A fronted when-clause attached to a later main clause is a sentence.
+        self.assertTrue(
+            is_complete_sentence("When they grew up, they left their parents.")
+        )
+
+    def test_lowercase_coordinator_tail_is_incomplete(self):
+        self.assertFalse(is_complete_sentence("and he never gave up"))
+        # Articles legitimately start sentences with capitalized And/But.
+        self.assertTrue(is_complete_sentence("But that was not enough."))
+        self.assertTrue(is_complete_sentence("And then she smiled."))
+
+    def test_relative_clause_fragment_is_incomplete(self):
+        self.assertFalse(
+            is_complete_sentence("which supports health and social programs")
+        )
+        self.assertTrue(is_complete_sentence("Who came to the party?"))
+        self.assertTrue(is_complete_sentence("Which team won the game?"))
+
 
 class TranslationCleanupTests(unittest.TestCase):
     def test_decimal_values_are_not_treated_as_indices(self):
