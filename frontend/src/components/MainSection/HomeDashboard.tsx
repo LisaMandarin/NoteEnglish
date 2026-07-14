@@ -223,7 +223,7 @@ export default function HomeDashboard({
                       </span>
                       <ArrowRightOutlined
                         aria-hidden="true"
-                        className="shrink-0 text-black/35 transition-transform duration-200 group-hover:translate-x-1"
+                        className="shrink-0 text-black/60 transition-transform duration-200 group-hover:translate-x-1"
                       />
                     </button>
                   );
