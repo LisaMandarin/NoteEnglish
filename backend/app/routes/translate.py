@@ -25,7 +25,7 @@ def translate(req: TranslateRequest, user: dict = Depends(require_user)):
 
     # Call Gemini to translate each sentence.
     translations, usage = ai_translate_list(parts, req.target_lang, req.mode)
-    log_api_usage(user["id"], "translate", settings.gemini_model, usage)
+    log_api_usage(user["id"], "translate", settings.gemini_basic_model, usage)
 
     # Build response objects with translations and extracted vocab.
     results: list[SentencePair] = []

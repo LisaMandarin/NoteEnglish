@@ -23,8 +23,8 @@ class Settings:
     # Gemini API configuration. Structure analysis (/api/parse) keeps the
     # stronger model; translation/vocab/OCR/quiz run on the cheaper flash-lite.
     gemini_api_key = os.getenv("GEMINI_API_KEY", "")
-    gemini_model = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
-    gemini_parse_model = os.getenv("GEMINI_PARSE_MODEL", "gemini-2.5-flash")
+    gemini_basic_model = os.getenv("GEMINI_BASIC_MODEL", "gemini-3.1-flash-lite")
+    gemini_adv_model = os.getenv("GEMINI_ADV_MODEL", "gemini-2.5-flash")
 
     # Text-to-speech voice used by edge-tts for the /api/tts route.
     tts_voice = os.getenv("TTS_VOICE", "en-US-JennyNeural")

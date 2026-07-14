@@ -23,7 +23,7 @@ router = APIRouter(tags=["parse"])
 def parse(req: ParseRequest, user: dict = Depends(require_user)):
     structure, usage = get_structure(req.sentence)
     if usage is not None:
-        log_api_usage(user["id"], "parse", settings.gemini_parse_model, usage)
+        log_api_usage(user["id"], "parse", settings.gemini_adv_model, usage)
     # Derived at response time (not cached), so the classification rules can
     # evolve without invalidating cached trees.
     sentence_type = derive_sentence_type(structure) if structure else None
