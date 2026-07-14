@@ -135,8 +135,12 @@ export default function LoginPage() {
         confirmPassword,
       });
 
+      // Local validation messages are already user-facing Chinese; routing
+      // them through translateAuthError would flatten them to the generic
+      // fallback and hide which field is wrong.
       if (validationError) {
-        throw new Error(validationError);
+        setError(validationError);
+        return;
       }
 
       if (mode === "forgot_password") {
