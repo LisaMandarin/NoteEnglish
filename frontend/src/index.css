@@ -79,6 +79,45 @@ body {
   padding: 0 0.12em;
 }
 
+/* Drag handles for the touch multi-word selection (fixed overlay positioned
+   by useSelectionMenu). touch-action: none applies only to the handles, so
+   dragging one never scrolls the page while the sentence text itself keeps
+   its pan-y scrolling. The span is a 28px-wide invisible hit area; the
+   visible dot + stem are drawn by the pseudo-elements. */
+.selection-handle {
+  position: fixed;
+  z-index: 900;
+  width: 28px;
+  height: 30px;
+  margin-left: -14px;
+  margin-top: -2px;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.selection-handle::before {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 0;
+  width: 2px;
+  height: 8px;
+  background: var(--accent);
+}
+
+.selection-handle::after {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 7px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
 /* Flash on the vocab card just added by a lookup, so the eye lands on it
    after the auto-scroll. Radius matches the card's rounded-2xl. */
 @keyframes vocab-flash {

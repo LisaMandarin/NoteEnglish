@@ -6,6 +6,7 @@ import SelectionMenu from "./SelectionMenu";
 import { useVocabLookup } from "../../hooks/useVocabLookup";
 import { useSelectionMenu } from "../../hooks/useSelectionMenu";
 import SentenceItem from "./SentenceItem";
+import SelectionHandles from "./SelectionHandles";
 import StudyActions from "./StudyActions";
 import { vocabCardDomId } from "../../lib/vocabCard";
 const { Text } = Typography;
@@ -68,10 +69,14 @@ export default function TranslationsList({ onStartQuiz }: { onStartQuiz: () => v
     menuOpen,
     menuPos,
     selectedHighlight,
+    selectionHandles,
     handleMouseUp,
     handleTouchStart,
     handleTouchMove,
     handleTouchEnd,
+    onHandleTouchStart,
+    onHandleTouchMove,
+    onHandleTouchEnd,
     closeMenu,
     clearSelection,
   } =
@@ -202,6 +207,12 @@ export default function TranslationsList({ onStartQuiz }: { onStartQuiz: () => v
           </Button>
         </div>
       )}
+      <SelectionHandles
+        rects={selectionHandles}
+        onDragStart={onHandleTouchStart}
+        onDragMove={onHandleTouchMove}
+        onDragEnd={onHandleTouchEnd}
+      />
       <div
         onMouseUp={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
