@@ -605,17 +605,16 @@ export function useSelectionMenu({ containerRef, vocab }: {
 
   // Keep the fixed-position drag handles glued to both ends of the highlight,
   // recomputing whenever the range changes and through page/container scrolls.
+  // With no active highlight the derived value handed to the caller (see the
+  // return statement) hides the handles, so the effect only measures real
+  // selections and never has to write state synchronously.
   useEffect(() => {
-    if (!selectedHighlight) {
-      setSelectionHandles(null);
-      return;
-    }
+    if (!selectedHighlight) return;
 
-    const textEl = getSelectedTextElement(selectedHighlight);
-    if (!textEl) {
-      setSelectionHandles(null);
-      return;
-    }
+    const textEl = containerRef.current?.querySelector(
+      `li[data-idx="${selectedHighlight.sentenceIdx}"] ${ORIGINAL_TEXT_SELECTOR}`,
+    );
+    if (!(textEl instanceof HTMLElement)) return;
 
     function update(): void {
       const range = createRangeFromTextOffsets(
@@ -640,14 +639,17 @@ export function useSelectionMenu({ containerRef, vocab }: {
       });
     }
 
-    update();
+    // First measurement runs after paint instead of synchronously in the
+    // effect body (react-hooks/set-state-in-effect).
+    const raf = requestAnimationFrame(update);
     window.addEventListener("scroll", update, true);
     window.addEventListener("resize", update);
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
     };
-  }, [selectedHighlight]);
+  }, [selectedHighlight, containerRef]);
 
   useEffect(() => {
     return () => {
@@ -676,7 +678,9 @@ export function useSelectionMenu({ containerRef, vocab }: {
     menuOpen,
     menuPos,
     selectedHighlight,
-    selectionHandles,
+    // Derived: without an active highlight the handles are always hidden, so
+    // clearing the selection never needs an extra state write.
+    selectionHandles: selectedHighlight ? selectionHandles : null,
     handleMouseUp,
     handleTouchStart,
     handleTouchMove,
