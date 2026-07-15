@@ -739,6 +739,17 @@ h1, h2, h3 {
   border-radius: 8px;
   box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
 }
+/* 工具列的換色按鈕圓點：預設為色盤五色漸層，選了顏色後由行內樣式蓋成單色 */
+.note-color-dot {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  vertical-align: -2px;
+  border: 1px solid color-mix(in srgb, var(--card-border) 35%, transparent);
+  background: conic-gradient(#b91c1c, #b45309, #15803d, #1d4ed8, #7e22ce, #b91c1c);
+}
+
 .note-color-panel {
   display: flex;
   align-items: center;

@@ -2,7 +2,6 @@ import { useMemo, useRef, useState } from "react";
 import { Button, Input, Popover, Tooltip } from "antd";
 import {
   BoldOutlined,
-  FontColorsOutlined,
   ItalicOutlined,
   LinkOutlined,
   OrderedListOutlined,
@@ -152,7 +151,15 @@ function ToolbarButtons({
           type="text"
           aria-label="文字顏色"
           className="note-toolbar-btn"
-          icon={<FontColorsOutlined style={state.color ? { color: state.color } : undefined} />}
+          // 圓形色點：顯示目前文字顏色；未選色時是色盤五色的漸層圓，
+          // 比 FontColorsOutlined（底線 A）更能看出是「選顏色」
+          icon={
+            <span
+              className="note-color-dot"
+              aria-hidden="true"
+              style={state.color ? { background: state.color } : undefined}
+            />
+          }
           onMouseDown={keepFocus}
         />
       </Popover>
