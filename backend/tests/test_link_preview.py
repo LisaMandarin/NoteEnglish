@@ -42,8 +42,9 @@ class ValidateUrlTests(unittest.TestCase):
 
     def test_public_ip_allowed(self):
         with patch.object(lp.socket, "getaddrinfo", return_value=_addrinfo("93.184.216.34")):
-            parsed = lp._validate_url("https://example.com/page")
+            parsed, ip = lp._validate_url("https://example.com/page")
         self.assertEqual(parsed.hostname, "example.com")
+        self.assertEqual(ip, "93.184.216.34")
 
     def test_unresolvable_host_rejected(self):
         with patch.object(lp.socket, "getaddrinfo", side_effect=OSError):
@@ -51,9 +52,44 @@ class ValidateUrlTests(unittest.TestCase):
                 lp._validate_url("https://nope.invalid/")
 
 
+class DnsRebindingTests(unittest.TestCase):
+    """The connection must dial the IP validated up front; resolving the
+    hostname a second time would let a rebinding DNS server answer with a
+    public IP for the check and a private IP for the fetch."""
+
+    def test_connection_dials_validated_ip(self):
+        # DNS flips to a private address after validation — the second
+        # answer must never be consulted.
+        answers = [_addrinfo("93.184.216.34"), _addrinfo("192.168.1.1")]
+        with patch.object(lp.socket, "getaddrinfo", side_effect=answers):
+            parsed, ip = lp._validate_url("http://example.com/page")
+            conn = lp._open_connection(parsed, ip)
+        self.assertEqual(conn.host, "93.184.216.34")
+
+    def test_https_keeps_sni_hostname(self):
+        with patch.object(lp.socket, "getaddrinfo", return_value=_addrinfo("93.184.216.34")):
+            parsed, ip = lp._validate_url("https://example.com/page")
+        conn = lp._open_connection(parsed, ip)
+        self.assertEqual(conn.host, "93.184.216.34")
+        self.assertEqual(conn._server_hostname, "example.com")
+
+    def test_host_header_uses_hostname_not_ip(self):
+        parsed = lp.parse.urlparse("https://example.com/a?b=1")
+        path, host_header = lp._request_target(parsed)
+        self.assertEqual(path, "/a?b=1")
+        self.assertEqual(host_header, "example.com")
+
+    def test_host_header_keeps_non_default_port(self):
+        parsed = lp.parse.urlparse("http://example.com:8080/")
+        _, host_header = lp._request_target(parsed)
+        self.assertEqual(host_header, "example.com:8080")
+
+
 class ParsePreviewTests(unittest.TestCase):
     def test_og_tags_win(self):
-        res = lp._parse_preview(OG_HTML, "https://example.com/article")
+        # og:image now gets the same public-host check as the page URL.
+        with patch.object(lp.socket, "getaddrinfo", return_value=_addrinfo("93.184.216.34")):
+            res = lp._parse_preview(OG_HTML, "https://example.com/article")
         self.assertEqual(res.title, "OG Title")
         self.assertEqual(res.description, "OG description here.")
         # Relative og:image resolves against the page URL.
@@ -66,6 +102,23 @@ class ParsePreviewTests(unittest.TestCase):
         self.assertEqual(res.description, "Plain meta description.")
         self.assertIsNone(res.image)
         self.assertIsNone(res.site_name)
+
+    def test_private_og_image_dropped(self):
+        # The reader's browser loads og:image directly, so an image pointing
+        # at a private address must be stripped from the preview.
+        html = OG_HTML.replace(
+            'content="/img/cover.png"', 'content="https://192.168.1.1/x.png"'
+        )
+        with patch.object(lp.socket, "getaddrinfo", return_value=_addrinfo("192.168.1.1")):
+            res = lp._parse_preview(html, "https://example.com/article")
+        self.assertIsNone(res.image)
+
+    def test_non_http_og_image_dropped(self):
+        html = OG_HTML.replace(
+            'content="/img/cover.png"', 'content="javascript:alert(1)"'
+        )
+        res = lp._parse_preview(html, "https://example.com/article")
+        self.assertIsNone(res.image)
 
 
 class CacheTests(unittest.TestCase):
@@ -98,7 +151,7 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 422)
 
     def test_timeout_maps_to_422(self):
-        # urllib timeouts surface as OSError → LinkPreviewError in the service.
+        # Socket timeouts surface as OSError → LinkPreviewError in the service.
         with patch.object(
             link_preview_route,
             "get_link_preview",
