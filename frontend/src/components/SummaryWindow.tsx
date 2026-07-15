@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { Button, Typography } from "antd";
 import type { VocabItem } from "../types";
 import { VocabCard } from "./Vocab/VocabCards";
+import { isLegacyPlainText, noteHasContent, sanitizeNoteHtml } from "../lib/noteHtml";
 
 const { Text } = Typography;
 
@@ -101,12 +102,20 @@ export default function SummaryWindow() {
                     )}
                   </div>
 
-                  {data.includeNote && (row.note ?? "").trim() && (
+                  {data.includeNote && noteHasContent(row.note ?? "") && (
                     <div className="mt-3">
                       <div className="font-semibold">自訂筆記:</div>
-                      <div className="mt-1" style={{ whiteSpace: "pre-wrap" }}>
-                        {row.note}
-                      </div>
+                      {isLegacyPlainText(row.note ?? "") ? (
+                        <div className="mt-1" style={{ whiteSpace: "pre-wrap" }}>
+                          {row.note}
+                        </div>
+                      ) : (
+                        <div
+                          className="mt-1 note-content"
+                          // localStorage 資料不可信，一樣過 DOMPurify 白名單
+                          dangerouslySetInnerHTML={{ __html: sanitizeNoteHtml(row.note ?? "") }}
+                        />
+                      )}
                     </div>
                   )}
 

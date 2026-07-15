@@ -88,6 +88,16 @@ export type SharedSessionDetail = {
   is_favorited: boolean;
 };
 
+// ── Link preview（筆記內連結的 OG meta 預覽）───────────────────────────────────
+// Mirrors GET /api/link-preview?url=… → LinkPreviewResponse (snake_case).
+// 全欄位可為 null：抓不到 OG tags 時仍回 200，前端退回只顯示網域。
+export type LinkPreview = {
+  title: string | null;
+  description: string | null;
+  image: string | null;
+  site_name: string | null;
+};
+
 export type FavoriteItem = {
   session_id: string;
   title: string;

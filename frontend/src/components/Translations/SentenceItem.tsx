@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, Dropdown, Input, Typography } from "antd";
+import { Button, Dropdown, Typography } from "antd";
 import type { MenuProps } from "antd";
 import {
   ApartmentOutlined,
@@ -11,6 +11,9 @@ import VocabCards from "../Vocab/VocabCards";
 import TtsButton from "../shared/TtsButton";
 import { useSentenceStructure } from "../../hooks/useSentenceStructure";
 import SentenceSkeleton from "../SentenceStructure/SentenceSkeleton";
+import NoteEditor from "./NoteEditor";
+import NoteContent from "./NoteContent";
+import { isLegacyPlainText, noteHasContent } from "../../lib/noteHtml";
 const { Text } = Typography;
 
 type SelectedRange = {
@@ -65,7 +68,7 @@ export default function SentenceItem({
   onToggleVocabCollapsed?: () => void;
 }): React.ReactElement {
   const note = sentence.note ?? "";
-  const hasNote = note.trim().length > 0;
+  const hasNote = noteHasContent(note);
   const [editingNote, setEditingNote] = useState(false);
   const [draftNote, setDraftNote] = useState(note);
   // Uncontrolled fallback so the read-only shared view (which renders outside
@@ -190,22 +193,32 @@ export default function SentenceItem({
 
             {editingNote && !readOnly ? (
               <div className="mt-2">
-                <Input.TextArea
-                  value={draftNote}
-                  onChange={(e) => handleDraftChange(e.target.value)}
-                  onBlur={saveNote}
-                  autoFocus
-                  autoSize={{ minRows: 2 }}
-                  placeholder="輸入筆記…（換行會原樣顯示）"
+                <NoteEditor
+                  initialNote={note}
+                  onDraftChange={handleDraftChange}
+                  onSave={saveNote}
                 />
               </div>
             ) : (
               hasNote && (
                 <div
-                  onClick={readOnly ? undefined : openNoteEditor}
+                  onClick={
+                    readOnly
+                      ? undefined
+                      : (e): void => {
+                          // Links inside the note navigate; they must not
+                          // reopen the editor.
+                          if ((e.target as HTMLElement).closest("a")) return;
+                          openNoteEditor();
+                        }
+                  }
                   className={`mt-2 rounded-md border border-(--card-border) bg-(--card-bg) px-3 py-2 ${readOnly ? "" : "cursor-text"}`}
                 >
-                  <Text style={{ whiteSpace: "pre-wrap" }}>{note}</Text>
+                  {isLegacyPlainText(note) ? (
+                    <Text style={{ whiteSpace: "pre-wrap" }}>{note}</Text>
+                  ) : (
+                    <NoteContent note={note} />
+                  )}
                 </div>
               )
             )}

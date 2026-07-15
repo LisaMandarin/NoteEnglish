@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button, Card, Checkbox, Modal } from "antd";
 import { EditOutlined, FileTextOutlined, FormOutlined, IdcardOutlined, PrinterOutlined } from "@ant-design/icons";
 import type { Sentence, VocabItem } from "../../types";
+import { noteHasContent } from "../../lib/noteHtml";
 
 function collectVocab(sentences: Sentence[]): VocabItem[] {
   const seen = new Set<string>();
@@ -38,7 +39,7 @@ export default function StudyActions({
   const [includeNote, setIncludeNote] = useState(true);
 
   const hasVocab = collectVocab(sentences).length > 0;
-  const hasNote = sentences.some((s) => (s.note ?? "").trim() !== "");
+  const hasNote = sentences.some((s) => noteHasContent(s.note ?? ""));
   const effectiveIncludeVocab = hasVocab && includeVocab;
   const effectiveIncludeNote = hasNote && includeNote;
   const nothingChecked = !includeTranslation && !effectiveIncludeVocab && !effectiveIncludeNote;
