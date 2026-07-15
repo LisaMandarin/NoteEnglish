@@ -319,7 +319,12 @@ export default function NoteEditor({
         <ToolbarButtons editor={editor} state={state} container={container} />
       </div>
       {finePointer && (
-        <BubbleMenu editor={editor} className="note-bubble-menu">
+        <BubbleMenu
+          editor={editor}
+          className="note-bubble-menu"
+          // 固定出現在選取文字下方，避免蓋住編輯器上方的常駐工具列
+          options={{ placement: "bottom", offset: 8 }}
+        >
           <ToolbarButtons editor={editor} state={state} container={container} compact />
         </BubbleMenu>
       )}

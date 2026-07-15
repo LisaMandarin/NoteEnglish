@@ -692,6 +692,8 @@ h1, h2, h3 {
    .note-content = 唯讀顯示（主畫面卡、分享頁、彙整視窗都用它）；
    .note-editor 包工具列 + Tiptap contenteditable。兩邊共用排版規則。 */
 .note-editor {
+  /* AntD Popover（色盤/連結表單）以本容器為 getPopupContainer，需要定位基準 */
+  position: relative;
   border: 1px solid color-mix(in srgb, var(--card-border) 30%, transparent);
   border-radius: 8px;
   background: white;
@@ -879,6 +881,17 @@ h1, h2, h3 {
 
   .summary-print-page .level-dot-empty {
     border-color: #999 !important;
+  }
+
+  /* 富文字筆記：列印一律黑白灰（CLAUDE.md 保護行為）。span 的行內色彩、
+     連結的 accent 色全部壓成黑字；連結保留底線以示可點。 */
+  .note-content,
+  .note-content * {
+    color: black !important;
+  }
+  .note-content a {
+    color: black !important;
+    text-decoration: underline;
   }
 
   .vocab-print-root {
