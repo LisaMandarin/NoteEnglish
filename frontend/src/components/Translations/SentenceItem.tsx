@@ -12,7 +12,8 @@ import TtsButton from "../shared/TtsButton";
 import { useSentenceStructure } from "../../hooks/useSentenceStructure";
 import SentenceSkeleton from "../SentenceStructure/SentenceSkeleton";
 import NoteEditor from "./NoteEditor";
-import { isLegacyPlainText, noteHasContent, sanitizeNoteHtml } from "../../lib/noteHtml";
+import NoteContent from "./NoteContent";
+import { isLegacyPlainText, noteHasContent } from "../../lib/noteHtml";
 const { Text } = Typography;
 
 type SelectedRange = {
@@ -216,10 +217,7 @@ export default function SentenceItem({
                   {isLegacyPlainText(note) ? (
                     <Text style={{ whiteSpace: "pre-wrap" }}>{note}</Text>
                   ) : (
-                    <div
-                      className="note-content"
-                      dangerouslySetInnerHTML={{ __html: sanitizeNoteHtml(note) }}
-                    />
+                    <NoteContent note={note} />
                   )}
                 </div>
               )

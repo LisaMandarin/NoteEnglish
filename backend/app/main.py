@@ -14,6 +14,7 @@ from app.routes.issue_report import router as issue_report_router
 from app.routes.tts import router as tts_router
 from app.routes.quiz import router as quiz_router
 from app.routes.share import router as share_router
+from app.routes.link_preview import router as link_preview_router
 from app.core.config import settings
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -45,3 +46,4 @@ app.include_router(issue_report_router, prefix="/api")
 app.include_router(tts_router, prefix="/api")
 app.include_router(quiz_router, prefix="/api")
 app.include_router(share_router, prefix="/api")
+app.include_router(link_preview_router, prefix="/api")

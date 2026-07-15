@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 import type {
   FavoriteItem,
+  LinkPreview,
   ParseResult,
   QuizResultPayloadItem,
   Sentence,
@@ -256,6 +257,21 @@ export async function deleteQuizRun(
   const params = new URLSearchParams({ answered_at: answeredAt });
   if (sessionId) params.set("session_id", sessionId);
   await apiFetch(`/api/quiz/runs?${params.toString()}`, { method: "DELETE" });
+}
+
+// ── Link preview（筆記內連結）───────────────────────────────────────────────
+// 前端 in-memory cache：同一 URL 只打一次（含進行中的請求）；失敗回 null，
+// 呼叫端退回只顯示網域的卡片。
+const linkPreviewCache = new Map<string, Promise<LinkPreview | null>>();
+
+export function fetchLinkPreview(url: string): Promise<LinkPreview | null> {
+  const cached = linkPreviewCache.get(url);
+  if (cached) return cached;
+
+  const pending = (apiFetch(`/api/link-preview?url=${encodeURIComponent(url)}`) as Promise<LinkPreview>)
+    .catch((): null => null);
+  linkPreviewCache.set(url, pending);
+  return pending;
 }
 
 export async function parseSentence(sentence: string): Promise<ParseResult> {
