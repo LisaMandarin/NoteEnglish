@@ -15,9 +15,10 @@ router = APIRouter(tags=["link-preview"])
 
 # Fetch the target page's OG meta tags and return a preview card payload.
 # SSRF-guarded in the service: http(s) only, public IPs only (each redirect
-# hop re-checked), 5s timeout, 512KB read cap, text/html only; results go
-# through an in-memory TTL cache. Sync def on purpose — the blocking urllib
-# fetch runs in FastAPI's threadpool instead of the event loop.
+# hop re-checked and the connection pinned to the validated IP), 5s timeout,
+# 512KB read cap, text/html only; results go through an in-memory TTL cache.
+# Sync def on purpose — the blocking http.client fetch runs in FastAPI's
+# threadpool instead of the event loop.
 @router.get("/link-preview", response_model=LinkPreviewResponse)
 def link_preview(
     url: str = Query(..., description="http(s) URL to preview"),

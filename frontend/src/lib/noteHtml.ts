@@ -20,6 +20,24 @@ export const NOTE_COLORS: { label: string; value: string }[] = [
 const ALLOWED_TAGS = ["p", "br", "strong", "b", "em", "i", "u", "ul", "ol", "li", "a", "span"];
 const ALLOWED_ATTR = ["href", "target", "rel", "style"];
 
+// The CSSOM normalizes colors (e.g. "#b91c1c" → "rgb(185, 28, 28)"), so the
+// palette is normalized the same way before comparing. Anything outside the
+// five NOTE_COLORS — transparent, arbitrary RGB, near-background shades —
+// could hide or disguise note text and is stripped.
+let allowedColors: Set<string> | null = null;
+function normalizedNoteColors(): Set<string> {
+  if (!allowedColors) {
+    const probe = document.createElement("span");
+    allowedColors = new Set(
+      NOTE_COLORS.map(({ value }) => {
+        probe.style.color = value;
+        return probe.style.color;
+      }),
+    );
+  }
+  return allowedColors;
+}
+
 // Single hook set, registered once. DOMPurify hooks are global, so we guard
 // against double registration under HMR.
 let hooksRegistered = false;
@@ -30,10 +48,11 @@ function registerHooks(): void {
   DOMPurify.addHook("afterSanitizeAttributes", (node: Element) => {
     const tag = node.tagName;
 
-    // style is only meaningful on span, and only its color survives.
+    // style is only meaningful on span, and only a color from the fixed
+    // NOTE_COLORS palette survives.
     if (node.hasAttribute("style")) {
       const color = (node as HTMLElement).style?.color ?? "";
-      if (tag === "SPAN" && color) {
+      if (tag === "SPAN" && color && normalizedNoteColors().has(color)) {
         node.setAttribute("style", `color: ${color}`);
       } else {
         node.removeAttribute("style");

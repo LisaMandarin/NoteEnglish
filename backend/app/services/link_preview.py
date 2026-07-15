@@ -1,10 +1,11 @@
+import http.client
 import ipaddress
 import logging
 import socket
 import ssl
 import time
 from html.parser import HTMLParser
-from urllib import parse, request
+from urllib import parse
 
 import certifi
 
@@ -30,71 +31,124 @@ class LinkPreviewError(Exception):
     """URL rejected or unfetchable; the route maps this to a 4xx."""
 
 
-def _reject_non_public_host(host: str) -> None:
-    """SSRF guard: resolve the hostname and refuse anything that isn't a
-    public unicast address (loopback, RFC1918, link-local, reserved, …)."""
+def _resolve_public_ip(host: str) -> str:
+    """SSRF guard: resolve the hostname, refuse anything that isn't a public
+    unicast address (loopback, RFC1918, link-local, reserved, …), and return
+    one validated IP. The connection MUST be made to that IP — resolving the
+    hostname again at connect time would allow a DNS-rebinding TOCTOU."""
     try:
-        infos = socket.getaddrinfo(host, None)
+        infos = socket.getaddrinfo(host, None, proto=socket.IPPROTO_TCP)
     except OSError as exc:
         raise LinkPreviewError("Host could not be resolved") from exc
+    if not infos:
+        raise LinkPreviewError("Host could not be resolved")
 
     for info in infos:
         ip = ipaddress.ip_address(info[4][0])
         if not ip.is_global or ip.is_multicast:
             raise LinkPreviewError("URL resolves to a non-public address")
+    return infos[0][4][0]
 
 
-def _validate_url(url: str) -> parse.ParseResult:
+def _validate_url(url: str) -> tuple[parse.ParseResult, str]:
+    """Returns (parsed URL, validated public IP to connect to)."""
     parsed = parse.urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise LinkPreviewError("Only http(s) URLs are allowed")
     if not parsed.hostname:
         raise LinkPreviewError("URL has no host")
-    _reject_non_public_host(parsed.hostname)
-    return parsed
+    return parsed, _resolve_public_ip(parsed.hostname)
 
 
-class _NoRedirect(request.HTTPRedirectHandler):
-    # Redirects are followed manually so every hop re-passes the SSRF check.
-    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
-        return None
+class _PinnedHTTPSConnection(http.client.HTTPSConnection):
+    """TLS connection that dials a pre-validated IP while certificate
+    verification and SNI still use the original hostname."""
+
+    def __init__(self, hostname: str, ip: str, port: int) -> None:
+        super().__init__(
+            ip, port, timeout=FETCH_TIMEOUT_SECONDS, context=_SSL_CONTEXT
+        )
+        self._server_hostname = hostname
+
+    def connect(self) -> None:
+        self.sock = socket.create_connection(
+            (self.host, self.port), self.timeout
+        )
+        self.sock = self._context.wrap_socket(
+            self.sock, server_hostname=self._server_hostname
+        )
 
 
-_OPENER = request.build_opener(
-    _NoRedirect, request.HTTPSHandler(context=_SSL_CONTEXT)
-)
+def _open_connection(
+    parsed: parse.ParseResult, ip: str
+) -> http.client.HTTPConnection:
+    if parsed.scheme == "https":
+        return _PinnedHTTPSConnection(parsed.hostname, ip, parsed.port or 443)
+    return http.client.HTTPConnection(
+        ip, parsed.port or 80, timeout=FETCH_TIMEOUT_SECONDS
+    )
+
+
+def _request_target(parsed: parse.ParseResult) -> tuple[str, str]:
+    """Returns (path with query, Host header value) for the request line."""
+    path = parsed.path or "/"
+    if parsed.query:
+        path += "?" + parsed.query
+    default_port = 443 if parsed.scheme == "https" else 80
+    port = parsed.port or default_port
+    host = parsed.hostname
+    if ":" in host:  # IPv6 literal needs brackets in the Host header
+        host = f"[{host}]"
+    return path, host if port == default_port else f"{host}:{port}"
 
 
 def _fetch_html(url: str) -> tuple[str, str]:
     """Fetch the target page, re-validating each redirect hop.
 
-    Returns (html, final_url); final_url anchors relative og:image paths.
+    Each hop connects to the IP validated for that hop (never re-resolving
+    the hostname) so a rebinding DNS server can't swap in a private address
+    between check and use. Returns (html, final_url); final_url anchors
+    relative og:image paths.
     """
     current = url
     for _ in range(MAX_REDIRECTS + 1):
-        _validate_url(current)
-        req = request.Request(current, headers={"User-Agent": USER_AGENT})
+        parsed, ip = _validate_url(current)
+        path, host_header = _request_target(parsed)
+        conn = _open_connection(parsed, ip)
         try:
-            with _OPENER.open(req, timeout=FETCH_TIMEOUT_SECONDS) as resp:
-                content_type = resp.headers.get("Content-Type", "")
-                if "text/html" not in content_type.lower():
-                    raise LinkPreviewError("Target is not an HTML page")
-                raw = resp.read(MAX_READ_BYTES)
-                charset = resp.headers.get_content_charset() or "utf-8"
-                return raw.decode(charset, errors="replace"), current
-        except LinkPreviewError:
-            raise
-        except request.HTTPError as exc:
-            if exc.code in (301, 302, 303, 307, 308):
-                location = exc.headers.get("Location")
-                exc.close()
+            # Passing Host explicitly stops http.client from deriving it
+            # from the connection target (the bare IP).
+            conn.request(
+                "GET",
+                path,
+                headers={
+                    "Host": host_header,
+                    "User-Agent": USER_AGENT,
+                    "Accept": "text/html",
+                    "Connection": "close",
+                },
+            )
+            resp = conn.getresponse()
+            if resp.status in (301, 302, 303, 307, 308):
+                location = resp.getheader("Location")
                 if not location:
-                    raise LinkPreviewError("Redirect without Location") from exc
+                    raise LinkPreviewError("Redirect without Location")
                 current = parse.urljoin(current, location)
                 continue
-            raise LinkPreviewError(f"Target returned HTTP {exc.code}") from exc
-        except OSError as exc:  # timeout, connection refused, TLS failure …
+            if not 200 <= resp.status < 300:
+                raise LinkPreviewError(f"Target returned HTTP {resp.status}")
+            content_type = resp.getheader("Content-Type", "")
+            if "text/html" not in content_type.lower():
+                raise LinkPreviewError("Target is not an HTML page")
+            raw = resp.read(MAX_READ_BYTES)
+            charset = resp.headers.get_content_charset() or "utf-8"
+            return raw.decode(charset, errors="replace"), current
+        except LinkPreviewError:
+            raise
+        except (OSError, http.client.HTTPException) as exc:
             raise LinkPreviewError("Target could not be fetched") from exc
+        finally:
+            conn.close()
     raise LinkPreviewError("Too many redirects")
 
 
@@ -135,6 +189,17 @@ class _MetaParser(HTMLParser):
             self.title = data.strip()
 
 
+def _safe_image_url(url: str) -> str | None:
+    """og:image is loaded directly by the reader's browser, so refuse
+    anything that isn't public http(s) — a page must not be able to point
+    the preview image at localhost or a private network."""
+    try:
+        _validate_url(url)
+    except LinkPreviewError:
+        return None
+    return url
+
+
 def _parse_preview(html: str, base_url: str) -> LinkPreviewResponse:
     parser = _MetaParser()
     try:
@@ -144,9 +209,7 @@ def _parse_preview(html: str, base_url: str) -> LinkPreviewResponse:
 
     image = parser.og.get("image")
     if image:
-        image = parse.urljoin(base_url, image)
-        if not image.lower().startswith(("http://", "https://")):
-            image = None
+        image = _safe_image_url(parse.urljoin(base_url, image))
 
     return LinkPreviewResponse(
         title=parser.og.get("title") or parser.title,
