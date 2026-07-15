@@ -36,8 +36,35 @@ export type SelectionHighlight = {
   end: number;
 };
 
+export type SelectionHandlePoint = {
+  x: number;
+  y: number;
+  height: number;
+};
+
+export type SelectionHandleRects = {
+  start: SelectionHandlePoint;
+  end: SelectionHandlePoint;
+};
+
+type HandleDrag = {
+  textEl: HTMLElement;
+  // Word bounds of the fixed (non-dragged) edge. The live range is always
+  // min/max of this anchor against the word under the finger, which also
+  // yields the native role swap when a handle is dragged past the other one.
+  anchorStart: number;
+  anchorEnd: number;
+  // Finger offset from the grabbed handle's line center, so drag hit-tests
+  // sample the text line above the finger instead of the handle itself.
+  offsetX: number;
+  offsetY: number;
+};
+
 const ORIGINAL_TEXT_SELECTOR = "[data-original-text]";
 const TOUCH_MOVE_THRESHOLD = 12;
+// Touch selections place the menu further below the range so it never covers
+// the drag handles hanging under the last line (~30px tall).
+const HANDLE_MENU_GAP = 42;
 const TOUCH_MOUSE_SUPPRESS_MS = 700;
 const WORD_CHAR_RE = /[A-Za-z0-9'\u2018\u2019-]/;
 const EDGE_WORD_PUNCT_RE = /['\u2018\u2019-]/;
@@ -74,14 +101,14 @@ function getSentenceIdxFromRange(range: Range): number | null {
   return li ? Number((li as HTMLElement).dataset.idx) : null;
 }
 
-function getMenuPosition(range: Range): { x: number; y: number } {
+function getMenuPosition(range: Range, belowGap: number = 8): { x: number; y: number } {
   const rect = range.getBoundingClientRect();
   const MENU_W = 280;
   const MENU_H = 170;
   const GAP = 8;
 
   let x = rect.left;
-  let y = rect.bottom + GAP;
+  let y = rect.bottom + belowGap;
 
   x = Math.min(x, window.innerWidth - MENU_W - GAP);
   x = Math.max(x, GAP);
@@ -273,6 +300,45 @@ function getWordBounds(text: string, offset: number): { start: number; end: numb
   return selectedText ? { start, end, text: selectedText } : null;
 }
 
+// Text offset in the dragged sentence for the sampled point. Points that land
+// outside the sentence clamp to its start/end; failed hit-tests inside it
+// (line gaps) return null so the caller keeps the current range.
+function getDragOffsetInSentence(
+  textEl: HTMLElement,
+  clientX: number,
+  clientY: number,
+): number | null {
+  // The handle overlays hang below their line and can cover the next line of
+  // a wrapped sentence, which would make the caret hit-test land on the empty
+  // handle span. Ongoing touch events keep firing on their original target,
+  // so disabling hit-testing on the handles during sampling is safe.
+  const handles = document.querySelectorAll<HTMLElement>(".selection-handle");
+  handles.forEach((h) => {
+    h.style.pointerEvents = "none";
+  });
+
+  let point: TextPoint | null;
+  try {
+    point = getTextPointFromViewport(clientX, clientY);
+  } finally {
+    handles.forEach((h) => {
+      h.style.pointerEvents = "";
+    });
+  }
+
+  if (point) {
+    const el = getElementFromNode(point.textNode)?.closest(ORIGINAL_TEXT_SELECTOR);
+    if (el === textEl) {
+      return getTextOffsetWithin(textEl, point.textNode, point.offset);
+    }
+  }
+
+  const rect = textEl.getBoundingClientRect();
+  if (clientY < rect.top || (clientY <= rect.bottom && clientX < rect.left)) return 0;
+  if (clientY > rect.bottom || clientX > rect.right) return (textEl.textContent ?? "").length;
+  return null;
+}
+
 export function useSelectionMenu({ containerRef, vocab }: {
   containerRef: RefObject<HTMLElement | null>;
   vocab: VocabController;
@@ -280,22 +346,39 @@ export function useSelectionMenu({ containerRef, vocab }: {
   menuOpen: boolean;
   menuPos: { x: number; y: number };
   selectedHighlight: SelectionHighlight | null;
+  selectionHandles: SelectionHandleRects | null;
   handleMouseUp: (e: ReactMouseEvent<HTMLElement>) => void;
   handleTouchStart: (e: ReactTouchEvent<HTMLElement>) => void;
   handleTouchMove: (e: ReactTouchEvent<HTMLElement>) => void;
   handleTouchEnd: (e: ReactTouchEvent<HTMLElement>) => void;
+  onHandleTouchStart: (which: "start" | "end", e: ReactTouchEvent<HTMLElement>) => void;
+  onHandleTouchMove: (e: ReactTouchEvent<HTMLElement>) => void;
+  onHandleTouchEnd: () => void;
   closeMenu: () => void;
   clearSelection: () => void;
 } {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
   const [selectedHighlight, setSelectedHighlight] = useState<SelectionHighlight | null>(null);
+  const [selectionHandles, setSelectionHandles] = useState<SelectionHandleRects | null>(null);
   const touchStartRef = useRef<TouchStart | null>(null);
   const lastTouchLookupAtRef = useRef(0);
+  // Ref mirror of selectedHighlight so rAF-throttled drag callbacks always
+  // read the latest range instead of a stale render closure.
+  const selectedHighlightRef = useRef<SelectionHighlight | null>(null);
+  const dragRef = useRef<HandleDrag | null>(null);
+  const dragRafRef = useRef<number | null>(null);
+  const dragPointRef = useRef<{ x: number; y: number } | null>(null);
+
+  function setHighlight(highlight: SelectionHighlight | null): void {
+    selectedHighlightRef.current = highlight;
+    setSelectedHighlight(highlight);
+  }
 
   function dismissMenu(clearBrowserSelection: boolean): void {
     setMenuOpen(false);
-    setSelectedHighlight(null);
+    setHighlight(null);
+    dragRef.current = null;
     vocab.reset();
     if (clearBrowserSelection) clearSelection();
   }
@@ -340,10 +423,35 @@ export function useSelectionMenu({ containerRef, vocab }: {
 
     vocab.setSelectedText(text);
     vocab.setSelectedSentenceIdx(sentenceIdx);
-    setSelectedHighlight(null);
+    setHighlight(null);
 
     setMenuPos(getMenuPosition(range));
     setMenuOpen(true);
+  }
+
+  // Commits a character range of a sentence as the current selection: sets
+  // the highlight, hands the text to the vocab controller, and (re)opens the
+  // menu next to the range. Shared by the single-word tap and handle drags.
+  function applyRange(textEl: Element, start: number, end: number): boolean {
+    const text = (textEl.textContent ?? "").slice(start, end).trim();
+    if (!text) return false;
+
+    const range = createRangeFromTextOffsets(textEl, start, end);
+    if (!range) return false;
+
+    const sentenceIdx = getSentenceIdxFromRange(range);
+    if (sentenceIdx === null) return false;
+
+    clearSelection();
+    vocab.setSelectedText(text);
+    vocab.setSelectedSentenceIdx(sentenceIdx);
+    setHighlight({ sentenceIdx, start, end });
+
+    setMenuPos(getMenuPosition(range, HANDLE_MENU_GAP));
+    setMenuOpen(true);
+    lastTouchLookupAtRef.current = Date.now();
+
+    return true;
   }
 
   function selectWordAtPoint(clientX: number, clientY: number): boolean {
@@ -362,22 +470,94 @@ export function useSelectionMenu({ containerRef, vocab }: {
     const word = getWordBounds(textEl.textContent ?? "", textOffset);
     if (!word) return false;
 
-    const range = createRangeFromTextOffsets(textEl, word.start, word.end);
-    if (!range) return false;
+    return applyRange(textEl, word.start, word.end);
+  }
 
-    const sentenceIdx = getSentenceIdxFromRange(range);
-    if (sentenceIdx === null) return false;
+  function getSelectedTextElement(highlight: SelectionHighlight): HTMLElement | null {
+    const el = containerRef.current?.querySelector(
+      `li[data-idx="${highlight.sentenceIdx}"] ${ORIGINAL_TEXT_SELECTOR}`,
+    );
+    return el instanceof HTMLElement ? el : null;
+  }
 
-    clearSelection();
-    vocab.setSelectedText(word.text);
-    vocab.setSelectedSentenceIdx(sentenceIdx);
-    setSelectedHighlight({ sentenceIdx, start: word.start, end: word.end });
+  function updateDragRange(clientX: number, clientY: number): void {
+    const drag = dragRef.current;
+    const highlight = selectedHighlightRef.current;
+    if (!drag || !highlight) return;
 
-    setMenuPos(getMenuPosition(range));
-    setMenuOpen(true);
-    lastTouchLookupAtRef.current = Date.now();
+    const offset = getDragOffsetInSentence(
+      drag.textEl,
+      clientX - drag.offsetX,
+      clientY - drag.offsetY,
+    );
+    if (offset === null) return;
 
-    return true;
+    const word = getWordBounds(drag.textEl.textContent ?? "", offset);
+    if (!word) return;
+
+    const start = Math.min(drag.anchorStart, word.start);
+    const end = Math.max(drag.anchorEnd, word.end);
+    if (start === highlight.start && end === highlight.end) return;
+
+    setHighlight({ sentenceIdx: highlight.sentenceIdx, start, end });
+  }
+
+  function onHandleTouchStart(
+    which: "start" | "end",
+    e: ReactTouchEvent<HTMLElement>,
+  ): void {
+    const highlight = selectedHighlightRef.current;
+    const touch = e.touches[0];
+    if (!highlight || !selectionHandles || !touch) return;
+
+    const textEl = getSelectedTextElement(highlight);
+    if (!textEl) return;
+
+    const text = textEl.textContent ?? "";
+    const anchor =
+      which === "end"
+        ? getWordBounds(text, highlight.start)
+        : getWordBounds(text, Math.max(0, highlight.end - 1));
+    const grabbed = which === "start" ? selectionHandles.start : selectionHandles.end;
+
+    dragRef.current = {
+      textEl,
+      anchorStart: anchor ? anchor.start : highlight.start,
+      anchorEnd: anchor ? anchor.end : highlight.end,
+      offsetX: touch.clientX - grabbed.x,
+      offsetY: touch.clientY - (grabbed.y + grabbed.height / 2),
+    };
+
+    // Hide the menu while dragging so it never covers the growing range.
+    setMenuOpen(false);
+  }
+
+  function onHandleTouchMove(e: ReactTouchEvent<HTMLElement>): void {
+    const touch = e.touches[0];
+    if (!dragRef.current || !touch) return;
+
+    dragPointRef.current = { x: touch.clientX, y: touch.clientY };
+    if (dragRafRef.current !== null) return;
+
+    // rAF throttle: at most one caret hit-test per frame.
+    dragRafRef.current = requestAnimationFrame(() => {
+      dragRafRef.current = null;
+      const point = dragPointRef.current;
+      if (point) updateDragRange(point.x, point.y);
+    });
+  }
+
+  function onHandleTouchEnd(): void {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    dragPointRef.current = null;
+
+    if (!drag) return;
+
+    const highlight = selectedHighlightRef.current;
+    if (!highlight || !applyRange(drag.textEl, highlight.start, highlight.end)) {
+      closeMenu();
+    }
   }
 
   function handleTouchStart(e: ReactTouchEvent<HTMLElement>): void {
@@ -423,6 +603,58 @@ export function useSelectionMenu({ containerRef, vocab }: {
     }
   }
 
+  // Keep the fixed-position drag handles glued to both ends of the highlight,
+  // recomputing whenever the range changes and through page/container scrolls.
+  useEffect(() => {
+    if (!selectedHighlight) {
+      setSelectionHandles(null);
+      return;
+    }
+
+    const textEl = getSelectedTextElement(selectedHighlight);
+    if (!textEl) {
+      setSelectionHandles(null);
+      return;
+    }
+
+    function update(): void {
+      const range = createRangeFromTextOffsets(
+        textEl,
+        selectedHighlight.start,
+        selectedHighlight.end,
+      );
+      const rects = range
+        ? Array.from(range.getClientRects()).filter((r) => r.width > 0 && r.height > 0)
+        : [];
+
+      if (!rects.length) {
+        setSelectionHandles(null);
+        return;
+      }
+
+      const first = rects[0];
+      const last = rects[rects.length - 1];
+      setSelectionHandles({
+        start: { x: first.left, y: first.top, height: first.height },
+        end: { x: last.right, y: last.top, height: last.height },
+      });
+    }
+
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [selectedHighlight]);
+
+  useEffect(() => {
+    return () => {
+      if (dragRafRef.current !== null) cancelAnimationFrame(dragRafRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     function onDocMouseDown(e: MouseEvent): void {
       if (!menuOpen) return;
@@ -444,10 +676,14 @@ export function useSelectionMenu({ containerRef, vocab }: {
     menuOpen,
     menuPos,
     selectedHighlight,
+    selectionHandles,
     handleMouseUp,
     handleTouchStart,
     handleTouchMove,
     handleTouchEnd,
+    onHandleTouchStart,
+    onHandleTouchMove,
+    onHandleTouchEnd,
     closeMenu,
     clearSelection,
   };
