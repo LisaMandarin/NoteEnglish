@@ -688,6 +688,113 @@ h1, h2, h3 {
 }
 .skel-box__preview { font-family: var(--font-heading); color: var(--text-main); }
 
+/* ── 富文字筆記（NoteEditor + 顯示卡）─────────────────────────────────────────
+   .note-content = 唯讀顯示（主畫面卡、分享頁、彙整視窗都用它）；
+   .note-editor 包工具列 + Tiptap contenteditable。兩邊共用排版規則。 */
+.note-editor {
+  border: 1px solid color-mix(in srgb, var(--card-border) 30%, transparent);
+  border-radius: 8px;
+  background: white;
+}
+.note-editor:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.note-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border-bottom: 1px solid color-mix(in srgb, var(--card-border) 15%, transparent);
+  /* 行動版窄螢幕：工具列水平捲動而不是溢出 */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.note-toolbar-btn--active {
+  background: color-mix(in srgb, var(--accent) 14%, transparent) !important;
+  color: var(--accent) !important;
+}
+.note-editor-content .ProseMirror {
+  padding: 8px 12px;
+  min-height: 3.5em;
+  outline: none;
+}
+/* Tiptap Placeholder extension 的空內容提示 */
+.note-editor-content .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--text-muted);
+}
+.note-bubble-menu {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px;
+  background: white;
+  border: 1px solid color-mix(in srgb, var(--card-border) 25%, transparent);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+}
+.note-color-panel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.note-color-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--card-border) 30%, transparent);
+  cursor: pointer;
+  padding: 0;
+}
+.note-color-swatch--active {
+  outline: 2px solid var(--text-main);
+  outline-offset: 1px;
+}
+.note-color-swatch--default {
+  background: white;
+  color: var(--text-main);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1;
+}
+.note-link-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* 共用排版：Tailwind preflight 拿掉了清單樣式，這裡還原。
+   同時套在顯示卡 (.note-content) 與編輯器 (.ProseMirror) 內。 */
+.note-content p,
+.note-editor-content .ProseMirror p {
+  margin: 0 0 0.25em;
+}
+.note-content p:last-child,
+.note-editor-content .ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+.note-content ul,
+.note-editor-content .ProseMirror ul {
+  list-style: disc;
+  margin: 0 0 0.25em;
+  padding-left: 1.4em;
+}
+.note-content ol,
+.note-editor-content .ProseMirror ol {
+  list-style: decimal;
+  margin: 0 0 0.25em;
+  padding-left: 1.4em;
+}
+.note-content a,
+.note-editor-content .ProseMirror a {
+  color: var(--accent);
+  text-decoration: underline;
+  word-break: break-all;
+}
+
 @media print {
   .no-print {
     display: none !important;
