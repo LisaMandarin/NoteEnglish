@@ -1,6 +1,7 @@
 import { useState } from "react";
 import AppTitle from "./AppTitle";
 import AppTextarea from "./AppTextarea";
+import SessionTitleBar from "./SessionTitleBar";
 import TranslationsList from "../Translations";
 import TipBox from "./TipBox";
 import TokenUsageView from "../shared/TokenUsageView";
@@ -62,6 +63,7 @@ export default function AppMainSection({
           </div>
         )}
         <div className="w-full m-0 px-8 py-10 box-border sm:px-12">
+          <SessionTitleBar />
           <AppTextarea />
 
           <div className="mt-6">

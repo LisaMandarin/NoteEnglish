@@ -1,6 +1,6 @@
-import type { Dispatch, MouseEvent, RefObject, SetStateAction } from "react";
+import type { Dispatch, MouseEvent, SetStateAction } from "react";
 import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined, FolderOpenOutlined, ShareAltOutlined } from "@ant-design/icons";
-import { Dropdown, Tooltip } from "antd";
+import { Dropdown, Input, Tooltip } from "antd";
 import type { MenuProps } from "antd";
 import type { SessionGroup, SessionRecord } from "../../../types";
 import { formatUpdatedAt } from "../../../lib/formatUpdatedAt";
@@ -20,7 +20,6 @@ export default function SessionItem({
   editValue,
   setEditValue,
   editSaving,
-  editInputRef,
   onLoad,
   onStartEdit,
   onCancelEdit,
@@ -40,7 +39,6 @@ export default function SessionItem({
   editValue: string;
   setEditValue: Dispatch<SetStateAction<string>>;
   editSaving: boolean;
-  editInputRef: RefObject<HTMLInputElement | null>;
   onLoad: (sessionId: string) => void;
   onStartEdit: (sessionId: string, title: string, e: MouseEvent) => void;
   onCancelEdit: (e?: MouseEvent) => void;
@@ -103,9 +101,11 @@ export default function SessionItem({
       {isEditing ? (
         // Edit mode — inline rename row replacing the title
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          {/* Rename text input */}
-          <input
-            ref={editInputRef}
+          {/* Rename text input — antd supplies the border/background/padding */}
+          <Input
+            autoFocus
+            allowClear
+            size="small"
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={(e) => {
@@ -113,7 +113,7 @@ export default function SessionItem({
               if (e.key === "Escape") onCancelEdit(e as unknown as MouseEvent);
             }}
             disabled={editSaving}
-            className="min-w-0 flex-1 rounded-lg border border-black/20 bg-white px-2 py-0.5 text-sm font-semibold text-black/85 outline-none focus:border-(--accent)"
+            className="min-w-0 flex-1 text-sm font-semibold"
           />
           {/* Confirm rename button (checkmark) */}
           <button

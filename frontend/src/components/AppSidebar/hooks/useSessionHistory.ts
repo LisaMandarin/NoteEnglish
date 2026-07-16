@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { listSessionGroups, listSessions } from "../../../lib/api";
+import { onSessionTitleUpdated } from "../../../lib/sessionTitleEvent";
 import type { SessionGroup, SessionRecord } from "../../../types";
 
 // Sessions load in full (paged client-side into topic folders). We fetch in
@@ -73,6 +74,19 @@ export function useSessionHistory(activePanel: string): {
     load();
     return () => { cancelled = true; };
   }, [activePanel, refreshCount]);
+
+  // The single row-patch path for renames from either surface (sidebar rows
+  // via HistoryPanel, main section via SessionTitleBar) — updates the row in
+  // place, deliberately without a refetch (see the comment above).
+  useEffect(() => onSessionTitleUpdated((detail) => {
+    setHistoryItems((prev) =>
+      prev.map((s) =>
+        s.id === detail.sessionId
+          ? { ...s, title: detail.title, updated_at: detail.updatedAt ?? s.updated_at }
+          : s
+      )
+    );
+  }), []);
 
   return { historyItems, setHistoryItems, groups, setGroups, historyLoading, historyError, refresh };
 }

@@ -1,56 +1,48 @@
-import { useRef, useState } from "react";
-import type { Dispatch, MouseEvent, RefObject, SetStateAction } from "react";
-import { updateSessionTitle } from "../../../lib/api";
+import { useState } from "react";
+import type { Dispatch, MouseEvent, SetStateAction } from "react";
+import { useTitleEdit } from "../../../hooks/useTitleEdit";
 
+// Sidebar variant of useTitleEdit: adds WHICH row is being edited (editingId)
+// and stops click bubbling so the row's load-session click doesn't also fire.
+// All trim/no-op/save semantics live in the shared hook.
 export function useSessionEdit(onTitleUpdated: (sessionId: string, title: string, updatedAt?: string) => void): {
   editingId: string | null;
   editValue: string;
   setEditValue: Dispatch<SetStateAction<string>>;
   editSaving: boolean;
-  editInputRef: RefObject<HTMLInputElement | null>;
   startEdit: (sessionId: string, currentTitle: string, e?: MouseEvent) => void;
   cancelEdit: (e?: MouseEvent) => void;
   confirmEdit: (sessionId: string, currentTitle: string, e?: MouseEvent) => Promise<void>;
 } {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState<string>("");
-  const [editSaving, setEditSaving] = useState(false);
-  const editInputRef = useRef<HTMLInputElement | null>(null);
+  const { value, setValue, saving, start, cancel, confirm } = useTitleEdit(onTitleUpdated);
 
   function startEdit(sessionId: string, currentTitle: string, e?: MouseEvent): void {
     e?.stopPropagation();
     setEditingId(sessionId);
-    setEditValue(currentTitle);
-    setTimeout(() => editInputRef.current?.focus(), 0);
+    start(currentTitle);
   }
 
   function cancelEdit(e?: MouseEvent): void {
     e?.stopPropagation();
     setEditingId(null);
-    setEditValue("");
+    cancel();
   }
 
   async function confirmEdit(sessionId: string, currentTitle: string, e?: MouseEvent): Promise<void> {
     e?.stopPropagation();
-    const trimmed = editValue.trim();
-    if (!trimmed || trimmed === currentTitle) { cancelEdit(); return; }
-    setEditSaving(true);
     try {
-      const updated = await updateSessionTitle(sessionId, trimmed);
-      onTitleUpdated(sessionId, trimmed, updated?.updated_at);
+      await confirm(sessionId, currentTitle);
     } finally {
-      setEditSaving(false);
       setEditingId(null);
-      setEditValue("");
     }
   }
 
   return {
     editingId,
-    editValue,
-    setEditValue,
-    editSaving,
-    editInputRef,
+    editValue: value,
+    setEditValue: setValue,
+    editSaving: saving,
     startEdit,
     cancelEdit,
     confirmEdit,

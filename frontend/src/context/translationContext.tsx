@@ -74,33 +74,26 @@ const initialState: AppState = {
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case "set_text":
+      // currentSession's title is already decided by the backend (first-save
+      // build_session_title, or a user rename) — don't recompute it locally
+      // from the edited text, or a custom title flashes back to the raw text
+      // until the next autosave round-trips it.
       return {
         ...state,
         text: action.payload,
         saveError: "",
         updatedAt: null,
-        currentSession: state.currentSession
-          ? {
-              ...state.currentSession,
-              title: buildSessionTitle(action.payload),
-            }
-          : null,
       };
     case "set_ocr_text":
       // OCR replaces the source text of the *current* session: keep currentSession
-      // so a later translate overwrites it, but drop the now-stale translations.
+      // (including its title, per set_text above) so a later translate overwrites
+      // it, but drop the now-stale translations.
       return {
         ...state,
         text: action.payload,
         saveError: "",
         updatedAt: null,
         sentences: [],
-        currentSession: state.currentSession
-          ? {
-              ...state.currentSession,
-              title: buildSessionTitle(action.payload),
-            }
-          : null,
       };
     case "clear":
       return {
@@ -296,16 +289,6 @@ function hasGeneratedTranslations(sentences: Sentence[]): boolean {
         sentence.translation.trim().length > 0
     )
   );
-}
-
-function buildSessionTitle(text: string): string {
-  const firstLine = text
-    .split("\n")
-    .map((line) => line.trim())
-    .find(Boolean);
-
-  if (!firstLine) return "Untitled session";
-  return firstLine.slice(0, 80);
 }
 
 async function saveGeneratedProgress({

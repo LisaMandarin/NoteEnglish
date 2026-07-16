@@ -170,6 +170,15 @@ h1, h2, h3 {
   color: var(--text-on-accent);
 }
 
+/* AntD Input's allowClear icon defaults to rgba(0,0,0,0.25) — under 3:1 against
+   white/card backgrounds. Override to --text-muted (#5f6b77, ~7.5:1) so the
+   clear button passes WCAG AA for meaningful icons. Scoped to the clear-icon
+   wrapper: anticon-close-circle is also antd's error icon (Alert, message.error)
+   and those must stay red. */
+.ant-input-clear-icon .anticon-close-circle {
+  color: var(--text-muted);
+}
+
 /* ── Quiz ─────────────────────────────────────────────────────────────────── */
 
 /* Like .app-title-heading above: antd reset.css is unlayered, so its plain
