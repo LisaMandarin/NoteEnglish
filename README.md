@@ -84,7 +84,7 @@ NoteEnglish/
 
 ## Notes
 - Backend vocab cache is in-memory only — resets on server restart.
-- `GEMINI_API_KEY` is required for the translation, vocab detail, sentence structure analysis, and OCR endpoints.
+- `GEMINI_API_KEY` is required for the translation, vocab detail, sentence structure analysis, OCR, and quiz endpoints.
 
 ---
 
@@ -174,4 +174,4 @@ NoteEnglish/
 
 ### 備註
 - 後端單字快取為記憶體快取，重啟服務後會清空。
-- `GEMINI_API_KEY` 為翻譯、單字細節查詢、句構分析與圖片轉文字必要設定。
+- `GEMINI_API_KEY` 為翻譯、單字細節查詢、句構分析、圖片轉文字與測驗出題必要設定。
