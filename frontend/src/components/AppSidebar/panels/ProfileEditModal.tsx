@@ -53,6 +53,17 @@ export default function ProfileEditModal({ open, onClose }: {
     setSaving(true);
     try {
       const displayName = values.display_name.trim();
+      // Auth metadata FIRST (supabase-js returns errors instead of throwing,
+      // so check explicitly). Order matters: ensure_profile re-syncs
+      // profiles.display_name from auth metadata on every login, so if the
+      // second write below fails, the stores converge to the NEW name on the
+      // next login. The reverse order would silently revert a rename.
+      // This also keeps the header greeting (App.tsx getDisplayName) fresh;
+      // supabase-js stays auth-only here, per the architecture rules.
+      const { error: authError } = await supabase.auth.updateUser({
+        data: { display_name: displayName },
+      });
+      if (authError) throw authError;
       await updateProfile({
         display_name: displayName,
         bio: values.bio ?? "",
@@ -62,10 +73,6 @@ export default function ProfileEditModal({ open, onClose }: {
         })),
         is_public: values.is_public,
       });
-      // Keep Supabase auth metadata in sync so the header greeting
-      // (App.tsx getDisplayName) reflects the new name immediately —
-      // supabase-js stays auth-only here, per the architecture rules.
-      await supabase.auth.updateUser({ data: { display_name: displayName } });
       message.success("個人檔案已更新");
       onClose();
     } catch {

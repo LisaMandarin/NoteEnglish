@@ -75,6 +75,28 @@ class UpdateProfileValidationTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             UpdateProfileRequest(**self._valid_payload(display_name=""))
 
+    def test_whitespace_only_display_name_rejected(self):
+        with self.assertRaises(ValidationError):
+            UpdateProfileRequest(**self._valid_payload(display_name="   "))
+
+    def test_whitespace_only_link_label_rejected(self):
+        with self.assertRaises(ValidationError):
+            UpdateProfileRequest(
+                **self._valid_payload(
+                    links=[{"label": " \t ", "url": "https://example.com"}]
+                )
+            )
+
+    def test_values_are_stripped(self):
+        req = UpdateProfileRequest(
+            **self._valid_payload(
+                display_name="  Lisa  ",
+                links=[{"label": "  Blog  ", "url": "https://example.com"}],
+            )
+        )
+        self.assertEqual(req.display_name, "Lisa")
+        self.assertEqual(req.links[0].label, "Blog")
+
 
 class UpdateProfileRouteTests(unittest.TestCase):
     def test_update_serializes_links_and_targets_caller(self):
