@@ -35,8 +35,15 @@ export default function TtsButton({
   } | null>(null);
 
   // Controls keep their own pointer behavior; everywhere else on the bar drags.
+  // The speed <Select>'s dropdown renders in a body-level portal but stays a
+  // React-tree child of this bar, so its option pointerdown events still bubble
+  // here — match `.ant-select-dropdown` too or capturing the pointer would
+  // hijack the option click and the speed never changes.
   function isInteractiveTarget(target: EventTarget | null): boolean {
-    return target instanceof Element && !!target.closest("button, .ant-slider, .ant-select, input");
+    return (
+      target instanceof Element &&
+      !!target.closest("button, .ant-slider, .ant-select, .ant-select-dropdown, input")
+    );
   }
 
   function onPlayerPointerDown(e: React.PointerEvent<HTMLDivElement>): void {
