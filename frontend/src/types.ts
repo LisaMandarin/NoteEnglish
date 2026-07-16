@@ -85,7 +85,37 @@ export type SharedSessionDetail = {
     updated_at: string;
   };
   creator_name: string | null;
+  // Present only when the creator's profile is public — render the creator
+  // name as a link to ?profile={creator_id} iff this is non-null.
+  creator_id: string | null;
   is_favorited: boolean;
+};
+
+// ── User profile ──────────────────────────────────────────────────────────────
+// Mirrors backend app/models/profile.py (snake_case).
+
+export type ProfileLink = { label: string; url: string };
+
+// GET /api/profiles/{user_id} — what any logged-in user may see; never email.
+export type PublicProfile = {
+  id: string;
+  display_name: string | null;
+  bio: string | null;
+  links: ProfileLink[];
+};
+
+// GET /api/profile/me — owner-only shape.
+export type MyProfile = PublicProfile & {
+  email: string | null;
+  is_public: boolean;
+};
+
+// PATCH /api/profile request body.
+export type UpdateProfilePayload = {
+  display_name: string;
+  bio: string;
+  links: ProfileLink[];
+  is_public: boolean;
 };
 
 // ── Link preview（筆記內連結的 OG meta 預覽）───────────────────────────────────

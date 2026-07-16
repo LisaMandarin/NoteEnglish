@@ -11,6 +11,7 @@ import AdminLoginPage from "./components/Auth/AdminLoginPage";
 import ResetPasswordPage from "./components/Auth/ResetPasswordPage";
 import AdminDashboard from "./components/Admin";
 import SharedView from "./components/SharedView";
+import ProfileView from "./components/ProfileView";
 import { supabase } from "./lib/supabase";
 import { ensureProfile as ensureProfileApi } from "./lib/api";
 
@@ -141,6 +142,7 @@ export default function App(): React.ReactElement {
   const isResetPasswordView = params.get("view") === "reset-password";
   const isAdminDashboard = window.location.pathname === "/admin-dashboard";
   const sharedToken = params.get("shared");
+  const profileId = params.get("profile");
 
   useEffect(() => {
     let mounted = true;
@@ -222,6 +224,12 @@ export default function App(): React.ReactElement {
 
   if (sharedToken) {
     return <SharedView token={sharedToken} />;
+  }
+
+  if (profileId) {
+    // Read-only public profile page — like SharedView, rendered outside
+    // TranslationProvider and behind the same login gate above.
+    return <ProfileView userId={profileId} />;
   }
 
   return (

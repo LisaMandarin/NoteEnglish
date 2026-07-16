@@ -15,6 +15,9 @@ class SharedSessionDetail(BaseModel):
     sentences: list[SessionSentence] = Field(default_factory=list)
     session: SessionSummary
     creator_name: str | None = None
+    # Set only when the creator's profile is public — the client renders the
+    # creator name as a link to ?profile={creator_id} iff this is present.
+    creator_id: str | None = None
     is_favorited: bool = False
 
 
