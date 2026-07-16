@@ -2,7 +2,10 @@ import { supabase } from "./supabase";
 import type {
   FavoriteItem,
   LinkPreview,
+  MyProfile,
   ParseResult,
+  PublicProfile,
+  UpdateProfilePayload,
   QuizResultPayloadItem,
   Sentence,
   SentenceType,
@@ -115,6 +118,21 @@ export async function ensureProfile(displayName: string): Promise<unknown> {
     method: "POST",
     body: JSON.stringify({ display_name: displayName }),
   });
+}
+
+export async function getMyProfile(): Promise<MyProfile> {
+  return apiFetch("/api/profile/me") as Promise<MyProfile>;
+}
+
+export async function updateProfile(payload: UpdateProfilePayload): Promise<MyProfile> {
+  return apiFetch("/api/profile", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  }) as Promise<MyProfile>;
+}
+
+export async function getPublicProfile(userId: string): Promise<PublicProfile> {
+  return apiFetch(`/api/profiles/${userId}`) as Promise<PublicProfile>;
 }
 
 export async function listSessions(limit = 5, offset = 0): Promise<SessionPage> {

@@ -170,6 +170,21 @@ h1, h2, h3 {
   color: var(--text-on-accent);
 }
 
+/* Accent-colored inline text link (profile links, shared-page creator name).
+   Plain CSS for the same reason as .btn-accent: antd reset's unlayered `a`
+   color rule (#1677ff, 3.9:1 on --card-bg) beats Tailwind's layered
+   text-(--accent). --accent on --card-bg reads ~7:1. */
+.link-accent {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.link-accent:hover,
+.link-accent:focus-visible {
+  color: var(--accent);
+  text-decoration-thickness: 2px;
+}
+
 /* AntD Input's allowClear icon defaults to rgba(0,0,0,0.25) — under 3:1 against
    white/card backgrounds. Override to --text-muted (#5f6b77, ~7.5:1) so the
    clear button passes WCAG AA for meaningful icons. Scoped to the clear-icon

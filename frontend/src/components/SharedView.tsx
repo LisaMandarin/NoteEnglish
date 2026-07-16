@@ -120,7 +120,21 @@ export default function SharedView({ token }: { token: string }): React.ReactEle
                   <div className="min-w-0">
                     <h2 className="m-0 text-2xl leading-snug sm:text-3xl">{title}</h2>
                     <p className="m-0 mt-1 text-sm text-black/60">
-                      由 {detail.creator_name?.trim() || "使用者"} 分享
+                      由{" "}
+                      {detail.creator_id ? (
+                        // Same-page navigation so the browser back button
+                        // returns to the article. Plain text when the creator's
+                        // profile is private (creator_id is null).
+                        <a
+                          href={`${window.location.pathname}?profile=${detail.creator_id}`}
+                          className="link-accent"
+                        >
+                          {detail.creator_name?.trim() || "使用者"}
+                        </a>
+                      ) : (
+                        detail.creator_name?.trim() || "使用者"
+                      )}{" "}
+                      分享
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">

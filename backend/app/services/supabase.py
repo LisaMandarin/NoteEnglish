@@ -135,6 +135,54 @@ def ensure_profile(user: dict, display_name: str) -> None:
     )
 
 
+_PROFILE_FIELDS = "id,email,display_name,bio,links,is_public"
+# Public view never selects email.
+_PUBLIC_PROFILE_FIELDS = "id,display_name,bio,links,is_public"
+
+
+def get_profile(user_id: str) -> dict:
+    query = parse.urlencode({"id": f"eq.{user_id}", "select": _PROFILE_FIELDS})
+    rows = _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/profiles?{query}",
+        headers=_service_headers(),
+    ) or []
+    if not rows:
+        raise HTTPException(status_code=404, detail="Profile not found.")
+    return rows[0]
+
+
+def update_profile(user_id: str, payload: dict) -> dict:
+    query = parse.urlencode({"id": f"eq.{user_id}", "select": _PROFILE_FIELDS})
+    rows = _request_json(
+        "PATCH",
+        f"{settings.supabase_url}/rest/v1/profiles?{query}",
+        headers=_service_headers("return=representation"),
+        payload=payload,
+    ) or []
+    if not rows:
+        raise HTTPException(status_code=404, detail="Profile not found.")
+    return rows[0]
+
+
+def get_public_profile(user_id: str) -> dict:
+    """Profile as seen by other users. A private profile 404s exactly like a
+    missing one so the two cases stay indistinguishable to callers."""
+    query = parse.urlencode(
+        {"id": f"eq.{user_id}", "select": _PUBLIC_PROFILE_FIELDS}
+    )
+    rows = _request_json(
+        "GET",
+        f"{settings.supabase_url}/rest/v1/profiles?{query}",
+        headers=_service_headers(),
+    ) or []
+    if not rows or not rows[0].get("is_public"):
+        raise HTTPException(status_code=404, detail="Profile not found.")
+    profile = rows[0]
+    profile.pop("is_public", None)
+    return profile
+
+
 def list_sessions(user_id: str, limit: int = 5, offset: int = 0) -> dict:
     query = parse.urlencode(
         {
@@ -1278,14 +1326,18 @@ def _get_shared_session_row(token: str) -> dict:
     return rows[0]
 
 
-def _creator_name(owner_id: str) -> str | None:
-    query = parse.urlencode({"id": f"eq.{owner_id}", "select": "display_name"})
+def _creator_profile(owner_id: str) -> dict:
+    """display_name + is_public in one query — the shared view needs both to
+    decide whether the creator name links to their profile page."""
+    query = parse.urlencode(
+        {"id": f"eq.{owner_id}", "select": "display_name,is_public"}
+    )
     rows = _request_json(
         "GET",
         f"{settings.supabase_url}/rest/v1/profiles?{query}",
         headers=_service_headers(),
     ) or []
-    return rows[0].get("display_name") if rows else None
+    return rows[0] if rows else {}
 
 
 def create_share_token(user_id: str, session_id: str) -> dict:
@@ -1356,7 +1408,11 @@ def get_shared_session(viewer_id: str, token: str) -> dict:
         headers=_service_headers(),
     ) or []
 
-    detail["creator_name"] = _creator_name(owner_id)
+    creator = _creator_profile(owner_id)
+    detail["creator_name"] = creator.get("display_name")
+    # Link target only when the creator's profile is public; a private creator
+    # renders as plain text on the client.
+    detail["creator_id"] = owner_id if creator.get("is_public") else None
     detail["is_favorited"] = bool(fav_rows)
     return detail
 
