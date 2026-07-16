@@ -11,6 +11,7 @@ import {
   setSessionGroup,
 } from "../../../lib/api";
 import type { SessionGroup, SessionRecord } from "../../../types";
+import { dispatchSessionTitleUpdated } from "../../../lib/sessionTitleEvent";
 import { useSessionEdit } from "../hooks/useSessionEdit";
 import { useSessionHistory } from "../hooks/useSessionHistory";
 import SessionItem from "./SessionItem";
@@ -63,19 +64,15 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
   }, [activePanel]);
 
   function handleTitleUpdated(sessionId: string, trimmed: string, updatedAt?: string): void {
-    setHistoryItems((prev) =>
-      prev.map((s) =>
-        s.id === sessionId
-          ? { ...s, title: trimmed, updated_at: updatedAt ?? s.updated_at }
-          : s
-      )
-    );
+    // The list row itself is patched by useSessionHistory's shared event
+    // listener — the same channel main-section renames (SessionTitleBar) use.
+    dispatchSessionTitleUpdated({ sessionId, title: trimmed, updatedAt });
     if (sessionId === currentSession?.id) {
       updateCurrentSessionTitle(trimmed);
     }
   }
 
-  const { editingId, editValue, setEditValue, editSaving, editInputRef, startEdit, cancelEdit, confirmEdit } =
+  const { editingId, editValue, setEditValue, editSaving, startEdit, cancelEdit, confirmEdit } =
     useSessionEdit(handleTitleUpdated);
 
   async function handleDelete(sessionId: string, isCurrent: boolean, e: MouseEvent): Promise<void> {
@@ -225,7 +222,6 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
         editValue={editValue}
         setEditValue={setEditValue}
         editSaving={editSaving}
-        editInputRef={editInputRef}
         onLoad={handleLoad}
         onStartEdit={startEdit}
         onCancelEdit={cancelEdit}
