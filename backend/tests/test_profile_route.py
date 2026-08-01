@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from app.models.profile import UpdateProfileRequest
 from app.routes import profile as profile_route
 from app.services import supabase
+from tests.fakes import FakeRequestJson
 
 USER = {"id": "user-1", "email": "lisa@example.com"}
 
@@ -18,23 +19,6 @@ PROFILE_ROW = {
     "links": [{"label": "Blog", "url": "https://example.com/blog"}],
     "is_public": True,
 }
-
-
-class FakeRequestJson:
-    """Same shape as the fake in test_share_route: consume (method, url_part,
-    response) rules in order so repeated endpoints can answer differently."""
-
-    def __init__(self, rules):
-        self.rules = list(rules)
-        self.calls = []
-
-    def __call__(self, method, url, *, headers=None, payload=None):
-        self.calls.append({"method": method, "url": url, "payload": payload})
-        for i, (rule_method, url_part, response) in enumerate(self.rules):
-            if rule_method == method and url_part in url:
-                self.rules.pop(i)
-                return response
-        raise AssertionError(f"Unexpected request: {method} {url}")
 
 
 class UpdateProfileValidationTests(unittest.TestCase):

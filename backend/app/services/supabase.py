@@ -141,16 +141,31 @@ _PROFILE_FIELDS = "id,email,display_name,bio,links,is_public"
 _PUBLIC_PROFILE_FIELDS = "id,display_name,bio,links,is_public"
 
 
-def get_profile(user_id: str) -> dict:
-    query = parse.urlencode({"id": f"eq.{user_id}", "select": _PROFILE_FIELDS})
+def _fetch_profile_row(user_id: str, fields: str) -> dict | None:
+    query = parse.urlencode({"id": f"eq.{user_id}", "select": fields})
     rows = _request_json(
         "GET",
         f"{settings.supabase_url}/rest/v1/profiles?{query}",
         headers=_service_headers(),
     ) or []
-    if not rows:
+    return rows[0] if rows else None
+
+
+def _visible_to_others(row: dict | None) -> dict | None:
+    """The is_public policy shared by every caller that shows profile data to
+    someone other than its owner: missing and private rows both resolve to
+    None, so they stay indistinguishable. Reuse this for any future
+    other-user-facing profile field instead of re-deriving the check."""
+    if row is None or not row.get("is_public"):
+        return None
+    return row
+
+
+def get_profile(user_id: str) -> dict:
+    row = _fetch_profile_row(user_id, _PROFILE_FIELDS)
+    if row is None:
         raise HTTPException(status_code=404, detail="Profile not found.")
-    return rows[0]
+    return row
 
 
 def update_profile(user_id: str, payload: dict) -> dict:
@@ -169,19 +184,11 @@ def update_profile(user_id: str, payload: dict) -> dict:
 def get_public_profile(user_id: str) -> dict:
     """Profile as seen by other users. A private profile 404s exactly like a
     missing one so the two cases stay indistinguishable to callers."""
-    query = parse.urlencode(
-        {"id": f"eq.{user_id}", "select": _PUBLIC_PROFILE_FIELDS}
-    )
-    rows = _request_json(
-        "GET",
-        f"{settings.supabase_url}/rest/v1/profiles?{query}",
-        headers=_service_headers(),
-    ) or []
-    if not rows or not rows[0].get("is_public"):
+    row = _visible_to_others(_fetch_profile_row(user_id, _PUBLIC_PROFILE_FIELDS))
+    if row is None:
         raise HTTPException(status_code=404, detail="Profile not found.")
-    profile = rows[0]
-    profile.pop("is_public", None)
-    return profile
+    row.pop("is_public", None)
+    return row
 
 
 def list_sessions(user_id: str, limit: int = 5, offset: int = 0) -> dict:
@@ -1329,16 +1336,11 @@ def _get_shared_session_row(token: str) -> dict:
 
 def _creator_profile(owner_id: str) -> dict:
     """display_name + is_public in one query — the shared view needs both to
-    decide whether the creator name links to their profile page."""
-    query = parse.urlencode(
-        {"id": f"eq.{owner_id}", "select": "display_name,is_public"}
-    )
-    rows = _request_json(
-        "GET",
-        f"{settings.supabase_url}/rest/v1/profiles?{query}",
-        headers=_service_headers(),
-    ) or []
-    return rows[0] if rows else {}
+    decide whether the creator name links to their profile page. Deliberately
+    does NOT go through _visible_to_others: display_name must show even for a
+    private creator, only the profile link (creator_id) is is_public-gated,
+    and that decision belongs to the caller."""
+    return _fetch_profile_row(owner_id, "display_name,is_public") or {}
 
 
 def create_share_token(user_id: str, session_id: str) -> dict:
