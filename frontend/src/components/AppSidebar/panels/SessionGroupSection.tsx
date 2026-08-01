@@ -3,7 +3,7 @@ import { DeleteOutlined, DownOutlined, EditOutlined, FolderOpenOutlined, RightOu
 import { Tooltip } from "antd";
 
 // One collapsible section in the history list: a topic folder, or the special
-// "未分組" bucket (no rename/delete when onRename/onDelete are omitted).
+// "未分類" bucket (no rename/delete when onRename/onDelete are omitted).
 export default function SessionGroupSection({
   name,
   count,
@@ -50,7 +50,7 @@ export default function SessionGroupSection({
           </Tooltip>
         )}
         {onDelete && (
-          <Tooltip title="刪除主題（裡面的紀錄會退回未分組）">
+          <Tooltip title="刪除主題（裡面的紀錄會退回未分類）">
             <button
               type="button"
               onClick={onDelete}

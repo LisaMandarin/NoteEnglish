@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { FolderAddOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
-import { Input, Modal, Tooltip, message } from "antd";
+import { Input, Modal, Segmented, Tooltip, message } from "antd";
 import { useTranslation } from "../../../context/translationContext";
 import {
   createSessionGroup,
@@ -29,6 +29,21 @@ type GroupModalState =
   | { open: true; mode: "create"; forSessionId: string | null }
   | { open: true; mode: "rename"; groupId: string };
 
+// Which section — folders or the 未分類 bucket — renders first; remembered
+// per device (not synced to the account) since it's a display-only preference.
+type GroupOrder = "folders-first" | "ungrouped-first";
+const GROUP_ORDER_KEY = "ne_sidebar_group_order";
+
+function loadGroupOrder(): GroupOrder {
+  try {
+    const stored = localStorage.getItem(GROUP_ORDER_KEY);
+    if (stored === "folders-first" || stored === "ungrouped-first") return stored;
+  } catch {
+    // fall through to the default below
+  }
+  return "folders-first";
+}
+
 export default function HistoryPanel({ activePanel, onShowTranslate }: { activePanel: string; onShowTranslate: () => void }): React.ReactElement {
   const {
     state: { currentSession, sessionLoading, saving },
@@ -47,6 +62,7 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
   const [groupModal, setGroupModal] = useState<GroupModalState>({ open: false });
   const [groupName, setGroupName] = useState("");
   const [groupSaving, setGroupSaving] = useState(false);
+  const [groupOrder, setGroupOrderState] = useState<GroupOrder>(loadGroupOrder);
   // Per-section count of currently-rendered sessions (keyed by group id,
   // UNGROUPED, or FLAT); absent means the default first page.
   const [visibleCounts, setVisibleCounts] = useState<Record<string, number>>({});
@@ -55,6 +71,15 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
   const showMore = (key: string): void =>
     setVisibleCounts((prev) => ({ ...prev, [key]: (prev[key] ?? PAGE) + PAGE }));
 
+  function setGroupOrder(order: GroupOrder): void {
+    setGroupOrderState(order);
+    try {
+      localStorage.setItem(GROUP_ORDER_KEY, order);
+    } catch {
+      // Persisting is best-effort; the in-memory selection still applies.
+    }
+  }
+
   useEffect(() => {
     if (!sessionLoading) setPendingId(null);
   }, [sessionLoading]);
@@ -62,6 +87,16 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
   useEffect(() => {
     if (activePanel !== "history") setLoadedFromHistory(false);
   }, [activePanel]);
+
+  // Folders default to collapsed on first load (未分類 stays expanded, since
+  // it's often the newest/least-organized content). Only applied once, so a
+  // manual refresh doesn't re-collapse folders the user opened.
+  const foldersCollapsedInit = useRef(false);
+  useEffect(() => {
+    if (foldersCollapsedInit.current || groups.length === 0) return;
+    foldersCollapsedInit.current = true;
+    setCollapsed((prev) => new Set([...prev, ...groups.map((g) => g.id)]));
+  }, [groups]);
 
   function handleTitleUpdated(sessionId: string, trimmed: string, updatedAt?: string): void {
     // The list row itself is patched by useSessionHistory's shared event
@@ -163,7 +198,7 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
   function handleDeleteGroup(group: SessionGroup): void {
     Modal.confirm({
       title: `刪除主題「${group.name}」？`,
-      content: "主題內的學習紀錄不會被刪除，會退回未分組。",
+      content: "主題內的學習紀錄不會被刪除，會退回未分類。",
       okText: "刪除主題",
       okButtonProps: { danger: true },
       cancelText: "取消",
@@ -257,6 +292,19 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
 
   const hasGroups = groups.length > 0;
 
+  const ungroupedSection =
+    ungrouped.length > 0 ? (
+      <SessionGroupSection
+        key={UNGROUPED}
+        name="未分類"
+        count={ungrouped.length}
+        collapsed={collapsed.has(UNGROUPED)}
+        onToggle={() => toggleCollapse(UNGROUPED)}
+      >
+        {renderSection(UNGROUPED, ungrouped)}
+      </SessionGroupSection>
+    ) : null;
+
   return (
     <>
       <p className="mb-3 text-sm font-semibold uppercase tracking-[0.24em] text-(--accent)">
@@ -302,6 +350,19 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
             </Tooltip>
           </div>
         </div>
+        {hasGroups && ungrouped.length > 0 && (
+          <Segmented
+            size="small"
+            block
+            value={groupOrder}
+            onChange={(value) => setGroupOrder(value as GroupOrder)}
+            options={[
+              { label: "主題優先", value: "folders-first" },
+              { label: "未分類優先", value: "ungrouped-first" },
+            ]}
+            className="mt-3"
+          />
+        )}
         {saving && (
           <p className="mt-3 m-0 text-sm text-black/70">正在儲存目前的學習紀錄⋯⋯</p>
         )}
@@ -329,9 +390,12 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
 
         {/* Folders render whenever any exist — even with zero sessions — so an
             empty account (or one whose last session was deleted) can still see
-            and manage the topics it created. */}
+            and manage the topics it created. Order between the folders block
+            and 未分類 follows groupOrder; folders keep their own order among
+            themselves (backend sort_order). */}
         {!historyLoading && !historyError && hasGroups && (
           <div className="mt-3 space-y-4">
+            {groupOrder === "ungrouped-first" && ungroupedSection}
             {groups.map((group) => {
               const items = byGroup.get(group.id) ?? [];
               return (
@@ -352,16 +416,7 @@ export default function HistoryPanel({ activePanel, onShowTranslate }: { activeP
                 </SessionGroupSection>
               );
             })}
-            {ungrouped.length > 0 && (
-              <SessionGroupSection
-                name="未分組"
-                count={ungrouped.length}
-                collapsed={collapsed.has(UNGROUPED)}
-                onToggle={() => toggleCollapse(UNGROUPED)}
-              >
-                {renderSection(UNGROUPED, ungrouped)}
-              </SessionGroupSection>
-            )}
+            {groupOrder === "folders-first" && ungroupedSection}
           </div>
         )}
       </div>
