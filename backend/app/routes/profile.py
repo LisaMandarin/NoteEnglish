@@ -31,13 +31,20 @@ def my_profile_route(user: dict = Depends(require_user)):
 def update_profile_route(
     req: UpdateProfileRequest, user: dict = Depends(require_user)
 ):
-    payload = {
-        "display_name": req.display_name,
-        "bio": req.bio,
+    # Partial update: only fields the client actually sent are written, so
+    # omitting a field (e.g. a future "rename only" caller) leaves the rest
+    # of the stored profile untouched instead of overwriting it with the
+    # request model's defaults.
+    payload: dict = {}
+    if req.display_name is not None:
+        payload["display_name"] = req.display_name
+    if req.bio is not None:
+        payload["bio"] = req.bio
+    if req.links is not None:
         # HttpUrl is not JSON-serializable as-is; dump to plain strings.
-        "links": [link.model_dump(mode="json") for link in req.links],
-        "is_public": req.is_public,
-    }
+        payload["links"] = [link.model_dump(mode="json") for link in req.links]
+    if req.is_public is not None:
+        payload["is_public"] = req.is_public
     return update_profile(user["id"], payload)
 
 

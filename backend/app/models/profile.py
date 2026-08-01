@@ -1,7 +1,12 @@
 from pydantic import BaseModel, Field, HttpUrl, field_validator
 
 
-def _stripped_non_blank(value: str) -> str:
+def _stripped_non_blank(value: object) -> object:
+    # mode="before": strip whitespace ahead of Field's max_length check, so a
+    # value that pads out to the limit only via trailing/leading whitespace
+    # doesn't get rejected for a length it won't actually have once stored.
+    if not isinstance(value, str):
+        return value
     value = value.strip()
     if not value:
         raise ValueError("must not be blank")
@@ -16,16 +21,21 @@ class ProfileLink(BaseModel):
 
     # The API enforces its own invariant — whitespace-only labels must not
     # rely on the frontend form to be rejected.
-    _label_not_blank = field_validator("label")(_stripped_non_blank)
+    _label_not_blank = field_validator("label", mode="before")(_stripped_non_blank)
 
 
 class UpdateProfileRequest(BaseModel):
-    display_name: str = Field(min_length=1, max_length=60)
-    bio: str = Field(default="", max_length=500)
-    links: list[ProfileLink] = Field(default_factory=list, max_length=5)
-    is_public: bool = True
+    # Optional so PATCH /profile can be a true partial update — an omitted
+    # field leaves the stored value untouched instead of resetting it to the
+    # model's default (see update_profile_route).
+    display_name: str | None = Field(default=None, min_length=1, max_length=60)
+    bio: str | None = Field(default=None, max_length=500)
+    links: list[ProfileLink] | None = Field(default=None, max_length=5)
+    is_public: bool | None = None
 
-    _display_name_not_blank = field_validator("display_name")(_stripped_non_blank)
+    _display_name_not_blank = field_validator("display_name", mode="before")(
+        _stripped_non_blank
+    )
 
 
 class MyProfile(BaseModel):
