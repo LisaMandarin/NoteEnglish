@@ -1,10 +1,11 @@
 import LibraryPanel from "./panels/LibraryPanel";
 import SettingsPanel from "./panels/SettingsPanel";
 
-export default function SidebarPanelContent({ activePanel, username, email, onSignOut, onShowUsage, onShowQuizHistory, onShowTranslate }: {
+export default function SidebarPanelContent({ activePanel, username, email, userId, onSignOut, onShowUsage, onShowQuizHistory, onShowTranslate }: {
   activePanel: string | null;
   username: string;
   email: string;
+  userId: string;
   onSignOut: () => void;
   onShowUsage: () => void;
   onShowQuizHistory: () => void;
@@ -15,6 +16,7 @@ export default function SidebarPanelContent({ activePanel, username, email, onSi
       <SettingsPanel
         username={username}
         email={email}
+        userId={userId}
         onSignOut={onSignOut}
         onShowUsage={onShowUsage}
         onShowQuizHistory={onShowQuizHistory}

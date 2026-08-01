@@ -108,6 +108,7 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
             onTogglePanel={togglePanel}
             username={username}
             email={user?.email ?? ""}
+            userId={user?.id ?? ""}
             onSignOut={onSignOut}
             onShowUsage={handleShowUsage}
             onShowQuizHistory={handleShowQuizHistory}

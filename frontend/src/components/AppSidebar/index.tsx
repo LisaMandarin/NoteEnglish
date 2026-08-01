@@ -39,6 +39,7 @@ export default function AppSidebar({
   onTogglePanel,
   username,
   email,
+  userId,
   onSignOut,
   onShowUsage,
   onShowQuizHistory,
@@ -50,6 +51,7 @@ export default function AppSidebar({
   onTogglePanel: (panelName: string) => void;
   username: string;
   email: string;
+  userId: string;
   onSignOut: () => void;
   onShowUsage: () => void;
   onShowQuizHistory: () => void;
@@ -186,6 +188,7 @@ export default function AppSidebar({
             activePanel={activePanel}
             username={username}
             email={email}
+            userId={userId}
             onSignOut={onSignOut}
             onShowUsage={handleShowUsage}
             onShowQuizHistory={handleShowQuizHistory}
@@ -257,6 +260,7 @@ export default function AppSidebar({
               activePanel={activePanel}
               username={username}
               email={email}
+              userId={userId}
               onSignOut={onSignOut}
               onShowUsage={onShowUsage}
               onShowQuizHistory={onShowQuizHistory}

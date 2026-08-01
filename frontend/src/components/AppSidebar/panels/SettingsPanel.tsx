@@ -8,24 +8,22 @@ import {
   LogoutOutlined,
 } from "@ant-design/icons";
 import ProfileEditModal from "./ProfileEditModal";
-import { supabase } from "../../../lib/supabase";
 
 // Settings with the account section folded in (name / email / sign out),
 // the common mobile-app pattern — the old standalone profile panel is gone.
-export default function SettingsPanel({ username, email, onSignOut, onShowUsage, onShowQuizHistory }: {
+export default function SettingsPanel({ username, email, userId, onSignOut, onShowUsage, onShowQuizHistory }: {
   username: string;
   email: string;
+  userId: string;
   onSignOut: () => void;
   onShowUsage: () => void;
   onShowQuizHistory: () => void;
 }): React.ReactElement {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
 
-  async function handleViewPublicProfile(): Promise<void> {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const userId = session?.user?.id;
+  // Synchronous — window.open must run inside the click handler's original
+  // call stack, or Safari treats it as an unrequested popup and blocks it.
+  function handleViewPublicProfile(): void {
     if (!userId) return;
     window.open(`${window.location.pathname}?profile=${userId}`, "_blank", "noopener");
   }
