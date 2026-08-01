@@ -75,8 +75,16 @@ export default function ProfileEditModal({ open, onClose }: {
       });
       message.success("個人檔案已更新");
       onClose();
-    } catch {
-      message.error("儲存失敗，請稍後再試。");
+    } catch (err) {
+      // 422 is a validation rejection (name/bio/link format) — permanent
+      // until the input changes, unlike a network/5xx hiccup. Telling the
+      // user to "try again later" for the former is actively misleading.
+      const isValidationError = err instanceof Error && err.message.startsWith("HTTP 422");
+      message.error(
+        isValidationError
+          ? "儲存失敗，請檢查名稱、簡介或連結格式是否符合限制。"
+          : "儲存失敗，請稍後再試。"
+      );
     } finally {
       setSaving(false);
     }

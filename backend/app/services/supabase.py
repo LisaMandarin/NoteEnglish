@@ -3,6 +3,7 @@ import logging
 import re
 import ssl
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib import error, parse, request
@@ -1402,13 +1403,18 @@ def get_shared_session(viewer_id: str, token: str) -> dict:
     fav_query = parse.urlencode(
         {"user_id": f"eq.{viewer_id}", "session_id": f"eq.{session_id}", "select": "session_id"}
     )
-    fav_rows = _request_json(
-        "GET",
-        f"{settings.supabase_url}/rest/v1/shared_favorites?{fav_query}",
-        headers=_service_headers(),
-    ) or []
-
-    creator = _creator_profile(owner_id)
+    # Neither read depends on the other's result — run them concurrently
+    # instead of paying for two sequential Supabase REST round-trips.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        fav_future = pool.submit(
+            _request_json,
+            "GET",
+            f"{settings.supabase_url}/rest/v1/shared_favorites?{fav_query}",
+            headers=_service_headers(),
+        )
+        creator_future = pool.submit(_creator_profile, owner_id)
+        fav_rows = fav_future.result() or []
+        creator = creator_future.result()
     detail["creator_name"] = creator.get("display_name")
     # Link target only when the creator's profile is public; a private creator
     # renders as plain text on the client.
