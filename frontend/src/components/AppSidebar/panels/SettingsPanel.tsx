@@ -8,6 +8,7 @@ import {
   LogoutOutlined,
 } from "@ant-design/icons";
 import ProfileEditModal from "./ProfileEditModal";
+import { openAppView } from "../../../lib/openView";
 
 // Settings with the account section folded in (name / email / sign out),
 // the common mobile-app pattern — the old standalone profile panel is gone.
@@ -21,11 +22,12 @@ export default function SettingsPanel({ username, email, userId, onSignOut, onSh
 }): React.ReactElement {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
 
-  // Synchronous — window.open must run inside the click handler's original
-  // call stack, or Safari treats it as an unrequested popup and blocks it.
+  // Synchronous — the underlying window.open must run inside the click
+  // handler's original call stack, or Safari treats it as an unrequested
+  // popup and blocks it.
   function handleViewPublicProfile(): void {
     if (!userId) return;
-    window.open(`${window.location.pathname}?profile=${userId}`, "_blank", "noopener");
+    openAppView(`${window.location.pathname}?profile=${userId}`, "noopener");
   }
 
   return (

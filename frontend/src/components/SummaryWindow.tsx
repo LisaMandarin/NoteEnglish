@@ -1,8 +1,10 @@
 import { useEffect, useMemo } from "react";
 import { Button, Typography } from "antd";
+import { ArrowLeftOutlined } from "@ant-design/icons";
 import type { VocabItem } from "../types";
 import { VocabCard } from "./Vocab/VocabCards";
 import { isLegacyPlainText, noteHasContent, sanitizeNoteHtml } from "../lib/noteHtml";
+import { leaveAppView } from "../lib/openView";
 
 const { Text } = Typography;
 
@@ -56,6 +58,9 @@ export default function SummaryWindow() {
     return (
       <div className="summary-print-root">
         <div className="summary-print-toolbar no-print">
+          <Button icon={<ArrowLeftOutlined aria-hidden="true" />} onClick={leaveAppView}>
+            返回
+          </Button>
           <span className="spt-title">彙整結果</span>
         </div>
         <div className="summary-print-page">
@@ -68,6 +73,10 @@ export default function SummaryWindow() {
   return (
     <div className="summary-print-root">
       <div className="summary-print-toolbar no-print">
+        {/* 主畫面模式沒有網址列也沒有上一頁鍵，這是唯一的出口 */}
+        <Button icon={<ArrowLeftOutlined aria-hidden="true" />} onClick={leaveAppView}>
+          返回
+        </Button>
         <Button type="primary" onClick={() => window.print()}>
           列印 / 存成PDF
         </Button>

@@ -3,6 +3,7 @@ import { Button, Card, Checkbox, Modal } from "antd";
 import { EditOutlined, FileTextOutlined, FormOutlined, IdcardOutlined, PrinterOutlined } from "@ant-design/icons";
 import type { Sentence, VocabItem } from "../../types";
 import { noteHasContent } from "../../lib/noteHtml";
+import { openAppView } from "../../lib/openView";
 
 function collectVocab(sentences: Sentence[]): VocabItem[] {
   const seen = new Set<string>();
@@ -50,7 +51,7 @@ export default function StudyActions({
     localStorage.setItem("latestVocabPrint", JSON.stringify({ sessionTitle, vocab }));
     const url = new URL(window.location.href);
     url.searchParams.set("view", "vocab-print");
-    window.open(url.toString(), "_blank");
+    openAppView(url.toString());
   }
 
   function openSummaryWindow(): void {
@@ -74,7 +75,7 @@ export default function StudyActions({
     localStorage.setItem("latestSummary", JSON.stringify(payload));
     const url = new URL(window.location.href);
     url.searchParams.set("view", "summary");
-    window.open(url.toString(), "_blank");
+    openAppView(url.toString());
   }
 
   function handleConfirmSummaryPrint(): void {

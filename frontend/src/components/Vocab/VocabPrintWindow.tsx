@@ -1,6 +1,8 @@
 import { useEffect, useMemo } from "react";
 import { Button } from "antd";
+import { ArrowLeftOutlined } from "@ant-design/icons";
 import type { VocabItem } from "../../types";
+import { leaveAppView } from "../../lib/openView";
 
 type VocabPrintData = {
   sessionTitle?: string;
@@ -104,7 +106,10 @@ export default function VocabPrintWindow(): React.ReactElement {
   if (!data) {
     return (
       <div style={{ padding: 40 }}>
-        找不到單字資料，請回主頁重新按「列印單字卡」。
+        <p className="m-0 mb-3">找不到單字資料，請回主頁重新按「列印單字卡」。</p>
+        <Button icon={<ArrowLeftOutlined aria-hidden="true" />} onClick={leaveAppView}>
+          返回
+        </Button>
       </div>
     );
   }
@@ -112,6 +117,10 @@ export default function VocabPrintWindow(): React.ReactElement {
   return (
     <div className="vocab-print-root">
       <div className="vocab-print-toolbar no-print">
+        {/* 主畫面模式沒有網址列也沒有上一頁鍵，這是唯一的出口 */}
+        <Button icon={<ArrowLeftOutlined aria-hidden="true" />} onClick={leaveAppView}>
+          返回
+        </Button>
         <Button type="primary" onClick={() => window.print()}>
           列印 / 存成PDF
         </Button>
