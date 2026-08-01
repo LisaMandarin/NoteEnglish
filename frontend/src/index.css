@@ -185,6 +185,20 @@ h1, h2, h3 {
   text-decoration-thickness: 2px;
 }
 
+/* Accent-colored outline CTA link (landing page secondary CTA). Same antd
+   override problem as .link-accent, but this is a button-shaped control, not
+   an inline text link, so it skips the underline. --accent on --card-bg
+   reads ~7:1. */
+.btn-outline-accent {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.btn-outline-accent:hover,
+.btn-outline-accent:focus-visible {
+  color: var(--accent);
+}
+
 /* AntD Input's allowClear icon defaults to rgba(0,0,0,0.25) — under 3:1 against
    white/card backgrounds. Override to --text-muted (#5f6b77, ~7.5:1) so the
    clear button passes WCAG AA for meaningful icons. Scoped to the clear-icon

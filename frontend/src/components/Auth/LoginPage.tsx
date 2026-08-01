@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Button, Input } from "antd";
 import { supabase } from "../../lib/supabase";
 import { PASSWORD_RULES_TEXT, validatePassword } from "../../lib/authValidation";
@@ -85,13 +85,27 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState("sign_in");
+  const [mode, setMode] = useState(() =>
+    new URLSearchParams(window.location.search).get("mode") === "signup"
+      ? "sign_up"
+      : "sign_in"
+  );
 
   function fillDemoCredentials() {
     setEmail(DEMO_CREDENTIALS.email);
     setPassword(DEMO_CREDENTIALS.password);
     setError("");
   }
+
+  // Landing page's "查看示範帳號" CTA (?view=login&demo=1) only pre-fills the
+  // form — the visitor still presses 登入 themselves, so the public-account
+  // warning above the form stays visible before any submission happens.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("demo") === "1") {
+      fillDemoCredentials();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // An error message describes the previous submission; editing any field
   // starts a new attempt, so the stale message clears immediately.
@@ -173,6 +187,7 @@ export default function LoginPage() {
         setPassword("");
         setConfirmPassword("");
         setMode("sign_in");
+        setSuccessMessage("帳號已建立，請至信箱完成驗證後登入。");
         return;
       }
 
@@ -195,6 +210,9 @@ export default function LoginPage() {
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-3xl items-center justify-center">
         <div className="w-full rounded-[30px] border-4 border-(--card-border) bg-(--card-bg) shadow-md">
           <div className="w-full m-0 px-8 py-10 box-border sm:px-12">
+            <a href="/" className="link-accent mb-4 inline-block text-sm font-semibold">
+              ← 返回首頁
+            </a>
             <h1 className="mb-2 text-4xl">句句通</h1>
             <p className="mb-8 text-base text-black/70">
               {mode === "sign_in"
@@ -357,6 +375,7 @@ export default function LoginPage() {
                     return;
                   }
                   setError("");
+                  setSuccessMessage("");
                   setPassword("");
                   setConfirmPassword("");
                   setMode((currentMode) =>
