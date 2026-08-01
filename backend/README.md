@@ -57,11 +57,20 @@ All endpoints except `/api/health` and `/api/debug/*` require a Supabase Bearer 
 | `POST` | `/api/parse` | Analyze a sentence into a five-pattern constituent tree via Gemini (spaCy validates/repairs; cached in memory + Supabase) |
 | `POST` | `/api/ocr` | Extract text from a base64 image via Gemini vision (JPEG/PNG/WebP, max 8 MB) |
 | `POST` | `/api/profile/ensure` | Create or verify user profile |
-| `GET` | `/api/sessions` | List sessions (supports `limit` / `offset`; items include `share_token`) |
+| `GET` | `/api/profile/me` | Get the caller's own profile (includes email, `is_public`) |
+| `PATCH` | `/api/profile` | Partially update the caller's profile (display name, bio, up to 5 links, `is_public`) |
+| `GET` | `/api/profiles/{user_id}` | Public profile view (404 if missing or private; never includes email) |
+| `GET` | `/api/link-preview` | Fetch OG title/image/domain for a note link URL (SSRF-guarded, in-memory TTL cache) |
+| `GET` | `/api/sessions` | List sessions (supports `limit` / `offset`; items include `share_token`, `group_id`) |
 | `GET` | `/api/sessions/{id}` | Load a single session |
 | `POST` | `/api/sessions/save` | Save or overwrite a session |
 | `PATCH` | `/api/sessions/{id}/title` | Rename a session |
 | `DELETE` | `/api/sessions/{id}` | Delete a session (cascade-removes everyone's favorites) |
+| `PATCH` | `/api/sessions/{id}/group` | Move a session into a topic folder, or `null` to ungroup it |
+| `GET` | `/api/session-groups` | List the caller's topic folders |
+| `POST` | `/api/session-groups` | Create a topic folder |
+| `PATCH` | `/api/session-groups/{group_id}` | Rename a topic folder |
+| `DELETE` | `/api/session-groups/{group_id}` | Delete a topic folder (sessions inside are released to ungrouped, not deleted) |
 | `POST` | `/api/sessions/{id}/share` | Create or return the session's share token (idempotent, owner only) |
 | `DELETE` | `/api/sessions/{id}/share` | Revoke the share link (hides favorites until re-shared) |
 | `GET` | `/api/shared/{token}` | Read-only shared article (any signed-in user; 404 if revoked) |
@@ -77,7 +86,7 @@ All endpoints except `/api/health` and `/api/debug/*` require a Supabase Bearer 
 | `GET` | `/api/quiz/runs` | Quiz history (one item per submitted run) |
 | `DELETE` | `/api/quiz/runs` | Delete one run and rebuild affected word mastery |
 | `POST` | `/api/issue-report` | Submit a user issue report |
-| `GET` | `/api/usage` | Gemini token usage stats (hourly / daily / monthly) |
+| `GET` | `/api/usage` | Gemini token usage stats (hourly / daily / monthly, Asia/Taipei buckets) |
 | `GET` | `/api/admin/check` | Verify the caller has admin access |
 | `GET` | `/api/admin/users` | List all users (supports `page` / `per_page`) |
 | `GET` | `/api/admin/users/{user_id}/usage` | Token usage stats for a single user |

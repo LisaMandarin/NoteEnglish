@@ -205,7 +205,7 @@ export default function LoginPage() {
             </p>
 
             {mode === "sign_in" ? (
-              <div className="mb-8 rounded-3xl border border-black/10 bg-black/[0.03] px-5 py-4">
+              <div className="mb-8 rounded-3xl border border-black/10 bg-black/3 px-5 py-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                   <div className="space-y-1">
                     <p className="m-0 text-sm font-semibold uppercase tracking-[0.18em] text-black/55">
