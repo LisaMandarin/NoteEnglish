@@ -53,6 +53,44 @@ class UsageStatsTests(unittest.TestCase):
         self.assertEqual(result["last_12_hours"]["hourly"][-1]["tokens"], 9)
 
 
+class TaipeiBucketingTests(unittest.TestCase):
+    """'now' is 2026-06-07T02:30 UTC == 2026-06-07T10:30 Taipei (see FixedDateTime)."""
+
+    def test_week_daily_bucket_uses_taipei_calendar_day(self):
+        rows = [
+            # 2026-06-06T17:00 UTC is 2026-06-07T01:00 Taipei, so it belongs
+            # to the 2026-06-07 bucket even though it's still 06-06 in UTC.
+            {"created_at": "2026-06-06T17:00:00Z", "total_tokens": 42},
+        ]
+
+        with (
+            patch.object(supabase, "datetime", FixedDateTime),
+            patch.object(supabase, "_request_json", return_value=rows),
+        ):
+            result = supabase.get_usage_stats("user-1")
+
+        week = {d["date"]: d["tokens"] for d in result["week"]["daily"]}
+        self.assertEqual(week.get("2026-06-07"), 42)
+        self.assertEqual(week.get("2026-06-06"), 0)
+
+    def test_month_bucket_uses_taipei_calendar_month(self):
+        rows = [
+            # 2026-05-31T17:00 UTC is 2026-06-01T01:00 Taipei, so it belongs
+            # to the June bucket even though it's still May in UTC.
+            {"created_at": "2026-05-31T17:00:00Z", "total_tokens": 7},
+        ]
+
+        with (
+            patch.object(supabase, "datetime", FixedDateTime),
+            patch.object(supabase, "_request_json", return_value=rows),
+        ):
+            result = supabase.get_usage_stats("user-1")
+
+        months = {m["month"]: m["tokens"] for m in result["months"]["monthly"]}
+        self.assertEqual(months.get("2026-06"), 7)
+        self.assertEqual(months.get("2026-05"), 0)
+
+
 class ParseTimestampTests(unittest.TestCase):
     def test_pads_and_truncates_fractional_seconds(self):
         cases = {

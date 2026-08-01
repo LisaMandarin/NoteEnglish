@@ -278,9 +278,7 @@ export default function TokenUsageView({ userId }: { userId?: string }): React.R
             <UsageProgressSection
               label="本月"
               total={
-                data.months.monthly.find(
-                  (m) => m.month === new Date().toISOString().slice(0, 7)
-                )?.tokens ?? 0
+                data.months.monthly[data.months.monthly.length - 1]?.tokens ?? 0
               }
               limit={LIMITS.month}
             />

@@ -1121,6 +1121,10 @@ def log_api_usage(user_id: str, endpoint: str, model: str, usage: dict) -> None:
 
 _FRACTIONAL_SECONDS_RE = re.compile(r"\.(\d+)")
 
+# Taiwan has no DST, so a fixed UTC+8 offset is exact and avoids depending on
+# the deployment image having tzdata installed (unlike zoneinfo/pytz).
+TAIPEI = timezone(timedelta(hours=8))
+
 
 def parse_timestamp_utc(ts: str) -> datetime:
     """Parse an ISO 8601 timestamp into a UTC-aware datetime.
@@ -1152,7 +1156,8 @@ def get_usage_stats(user_id: str) -> dict:
         return dt.replace(year=y, month=m, day=1, hour=0, minute=0, second=0, microsecond=0)
 
     now = datetime.now(timezone.utc)
-    three_months_start = _subtract_months(now, 2)
+    now_tpe = now.astimezone(TAIPEI)
+    three_months_start = _subtract_months(now_tpe, 2).astimezone(timezone.utc)
     recent_hours_start = now.replace(
         minute=0, second=0, microsecond=0
     ) - timedelta(hours=11)
@@ -1169,7 +1174,7 @@ def get_usage_stats(user_id: str) -> dict:
         headers=_service_headers(),
     ) or []
 
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start_tpe = now_tpe.replace(hour=0, minute=0, second=0, microsecond=0)
 
     hourly: dict[int, int] = {h: 0 for h in range(24)}
     recent_hourly: dict[datetime, int] = {
@@ -1180,19 +1185,20 @@ def get_usage_stats(user_id: str) -> dict:
 
     for row in rows:
         dt = parse_timestamp_utc(row["created_at"])
+        dt_tpe = dt.astimezone(TAIPEI)
         tokens: int = row.get("total_tokens") or 0
 
-        if dt >= today_start:
-            hourly[dt.hour] += tokens
+        if dt_tpe >= today_start_tpe:
+            hourly[dt_tpe.hour] += tokens
 
         hour_start = dt.replace(minute=0, second=0, microsecond=0)
         if hour_start in recent_hourly:
             recent_hourly[hour_start] += tokens
 
-        date_str = dt.strftime("%Y-%m-%d")
+        date_str = dt_tpe.strftime("%Y-%m-%d")
         daily[date_str] = daily.get(date_str, 0) + tokens
 
-        month_str = dt.strftime("%Y-%m")
+        month_str = dt_tpe.strftime("%Y-%m")
         monthly[month_str] = monthly.get(month_str, 0) + tokens
 
     hourly_list = [{"hour": h, "tokens": hourly[h]} for h in range(24)]
@@ -1208,14 +1214,14 @@ def get_usage_stats(user_id: str) -> dict:
 
     week_days = []
     for i in range(6, -1, -1):
-        d = today_start - timedelta(days=i)
+        d = today_start_tpe - timedelta(days=i)
         date_str = d.strftime("%Y-%m-%d")
         week_days.append({"date": date_str, "tokens": daily.get(date_str, 0)})
     week_total = sum(entry["tokens"] for entry in week_days)
 
     month_list = []
     for i in range(2, -1, -1):
-        m = _subtract_months(now.replace(day=1), i)
+        m = _subtract_months(now_tpe.replace(day=1), i)
         month_str = m.strftime("%Y-%m")
         month_list.append({"month": month_str, "tokens": monthly.get(month_str, 0)})
     months_total = sum(entry["tokens"] for entry in month_list)
