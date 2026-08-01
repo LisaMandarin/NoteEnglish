@@ -94,7 +94,7 @@ export default function ProfileEditModal({ open, onClose }: {
     <Modal
       title={
         <span>
-          <UserOutlined className="mr-2 text-(--accent)" />
+          <UserOutlined aria-hidden="true" className="mr-2 text-(--accent)" />
           編輯個人檔案
         </span>
       }
