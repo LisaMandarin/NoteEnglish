@@ -3,6 +3,7 @@ import { Button, Dropdown, Typography } from "antd";
 import type { MenuProps } from "antd";
 import {
   ApartmentOutlined,
+  CloseOutlined,
   FormOutlined,
   MoreOutlined,
 } from "@ant-design/icons";
@@ -243,7 +244,15 @@ export default function SentenceItem({
                   </div>
                 )}
                 {structure.structure && (
-                  <div className="rounded-md border border-(--card-border) bg-(--card-bg) px-3 py-2">
+                  <div className="relative rounded-md border border-(--card-border) bg-(--card-bg) py-2 pl-3 pr-9">
+                    <button
+                      type="button"
+                      onClick={structure.toggle}
+                      aria-label="隱藏句構分析"
+                      className="no-print absolute right-2 top-2 flex size-6 items-center justify-center rounded text-gray-500 hover:text-(--accent) transition-colors cursor-pointer"
+                    >
+                      <CloseOutlined />
+                    </button>
                     <SentenceSkeleton
                       structure={structure.structure}
                       sentenceType={structure.sentenceType}
