@@ -1,33 +1,5 @@
-import {
-  BookOutlined,
-  FileDoneOutlined,
-  ReadOutlined,
-  SoundOutlined,
-} from "@ant-design/icons";
 import SiteFooter from "../shared/SiteFooter";
-
-const FEATURES = [
-  {
-    icon: ReadOutlined,
-    title: "逐句翻譯與句構分析",
-    description: "每個句子都有中文翻譯與文法結構拆解。",
-  },
-  {
-    icon: BookOutlined,
-    title: "點選單字建立單字卡",
-    description: "自動查詞性、例句與中文翻譯。",
-  },
-  {
-    icon: FileDoneOutlined,
-    title: "測驗檢視學習成效",
-    description: "文章理解與單字測驗，附熟練度標記。",
-  },
-  {
-    icon: SoundOutlined,
-    title: "朗讀、列印、分享",
-    description: "真人語音朗讀，筆記可列印或分享給他人。",
-  },
-];
+import HowItWorks from "./HowItWorks";
 
 export default function LandingPage(): React.ReactElement {
   return (
@@ -75,27 +47,21 @@ export default function LandingPage(): React.ReactElement {
             </section>
 
             <section aria-labelledby="features-heading" className="mt-14 sm:mt-16">
-              <h2 id="features-heading" className="sr-only">
-                主要功能
+              <h2
+                id="features-heading"
+                className="m-0 text-2xl font-semibold text-(--text-main) sm:text-3xl"
+              >
+                怎麼使用
               </h2>
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                {FEATURES.map(({ icon: Icon, title, description }) => (
-                  <div
-                    key={title}
-                    className="rounded-3xl border border-black/10 bg-white/70 px-6 py-6"
-                  >
-                    <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--accent)_12%,white)] text-2xl text-(--accent)">
-                      <Icon aria-hidden="true" />
-                    </span>
-                    <h3 className="mb-1 mt-4 text-lg font-semibold text-(--text-main)">
-                      {title}
-                    </h3>
-                    <p className="m-0 text-sm leading-6 text-black/65">
-                      {description}
-                    </p>
-                  </div>
-                ))}
-              </div>
+              <p className="mb-8 mt-2 text-base leading-7 text-black/65">
+                從貼上文章到讀懂長句，只要四個步驟。
+              </p>
+
+              <HowItWorks />
+
+              <p className="mb-0 mt-8 text-sm leading-7 text-black/65">
+                除此之外還有：文章理解與單字測驗（附熟練度標記）、真人語音朗讀，以及筆記列印與分享連結。
+              </p>
             </section>
 
             <section
