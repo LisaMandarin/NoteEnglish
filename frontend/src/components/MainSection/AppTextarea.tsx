@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { Typography, Input, Button, Alert, Modal } from "antd"
+import { WarningFilled } from "@ant-design/icons"
 import { useTranslation } from "../../context/translationContext"
 import { ocrImage, SESSION_EXPIRED_MESSAGE } from "../../lib/api"
 import { fileToCompressedBase64, ImagePrepError } from "../../lib/image"
@@ -204,6 +205,13 @@ export default function AppTextarea() {
                   />
                   <div className="text-right mt-1">
                     <span className={`text-xs ${countColor}`}>
+                      {isOverLimit && (
+                        <WarningFilled
+                          role="img"
+                          aria-label="已超過字數上限"
+                          className="mr-1 text-sm align-[-2px]"
+                        />
+                      )}
                       {isOverLimit ? `-${charCount - MAX_CHARS}/${MAX_CHARS}` : `${charCount}/${MAX_CHARS}`}
                     </span>
                   </div>
