@@ -154,6 +154,11 @@ export default function AdminDashboard({
         />
 
         <main className="min-h-[calc(100vh-7.5rem)] lg:min-h-[calc(100vh-5rem)] flex-1 rounded-[30px] border-4 border-(--card-border) bg-(--card-bg) shadow-md">
+          {isAdmin === null && (
+            <div className="flex h-full min-h-[calc(100vh-7.5rem)] lg:min-h-[calc(100vh-5rem)] items-center justify-center px-8 py-10 text-center">
+              <p className="text-base text-black/60">Checking access...</p>
+            </div>
+          )}
           {isAdmin === false && (
             <div className="flex h-full min-h-[calc(100vh-7.5rem)] lg:min-h-[calc(100vh-5rem)] items-center justify-center px-8 py-10 text-center">
               <div>

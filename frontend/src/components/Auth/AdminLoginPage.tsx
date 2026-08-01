@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Button, Input } from "antd";
 import { supabase } from "../../lib/supabase";
-import { checkAdminAccess } from "../../lib/api";
 
 export default function AdminLoginPage(): React.ReactElement {
   const [email, setEmail] = useState("");
@@ -53,13 +52,11 @@ export default function AdminLoginPage(): React.ReactElement {
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (signInError) throw signInError;
 
-      // Verify admin role via backend — signs out immediately if not admin.
-      try {
-        await checkAdminAccess();
-      } catch {
-        await supabase.auth.signOut();
-        throw new Error("This account does not have admin access.");
-      }
+      // Admin-role verification happens in AdminDashboard once App swaps
+      // this page out — App's onAuthStateChange flips `user` as soon as
+      // sign-in succeeds (often before this await even resolves), so this
+      // component may already be unmounted by then. Checking here raced
+      // with that unmount and never reached the user.
     } catch (authError: unknown) {
       const msg = authError instanceof Error ? authError.message : "Authentication failed.";
       setError(msg);
