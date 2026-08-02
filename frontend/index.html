@@ -37,6 +37,14 @@
       property="og:description"
       content="貼上英文文章，AI 幫你逐句翻譯、解析句構、自動建立單字卡。"
     />
+    <!-- Must stay an ABSOLUTE url: scrapers ignore a relative path, so a bare
+         /og-image.png is the same as having no image at all. Update this host
+         when the site moves off *.vercel.app. PNG rather than the existing
+         logo.webp because LINE's scraper does not support webp. -->
+    <meta property="og:image" content="https://note-english.vercel.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="句句通－英文文章逐句翻譯與句構分析" />
     <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
