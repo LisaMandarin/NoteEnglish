@@ -24,7 +24,7 @@ export default function LandingPage(): React.ReactElement {
                 句句通
               </h1>
               <p className="mb-0 mt-5 text-lg leading-8 text-black/70 sm:text-xl">
-                貼上英文文章，AI 幫你逐句翻譯、解析句構、自動建立單字卡。
+                貼上英文文章、逐句翻譯、解析句構、自動建立單字卡。
               </p>
               <p className="mb-0 mt-3 text-base leading-7 text-black/60">
                 適合想讀懂原文文章、但卡在長句與生字的英文學習者。
@@ -61,18 +61,6 @@ export default function LandingPage(): React.ReactElement {
 
               <p className="mb-0 mt-8 text-sm leading-7 text-black/65">
                 除此之外還有：文章理解與單字測驗（附熟練度標記）、真人語音朗讀，以及筆記列印與分享連結。
-              </p>
-            </section>
-
-            <section
-              aria-labelledby="demo-heading"
-              className="mt-14 rounded-3xl border border-black/10 bg-black/3 px-6 py-5 sm:mt-16"
-            >
-              <h2 id="demo-heading" className="m-0 text-base font-semibold text-(--text-main)">
-                關於示範帳號
-              </h2>
-              <p className="m-0 mt-2 text-sm text-amber-700">
-                示範帳號為公開帳號，任何測試者均可存取其中的內容。若您希望保有私人的學習記錄，請使用自己的電子郵件註冊專屬帳號。
               </p>
             </section>
           </div>
