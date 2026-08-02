@@ -185,6 +185,20 @@ h1, h2, h3 {
   text-decoration-thickness: 2px;
 }
 
+/* Accent-colored outline CTA link (landing page secondary CTA). Same antd
+   override problem as .link-accent, but this is a button-shaped control, not
+   an inline text link, so it skips the underline. --accent on --card-bg
+   reads ~7:1. */
+.btn-outline-accent {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.btn-outline-accent:hover,
+.btn-outline-accent:focus-visible {
+  color: var(--accent);
+}
+
 /* AntD Input's allowClear icon defaults to rgba(0,0,0,0.25) — under 3:1 against
    white/card backgrounds. Override to --text-muted (#5f6b77, ~7.5:1) so the
    clear button passes WCAG AA for meaningful icons. Scoped to the clear-icon
@@ -974,4 +988,550 @@ h1, h2, h3 {
 @page vocab-cards {
   size: A4 portrait;
   margin: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Landing-page "how it works" demo (components/Landing/HowItWorks.tsx).
+   A mock app window that plays the four-step flow. Plain CSS because it is a
+   self-contained animated widget: keyframes, delays and the paused state are
+   easier to keep coherent here than as scattered arbitrary Tailwind values.
+   Every animation is transform/opacity only, and the whole block degrades to
+   static final states under prefers-reduced-motion (see the bottom of this
+   section) — the demo auto-plays, so that fallback is required, not optional.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+@keyframes lp-fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes lp-slide-left {
+  from { opacity: 0; transform: translateX(28px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes lp-caret-blink {
+  0%, 45% { opacity: 1; }
+  55%, 100% { opacity: 0; }
+}
+
+@keyframes lp-press {
+  0%, 100% { transform: none; }
+  40% { transform: scale(0.94); }
+}
+
+@keyframes lp-ripple {
+  from { opacity: 0.55; transform: translate(-50%, -50%) scale(0.2); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(2.6); }
+}
+
+@keyframes lp-cursor-move {
+  0% { opacity: 0; transform: translate(110px, 80px); }
+  15% { opacity: 1; }
+  100% { opacity: 1; transform: translate(0, 0); }
+}
+
+@keyframes lp-highlight {
+  to { background: var(--card-border); color: var(--card-bg); }
+}
+
+@keyframes lp-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* Entrance helper — elements start hidden and are revealed by their inline
+   animation-delay, which is what sequences each step's storyboard. */
+.lp-in {
+  opacity: 0;
+  animation: lp-fade-up 0.45s ease-out forwards;
+}
+
+/* ── Mock window ─────────────────────────────────────────────────────────── */
+
+.lp-stage {
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--card-border) 25%, transparent);
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(24, 57, 57, 0.12);
+  overflow: hidden;
+}
+
+.lp-chrome {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--card-border) 14%, transparent);
+  background: color-mix(in srgb, var(--card-bg) 70%, #fff);
+}
+
+.lp-chrome__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--card-border) 22%, transparent);
+}
+
+.lp-chrome__title {
+  margin-left: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.lp-screen {
+  padding: 18px 16px 20px;
+  min-height: 310px;
+}
+
+.lp-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lp-field-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.lp-textarea {
+  min-height: 132px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--card-border) 30%, transparent);
+  background: color-mix(in srgb, var(--card-bg) 45%, #fff);
+  padding: 12px 14px;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--text-main);
+}
+
+.lp-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: -0.15em;
+  background: var(--accent);
+  animation: lp-caret-blink 1s step-end infinite;
+}
+
+.lp-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.lp-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  padding: 7px 22px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  overflow: hidden;
+}
+
+.lp-press {
+  animation: lp-press 0.45s ease-out forwards;
+}
+
+/* fill-mode is `forwards`, never `both`: these run behind a long
+   animation-delay, and `both` would paint the keyframe's opaque from-state for
+   the whole delay — a blob sitting on the button until the ripple fires. */
+.lp-ripple {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.2);
+  animation: lp-ripple 0.7s ease-out forwards;
+}
+
+/* ── Sentences (steps 2 & 3) ─────────────────────────────────────────────── */
+
+.lp-sentences {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp-sentence {
+  display: flex;
+  gap: 10px;
+}
+
+.lp-num {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.lp-en {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: var(--text-main);
+}
+
+.lp-zh {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+
+.lp-hit {
+  position: relative;
+  display: inline-block;
+}
+
+.lp-hit__word {
+  border-radius: 0.2em;
+  padding: 0 0.12em;
+  animation: lp-highlight 0.25s ease-out forwards;
+}
+
+.lp-tap {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.2);
+  animation: lp-ripple 0.8s ease-out forwards;
+}
+
+.lp-cursor {
+  position: absolute;
+  left: 55%;
+  top: 65%;
+  color: var(--card-border);
+  line-height: 0;
+  opacity: 0;
+  animation: lp-cursor-move 0.95s cubic-bezier(0.33, 0.9, 0.4, 1) forwards;
+}
+
+/* ── Vocab card (step 3) ─────────────────────────────────────────────────── */
+
+.lp-card.lp-in {
+  animation-name: lp-slide-left;
+}
+
+.lp-card {
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--card-border) 30%, transparent);
+  background: var(--card-bg);
+  padding: 12px 14px;
+}
+
+.lp-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lp-card__word {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.lp-pos {
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  padding: 1px 7px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.lp-card__zh {
+  margin: 6px 0 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.lp-card__def {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.lp-card__example {
+  margin-top: 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--card-border) 8%, transparent);
+  padding: 7px 10px;
+}
+
+.lp-card__example p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-main);
+}
+
+.lp-card__example em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.lp-card__example-zh {
+  margin-top: 3px !important;
+  color: var(--text-muted) !important;
+  font-size: 0.75rem !important;
+}
+
+.lp-dots {
+  display: flex;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.lp-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--card-border) 20%, transparent);
+}
+
+.lp-dot--on {
+  background: var(--accent);
+}
+
+/* ── Structure skeleton (step 4) ─────────────────────────────────────────── */
+
+.lp-skeleton {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px 10px;
+  padding: 6px 0 2px;
+  font-size: 0.95rem;
+  line-height: 1.9;
+  color: var(--text-main);
+}
+
+.lp-slot {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.lp-slot__words {
+  border-bottom: 2px solid transparent;
+  padding-bottom: 2px;
+}
+
+.lp-slot__label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.lp-slot--subj .lp-slot__words { border-bottom-color: var(--c-subj); }
+.lp-slot--subj .lp-slot__label { color: var(--c-subj); }
+.lp-slot--pred .lp-slot__words { border-bottom-color: var(--c-pred); }
+.lp-slot--pred .lp-slot__label { color: var(--c-pred); }
+.lp-slot--pp .lp-slot__words { border-bottom-color: var(--c-pp); }
+.lp-slot--pp .lp-slot__label { color: var(--c-pp); }
+
+.lp-pattern {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.lp-pattern__badge {
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  padding: 2px 9px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+/* ── Caption list ────────────────────────────────────────────────────────── */
+
+.lp-caption {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  background: transparent;
+  padding: 12px 14px;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+/* Guarded so a tap on a touch device does not leave a caption stuck in the
+   hover tint, which reads as a second "active" step. */
+@media (hover: hover) {
+  .lp-caption:hover {
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+  }
+
+  .lp-playpause:hover {
+    text-decoration: underline;
+  }
+}
+
+.lp-caption--active {
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+
+.lp-caption__num {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--card-border) 35%, transparent);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.lp-caption--active .lp-caption__num {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.lp-caption__title {
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.lp-caption__desc {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.lp-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 3px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.lp-progress__bar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: left center;
+  background: var(--accent);
+  animation: lp-progress linear both;
+}
+
+.lp-playpause {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  margin-left: 14px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  padding: 4px 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Pause everything at once (user pressed pause, scrolled away, or switched
+   tabs). Must stay AFTER every rule that sets the `animation` shorthand — the
+   shorthand resets animation-play-state to running, so an earlier declaration
+   here silently loses to same-specificity rules further down. */
+.lp-paused *,
+.lp-paused *::before,
+.lp-paused *::after {
+  animation-play-state: paused;
+}
+
+/* Below the `lg` breakpoint the demo stacks (window above, captions below), so
+   four full captions push the page long. Only the active step keeps its
+   description there; the rest collapse to their title. */
+@media (max-width: 1023px) {
+  .lp-caption {
+    padding: 9px 12px;
+  }
+
+  .lp-caption:not(.lp-caption--active) .lp-caption__desc {
+    display: none;
+  }
+}
+
+/* Touch devices have no pointer to show — the tap ripple carries the meaning. */
+@media (hover: none), (pointer: coarse) {
+  .lp-cursor { display: none; }
+}
+
+/* Reduced motion: no auto-play, no keyframes, every step readable as a still.
+   HowItWorks.tsx also skips the timer and renders the typed text in full. */
+@media (prefers-reduced-motion: reduce) {
+  .lp-in,
+  .lp-hit__word,
+  .lp-press {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+
+  .lp-hit__word {
+    background: var(--card-border);
+    color: var(--card-bg);
+  }
+
+  .lp-caret,
+  .lp-ripple,
+  .lp-tap,
+  .lp-cursor {
+    display: none;
+  }
 }

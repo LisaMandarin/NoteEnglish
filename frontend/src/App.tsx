@@ -7,11 +7,13 @@ import IssueReportBadge from "./components/IssueReport/IssueReportBadge";
 import SummaryWindow from "./components/SummaryWindow";
 import VocabPrintWindow from "./components/Vocab/VocabPrintWindow";
 import LoginPage from "./components/Auth/LoginPage";
+import LandingPage from "./components/Landing/LandingPage";
 import AdminLoginPage from "./components/Auth/AdminLoginPage";
 import ResetPasswordPage from "./components/Auth/ResetPasswordPage";
 import AdminDashboard from "./components/Admin";
 import SharedView from "./components/SharedView";
 import ProfileView from "./components/ProfileView";
+import SiteFooter from "./components/shared/SiteFooter";
 import { supabase } from "./lib/supabase";
 import { ensureProfile as ensureProfileApi } from "./lib/api";
 
@@ -124,10 +126,7 @@ function MainPage({ user, onSignOut }: { user: User; onSignOut: () => void }): R
             onShowHome={handleShowHome}
           />
         </div>
-        <footer className="mx-auto mt-10 max-w-7xl text-center text-sm text-(--text-main) opacity-75">
-          <p className="m-0">© {new Date().getFullYear()} 句句通. All rights reserved.</p>
-          <p className="m-0">Created by Min-ting (Lisa) Chuang.</p>
-        </footer>
+        <SiteFooter />
       </div>
       <IssueReportBadge onClick={handleShowReport} />
     </TranslationProvider>
@@ -144,6 +143,26 @@ export default function App(): React.ReactElement {
   const isAdminDashboard = window.location.pathname === "/admin-dashboard";
   const sharedToken = params.get("shared");
   const profileId = params.get("profile");
+  const isLoginView = params.get("view") === "login";
+
+  // Clears ?view=login (and its demo=/mode= companions) once login succeeds,
+  // so a refresh or shared link doesn't land back on the login gate. Only
+  // these three keys are stripped — everything else in the query string is
+  // preserved, and ?shared=/?profile= are never touched.
+  useEffect(() => {
+    if (!user) return;
+
+    const current = new URLSearchParams(window.location.search);
+    if (!current.has("view") && !current.has("demo") && !current.has("mode")) return;
+
+    current.delete("view");
+    current.delete("demo");
+    current.delete("mode");
+
+    const query = current.toString();
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
+    window.history.replaceState(null, "", nextUrl);
+  }, [user]);
 
   useEffect(() => {
     let mounted = true;
@@ -218,9 +237,11 @@ export default function App(): React.ReactElement {
   }
 
   if (!user) {
-    // Also the entry for shared links (?shared=): logging in never navigates,
-    // so the query string survives and the next render lands on SharedView.
-    return <LoginPage />;
+    // Shared/profile links must skip landing entirely: logging in never
+    // navigates, so the query string survives and the next render lands on
+    // SharedView/ProfileView. Landing must not intercept this route.
+    if (sharedToken || profileId || isLoginView) return <LoginPage />;
+    return <LandingPage />;
   }
 
   if (sharedToken) {
