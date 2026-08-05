@@ -149,13 +149,18 @@ export default function App(): React.ReactElement {
   // so a refresh or shared link doesn't land back on the login gate. Only
   // these three keys are stripped — everything else in the query string is
   // preserved, and ?shared=/?profile= are never touched.
+  // view is only dropped when it is literally "login": the other views
+  // (summary / vocab-print / reset-password) live in the URL for as long as
+  // that window is open, and every re-render re-reads it. Stripping those
+  // would bounce the child window back into the main app on the next render.
   useEffect(() => {
     if (!user) return;
 
     const current = new URLSearchParams(window.location.search);
-    if (!current.has("view") && !current.has("demo") && !current.has("mode")) return;
+    const hasLoginView = current.get("view") === "login";
+    if (!hasLoginView && !current.has("demo") && !current.has("mode")) return;
 
-    current.delete("view");
+    if (hasLoginView) current.delete("view");
     current.delete("demo");
     current.delete("mode");
 
